@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Notelet (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "Notelet (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
