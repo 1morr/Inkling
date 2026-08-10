@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    這裡只放對「所有」專案都成立的設定。
+    Platforms / PlatformTarget 之類 MSIX 專屬的設定放在 src/Notelet/Notelet.csproj,
+    因為測試專案與工具專案跑在 AnyCPU,套上 x64;ARM64 會讓 dotnet test 直接失敗。
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <NuGetAuditMode>direct</NuGetAuditMode>
+  </PropertyGroup>
+</Project>

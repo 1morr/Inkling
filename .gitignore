@@ -1,0 +1,16 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+AppPackages/
+BundleArtifacts/
+_ReSharper*/
+*.DotSettings.user
+
+# 注意:標準 C# .gitignore 會排除下面兩者,但 Windows App SDK 需要它們才能部署套件。
+# 一旦忽略,clone 這個 repo 的人(包含未來的你換機器)就無法部署擴展。
+# 官方文檔明確要求把這兩行從 .gitignore 移除:
+#   **/Properties/launchSettings.json
+#   *.pubxml

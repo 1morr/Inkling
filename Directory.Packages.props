@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!--
+    擴展的執行期依賴刻意釘在官方 CmdPal 擴展模板所使用的版本,而不是各自的最新版。
+    這組版本是微軟針對 Command Palette 0.11 驗證過的組合;CsWinRT / WinRTServer
+    牽涉到跨進程 COM 封送,版本漂移的風險大於升級的收益。
+    來源:PowerToys repo src/modules/cmdpal/ExtensionTemplate/ 的 Directory.Packages.props
+  -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.CommandPalette.Extensions" Version="0.11.260520004" />
+    <PackageVersion Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.20250829.1" />
+    <PackageVersion Include="Shmuelie.WinRTServer" Version="2.1.1" />
+  </ItemGroup>
+
+  <!-- 測試工具鏈與擴展執行期無關,用當前 stable -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- xunit.v3 的測試專案本身是可執行檔 -->
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Notelet.Core.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!--
+      CA1707 禁止成員名稱有底線,但測試就是要用 方法_情境_預期結果 的命名 ——
+      那個可讀性遠比命名規則值錢。
+      CA1861 要求把行內陣列抽成 static readonly 欄位,在斷言裡只會讓測試更難讀。
+      兩條都只在測試專案關掉,產品程式碼照樣受它們約束。
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Notelet.Core\Notelet.Core.csproj" />
+  </ItemGroup>
+</Project>
