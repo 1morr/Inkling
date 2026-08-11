@@ -26,7 +26,7 @@ internal sealed partial class SettingsManager : JsonSettingsManager
     private readonly TextSetting _quickCapturePrefix = new(
         Namespaced(nameof(QuickCapturePrefix)),
         "快速新增前綴",
-        "打了這個前綴才會出現快速新增,例如「n 買咖啡機」。以字母或數字結尾時會自動補一個空白。",
+        "打了這個前綴才會出現快速新增,例如「n 買咖啡機」。以字母或數字結尾時會自動補一個空白。標題後面打分號可以接內文:「n 買咖啡機;比較過幾台」。",
         "n ");
 
     public SettingsManager()

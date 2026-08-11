@@ -5,8 +5,8 @@ using Notelet.Core;
 namespace Notelet.Commands;
 
 /// <summary>
-/// 把一行字直接存成一則新筆記。這是整個擴展存在的理由:叫出 Command Palette、
-/// 打字、Enter,不進任何頁面。
+/// 把主搜尋框裡的一句話直接存成一則新筆記。這是整個擴展存在的理由:
+/// 叫出 Command Palette、打字、Enter,不進任何頁面。
 /// </summary>
 internal sealed partial class QuickCaptureCommand : InvokableCommand
 {
@@ -20,21 +20,20 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
         Icon = Icons.Add;
     }
 
-    /// <summary>要記下的文字。由 fallback item 在使用者每次輸入時更新。</summary>
-    public string Text { get; set; } = string.Empty;
+    /// <summary>要記下的內容。由 fallback item 在使用者每次輸入時整個換掉。</summary>
+    public QuickCaptureDraft? Draft { get; set; }
 
     public override CommandResult Invoke()
     {
-        var text = Text.Trim();
-
-        if (text.Length == 0)
+        // 讀一次就固定下來:使用者按 Enter 與 CmdPal 更新查詢是兩次不同的跨進程呼叫。
+        if (Draft is not { } draft)
         {
             return CommandResult.KeepOpen();
         }
 
         try
         {
-            var note = _repository.Create(text, string.Empty);
+            var note = _repository.Create(draft.Title, draft.Body);
             return CommandResult.ShowToast($"已記下:{note.Title}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
