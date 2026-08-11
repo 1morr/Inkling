@@ -222,41 +222,47 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 
 ### 快速記下為什麼是頁面,不是 fallback
 
-**只有 fallback 拿得到使用者正在打的字**(`IFallbackHandler.UpdateQuery`),所以「在主搜尋框
-打字→Enter」這件事本身非 fallback 不可。快速記下曾經就是這樣做的,現在退居實驗性選項
-(預設關),原因是它在目前的 CmdPal 上**藏不乾淨**。
+**這條路試過,而且做完了,最後整個移除。** 別再試一次 —— 下面是為什麼。
 
-**筆記沒有形狀,所以得靠前綴。** 內建的 fallback 不需要觸發詞:計算機看查詢算不算得出來、
+「在主搜尋框打字→Enter」這件事本身非 fallback 不可:**只有 fallback 拿得到使用者正在打的字**
+(`IFallbackHandler.UpdateQuery`),頂層命令被叫起來時搜尋框已經清空了。
+
+問題出在**沒命中的時候藏不起來**。內建的 fallback 不需要觸發詞:計算機看查詢算不算得出來、
 Run 看是不是一個可執行檔、開網址看像不像 URL,不像就自己藏起來。筆記沒有這種判準 ——
 任何一句話都是合法的筆記。所以只能用前綴當意圖判斷,沒命中就把 `Title` 設成空字串隱藏。
 
 而那招要成立,得靠 CmdPal 端把空標題的項目濾掉,**0.11.11762.0 沒有確實做到**:
 
 - 勾了 Include in the Global result 之後,fallback 走的是 `_scoredFallbackItems`
-  (跟一般結果一起計分),不是底部那個 fallback 區塊。
+  (跟一般結果一起計分),不是底部那個 fallback 區塊。而**不勾就沒有意義** ——
+  它會排在所有結果後面,Enter 不落在我們身上,「打字→Enter」直接不成立。
 - `MainListPageResultFactory.Create` 只對底部區塊那條路過濾空標題,而且陣列大小是按
   **未過濾**的 count 算的、寫入時才過濾,尾端因此留 null。旁邊還躺著一個沒人呼叫的
   `GetNonEmptyFallbackItemsCount`,註釋寫 `Empty fallbacks are removed prior to this merge`
-  —— 過濾被提前到呼叫端 `GetSearchViewItems` 了,而那是 main 分支才有的。
+  —— 過濾被提前到呼叫端 `GetSearchViewItems` 了,而那是 `main` 分支才有的。
 - 佐證版本落差:byte-scan 安裝版的 `Microsoft.CmdPal.UI.exe`,`GetSearchViewItems` 與
   `MainListPageResultFactory` 在,`MainListRanker` / `ClassifyTier` / `FallbackFloor` **不在**。
 
-表現出來就是:不管打什麼,結果裡永遠多一個點不動的空列。
+表現出來就是:**不管打什麼,結果裡永遠多一個點不動的空列**。這不是我們能修的。
 
-**頁面版把入口換成 alias,按鍵數一模一樣。** `n` 空白 想法 Enter —— 唯一的差別是中間會跳一次頁。
+**換成頁面之後按鍵數一模一樣。** `n` 空白 想法 Enter —— 唯一的差別是中間會跳一次頁。
 換來的是主搜尋框完全乾淨、不再受 CmdPal 版本行為影響,以及一件 fallback 結構上做不到的事:
 fallback 只有一列,頁面有一整個清單,所以「記下」底下能直接列出標題相近的既有筆記。
+
+順帶一提,前綴設定跟著一起消失了:alias 就是前綴,而且由 CmdPal 統一管理。
 
 alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 
 | | |
 |---|---|
 | indirect alias 存的鍵是「alias + 空白」 | 所以填 `n`,實際觸發的是你打完 `n ` 的那一刻 |
-| 觸發時送 `ClearSearchMessage` + `PerformCommandMessage` | 搜尋框被清空、跳進頁面。**所以 alias 觸發的命令拿不到觸發當下那句話** —— 但跳進去之後打的字,是我們自己 `DynamicListPage.UpdateSearchText` 收的,完全掌控 |
+| 觸發時送 `ClearSearchMessage` + `PerformCommandMessage` | 搜尋框被清空、跳進頁面。**所以 alias 觸發的命令拿不到觸發當下那句話** —— 但跳進去之後打的字,是我們自己 `DynamicListPage.UpdateSearchText` 收的,完全掌控。這正是頁面版能成立的原因 |
 
-alias 比 fallback 早一步處理(`MainListPage.UpdateSearchTextCore` 開頭就
-`if (aliases.CheckAlias(newSearch)) return;`)。所以**若你要開實驗性的 fallback,別把
-alias 也設成同一個前綴** —— alias 會先把搜尋框清掉,fallback 再也看不到那句查詢。
+**哪天 CmdPal 修好了想把 fallback 加回來**:整套實作在 git 歷史裡,
+`git log --diff-filter=D -- src/Notelet/QuickCaptureFallbackItem.cs` 找得到。
+判準是打一句不帶前綴的話,結果裡不再多出空列。真要加回來記得:alias 比 fallback
+早一步處理(`MainListPage.UpdateSearchTextCore` 開頭就 `if (aliases.CheckAlias(newSearch)) return;`),
+所以 alias 別跟前綴設成同一個字,否則 alias 會先把搜尋框清掉,fallback 再也看不到那句查詢。
 
 ### 標題與內文用分號分隔
 
@@ -273,25 +279,26 @@ CmdPal 把使用者對命令做的設定 —— alias、全域快速鍵、釘選
 `TopLevelViewModel.GenerateId` 拿 `ProviderId + DisplayTitle + Title + Subtitle` 去做 WyHash64。
 也就是說標題變一個字,那個命令對 CmdPal 來說就變成了另一個命令,使用者設過的東西全部對不上。
 
-對 fallback 更致命,它的標題本來就跟著使用者打的字一直變。這是實際踩到的:CmdPal 的
-settings.json 裡留下了兩個 Notelet fallback 條目,把其中一個的雜湊反推回去,正好是標題
+**現在這件事比以前更要緊**:快速記下唯一的入口就是使用者自己設的 alias,而 alias 存的鍵
+就是 `Id`。`Notelet.QuickCapturePage` 改一個字,使用者的 alias 當場失效,而且症狀是
+「打 `n ` 沒反應」—— 看不出跟改標題有任何關係。
+
+歷史教訓來自已經移除的 fallback,它的標題本來就跟著使用者打的字一直變:CmdPal 的
+settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的雜湊反推回去,正好是標題
 `記下:你好` —— 某次重新載入時搜尋框裡剛好是那句話。表現出來就是「改了一次設定,
 快速新增就莫名其妙不會出現了,連改回原本的前綴也救不回來」。
+
+(那兩個雜湊條目可能還躺在你的 CmdPal settings.json 裡,無害 —— CmdPal 會忽略對不上的鍵。)
 
 ## 設定項
 
 | 設定 | 預設 | 說明 |
 |---|---|---|
 | 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置 |
-| 在主搜尋框直接記下(實驗性) | **關** | 見上面〈快速記下為什麼是頁面〉。開了會讓每次搜索多一個空列,等 CmdPal 修好才建議開 |
-| 主搜尋框的觸發前綴 | `n ` | 只在上面那個開關打開時有作用。以字母或數字結尾時會自動補一個空白 |
 | 詳細面板寬度 | 窄 | 清單頁按 `Ctrl+D` 也能循環,兩邊改的是同一個值 |
 
-`Notelet:快速記下` 這一頁**不受那個開關影響**,也沒有前綴 —— 進得了那一頁就代表意圖很明確,
-打什麼就記什麼。它的入口(alias、全域快速鍵)由 CmdPal 那邊設,不在這份設定裡。
-
-前綴為什麼要補空白:設成 `n` 而不補的話,`note about x` 這種普通查詢會被當成快速新增,
-而且第一個字母會被吃掉變成記下 `ote about x`。符號前綴(例如 `,`)則不需要空白。
+只有兩項。快速記下沒有前綴設定 —— 它的入口(alias、全域快速鍵)由 CmdPal 那邊管,
+不在這份設定裡;進得了那一頁就代表意圖很明確,打什麼就記什麼。
 
 設定存在 `%LOCALAPPDATA%\Packages\Notelet_<套件雜湊>\LocalState\settings.json`
 (`Utilities.BaseSettingsPath` 會走 MSIX 的路徑重導向),跟其他擴展的做法一致 —— 一人一份,
@@ -309,12 +316,11 @@ src/
     NoteFileName      id 產生與檔名 slug
     FileSystemNoteRepository  讀寫、快取、FileSystemWatcher 失效
     NoteSearch        過濾與排序(純函式)
-    QuickCapture      標題/內文切分(Split)與主搜尋框的前綴判斷(Parse)
+    QuickCapture      標題/內文切分
     NoteletOptions    執行期設定
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
-    QuickCaptureFallbackItem  主搜尋框的快速新增(實驗性,預設關)
     Pages/            快速記下、清單、預覽、編輯、新增
 tests/
   Notelet.Core.Tests/  xUnit
@@ -325,7 +331,7 @@ tools/
 ```
 
 分層的重點:`Notelet.Core` 不知道 Command Palette 的存在。所有容易寫錯的邏輯
-(front matter 解析、檔名、搜索排序、前綴判斷)都在那一層,因此都有單元測試涵蓋。
+(front matter 解析、檔名、搜索排序、標題/內文切分)都在那一層,因此都有單元測試涵蓋。
 `src/Notelet` 只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
 
 ## 開發

@@ -7,7 +7,7 @@ Command Palette 沒有提供 UI 自動化介面,擴展又跑在獨立的 COM 進
 
 | | 怎麼驗 |
 |---|---|
-| 儲存、解析、搜索、前綴判斷 | `dotnet test` —— 全自動,涵蓋所有非 UI 邏輯 |
+| 儲存、解析、搜索、標題/內文切分 | `dotnet test` —— 全自動,涵蓋所有非 UI 邏輯 |
 | 套件有沒有真的裝上 | `tools/VerifyRegistration` 探針 —— 全自動,查 Windows 的 AppExtension 目錄 |
 | 存檔結果對不對 | 直接看 `%OneDrive%\Notelet` 底下的檔案內容,可以斷言 |
 | **畫面有沒有出現、按下去有沒有反應** | **只能靠眼睛,就是這份清單** |
@@ -50,14 +50,16 @@ Reload 之後跑這段,確認 CmdPal 載入的是你剛部署的那一份 ——
 兩者應該指向同一個資料夾。第二行沒有輸出代表 CmdPal 還沒把擴展的 COM server 拉起來,
 先進一次 Notelet 頁面再看。
 
-再確認 CmdPal 認的是我們寫死的 Id,而不是它自己拿標題算出來的雜湊:
+設好 alias 之後跑這段,確認 CmdPal 記的是我們寫死的 Id,而不是它自己拿標題算出來的雜湊
+—— 這是快速記下唯一入口的生死線:
 
 ```powershell
 $s = Get-Content "$env:LOCALAPPDATA\Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json" -Raw | ConvertFrom-Json
-$s.ProviderSettings.PSObject.Properties | Where-Object { $_.Name -like '*Notelet*' } | ForEach-Object { $_.Value.FallbackCommands }
+$s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notelet*' } | ForEach-Object { "$($_.Name) -> $($_.Value.CommandId)" }
 ```
 
-- [ ] 印出來的鍵是 `Notelet.QuickCapture`,而不是 `Notelet_…!App!Notelet` 後面接一串數字
+- [ ] 印出來的 CommandId 是 `Notelet.QuickCapturePage`,
+      而不是 `Notelet_…!App!Notelet` 後面接一串數字
 
 ## 2. 快速記下(需求 1)
 
@@ -73,7 +75,7 @@ $s.ProviderSettings.PSObject.Properties | Where-Object { $_.Name -like '*Notelet
 - [ ] **不吵人檢查**:主搜尋框打一般查詢(`notepad`、`note about x`、`chrome`),
       清單裡**不應該**出現任何 Notelet 的記下項目,也不應該有點不動的空列
 
-相似筆記提醒(fallback 做不到的部分):
+相似筆記提醒(換成頁面才做得到的 —— fallback 只有一列):
 
 - [ ] 再打一次 `n ` 然後輸入 `測試想法一`,「記下」那一列底下出現
       **已經記過的** 一節,列著剛才存的那則
@@ -82,7 +84,7 @@ $s.ProviderSettings.PSObject.Properties | Where-Object { $_.Name -like '*Notelet
       (項目快取的鍵有帶 repository 的 Version,只以查詢字串為鍵的話這裡會看到舊結果)
 - [ ] 打一個完全沒記過的標題,只有「記下」一列,不會有「已經記過的」那一節
 
-分號分隔標題與內文(在快速記下頁裡打,不帶前綴):
+分號分隔標題與內文(以下都在快速記下頁裡打):
 
 - [ ] 打 `測試想法二;這是內文`,項目標題是 **記下:測試想法二**,副標題是 **內文:這是內文**
 - [ ] Enter 之後,檔案的 `title` 是「測試想法二」,內文是「這是內文」,檔名用的是標題
@@ -90,32 +92,22 @@ $s.ProviderSettings.PSObject.Properties | Where-Object { $_.Name -like '*Notelet
 - [ ] `標題;第一段;第二段` 只切第一個分號,內文是 `第一段;第二段`
 - [ ] `標題;`(分號打了、內文還沒打)照樣可以存,存出來只有標題
 - [ ] `;只有內文` 不會出現「記下:」
-- [ ] **沒有前綴判斷**:打 `note about something` 照樣會出現「記下:note about something」
-      —— 進得了這一頁就代表意圖明確,不該再擋一次
+- [ ] **不該有任何前綴判斷**:打 `note about something` 照樣出現
+      「記下:note about something」—— 進得了這一頁就代表意圖明確,不該再擋一次
 
 全域快速鍵(可選,設了就連 `n` 都省):
 
 - [ ] 給 `Notelet:快速記下` 設一個全域快速鍵,按下去直接進頁面,打字、Enter 一樣可用
 
-### 2b. 主搜尋框 fallback(實驗性,預設關)
+### 2b. alias 不會失效(Id 的回歸測試)
 
-**預設是關的,平常不必驗這一段。** 只有在你刻意打開它、或想確認 CmdPal 有沒有修好時才跑。
+快速記下唯一的入口就是 alias,而 alias 存的鍵是命令的 `Id`。改標題不該影響它:
 
-- [ ] 設定頁確認「在主搜尋框直接記下(實驗性)」預設就是**關的**
-- [ ] 打開它並 Save,再到 設定 → Extensions → Notelet → Fallback commands → 記下想法 →
-      勾 **Include in the Global result**(CmdPal 對第三方擴展預設不勾)
-- [ ] 主搜尋框打 `n 測試想法三`,出現「記下:測試想法三」並且存得起來
-- [ ] **已知缺陷**:打一般查詢(`chrome`)時,結果裡會多出一個點不動的空列。
-      0.11.11762.0 沒有把空標題的 global fallback 濾掉 —— 見 README〈快速記下為什麼是頁面〉。
-      **哪天這一列不見了,就代表 CmdPal 修好了,這個開關可以考慮改回預設開**
-- [ ] alias 別跟前綴撞:若把快速記下的 alias 也設成 `n`,alias 會先把搜尋框清掉,
-      fallback 再也拿不到那句查詢(`UpdateSearchTextCore` 開頭就 `CheckAlias`)
-- [ ] 改前綴仍然可用(這是曾經壞掉的地方):設定頁把前綴改成 `j`,Save,
-      主搜尋框打 `j 測試想法四` **照樣出現**並存得起來
-      (曾經有 bug:命令沒有設 `Id`,CmdPal 就拿標題去算一個雜湊當 Id,而 fallback 的標題
-      跟著使用者打的字變。重新載入時只要搜尋框裡有字,Id 就變了一個,CmdPal 那邊
-      「Include in the Global result」的勾選對不上,快速新增就此消失。修法是寫死 `Id`)
-- [ ] 驗完記得關回去
+- [ ] 設好 alias 之後 Reload 一次,`n ` **照樣**直接進快速記下頁
+- [ ] 重新部署(`deploy.ps1`)之後 alias 也還在
+      (曾經有 bug:命令沒有設 `Id`,CmdPal 就拿 `ProviderId + DisplayTitle + Title + Subtitle`
+      算一個雜湊當 Id。標題變一個字,使用者設過的 alias / 快速鍵 / 釘選就全部對不上。
+      修法是寫死 `Id`,見 `src/Notelet/CommandIds.cs`)
 
 ## 3. 瀏覽與搜索(需求 2)
 
@@ -255,12 +247,11 @@ var x = 1;
 ## 9. 設定
 
 - [ ] 在 Notelet 上按 `Ctrl+K` → 設定,設定頁打開
-- [ ] 四個設定項都在:筆記資料夾、在主搜尋框直接記下(實驗性)、主搜尋框的觸發前綴、詳細面板寬度
-- [ ] 「在主搜尋框直接記下」預設是**關的**
+- [ ] 只有兩個設定項:筆記資料夾、詳細面板寬度
+      (`QuickCaptureEnabled` / `QuickCapturePrefix` 已經隨 fallback 一起移除。
+      舊的 settings.json 裡可能還留著這兩個鍵,是孤兒,會被忽略)
 - [ ] 把資料夾改到另一個路徑,清單改讀新資料夾,新筆記寫進新資料夾
 - [ ] 改完設定之後 `Notelet:快速記下` 照樣能用(整組 provider 會重建,頁面是新的那一個)
-
-前綴那兩項只在 fallback 打開時才有意義,驗法見 2b。
 
 ## 10. 外來檔案與同步
 

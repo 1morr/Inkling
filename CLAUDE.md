@@ -34,15 +34,15 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 兩層,界線是「能不能自動化測試」:
 
 - **`src/Notelet.Core`** — 純 `net10.0`,**不引用任何 CmdPal 型別**。front matter 解析、
-  檔名/id 產生、搜索排序、標題/內文切分(`QuickCapture.Split`)與主搜尋框的前綴判斷
-  (`QuickCapture.Parse`)、預覽的換行規則,全部在這一層,因此全部有單元測試。
+  檔名/id 產生、搜索排序、標題/內文切分(`QuickCapture.Split`)、預覽的換行規則,
+  全部在這一層,因此全部有單元測試。
 - **`src/Notelet`** — MSIX COM server,只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
   CmdPal 的 UI 沒有自動化介面,這一層的驗證只能靠 `docs/manual-test-checklist.md`。
 
 新增行為時先問:這段邏輯能不能放進 Core?能的話就放,並補測試。
 
 `NoteletCommandsProvider` 持有一個 `ProviderState`(repository + 清單頁 + 快速記下頁 +
-命令陣列 + fallback)。設定一改就**整組重建**並釋放舊的 —— 舊 repository 還盯著舊資料夾。
+命令陣列)。設定一改就**整組重建**並釋放舊的 —— 舊 repository 還盯著舊資料夾。
 會訂閱 `repository.Changed` 的頁面都要進 `ProviderState` 並在 `Dispose` 裡退訂,
 否則設定改幾次之後同一個事件會有好幾個死頁面在聽。
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
@@ -58,14 +58,15 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    可觀察介面,`DetailsViewModel` 用執行期型別測試決定要不要訂閱,那個 QI 跨不過
    out-of-process 邊界,而通知的例外又被吞掉 —— 表現出來就是「值改了、畫面不動」。
    `Details.Size` 更只在初始化時讀一次。`ICommandItem` 則相反,無條件訂閱,走它一定收得到。
-3. **只有 fallback 拿得到使用者正在打的字**(`UpdateQuery`)。頂層命令被叫起來時搜尋框已清空。
-   但 fallback 這條路在 0.11.11762.0 上**藏不乾淨**:沒命中前綴時我們只能把 `Title` 設成空字串,
-   而 CmdPal 只在底部 fallback 區塊那條路濾空標題,勾了「Include in the Global result」
-   走的 `_scoredFallbackItems` 沒濾 —— 每次搜索都多一個點不動的空列。所以快速記下改成
-   `QuickCapturePage` + 使用者自設的 alias(按鍵數一樣),fallback 退成預設關的實驗性選項。
-   細節與查證過程見 README〈快速記下為什麼是頁面,不是 fallback〉。
+3. **不要把快速記下改回 fallback。** 這條路做完過,最後整個移除 —— 只有 fallback 拿得到
+   使用者正在打的字(`UpdateQuery`),但沒命中前綴時我們只能把 `Title` 設成空字串,
+   而 0.11.11762.0 只在底部 fallback 區塊那條路濾空標題,勾了「Include in the Global result」
+   走的 `_scoredFallbackItems` 沒濾 —— 每次搜索都多一個點不動的空列,而且不勾就排在
+   所有結果後面、失去意義。**這不是我們能修的**,查證過程見 README
+   〈快速記下為什麼是頁面,不是 fallback〉,實作在 git 歷史裡。
+   現在的入口是 `QuickCapturePage` + 使用者自設的 alias,按鍵數一樣。
    alias 觸發時送 `ClearSearchMessage`,所以 **alias 命令拿不到觸發當下那句話**,
-   但進到自己的 `DynamicListPage` 之後打的字完全掌控。
+   但進到自己的 `DynamicListPage` 之後打的字完全掌控 —— 那正是這個做法能成立的原因。
 4. **Adaptive Cards 表單能調的極少**:欄位順序決定游標落在哪(沒有 autofocus / tabIndex)、
    多行輸入框的高度完全不可控(只能靠預填內容撐開)、沒有 `Ctrl+S`(表單值只活在 CmdPal 進程裡)。
 5. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload

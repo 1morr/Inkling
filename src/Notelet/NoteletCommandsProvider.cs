@@ -29,15 +29,15 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
 
     // CmdPal 一啟動就會呼叫這個方法,絕對不能碰磁碟 —— 只回傳事先建好的靜態命令項。
     // 真正的載入延後到使用者實際打開清單頁時。
+    //
+    // 沒有 FallbackCommands():快速記下走的是頁面 + 使用者自設的 alias。
+    // 為什麼不是 fallback,見 README〈快速記下為什麼是頁面,不是 fallback〉。
     public override ICommandItem[] TopLevelCommands() => _state.Commands;
-
-    public override IFallbackCommandItem[] FallbackCommands() => _state.Fallbacks;
 
     private ProviderState BuildState()
     {
         var options = _settingsManager.ToOptions();
-        DiagnosticLog.Write(
-            $"BuildState: prefix='{options.QuickCapturePrefix}' 快速新增={options.QuickCaptureEnabled} 資料夾='{options.NotesDirectory}'");
+        DiagnosticLog.Write($"BuildState: 資料夾='{options.NotesDirectory}'");
 
         // Repository 整個擴展共用一個。它內部有快取與資料夾監看,
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
@@ -66,13 +66,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
             },
         ];
 
-        // fallback 預設是關的,見 SettingsManager 那邊的說明 —— 它在目前的 CmdPal 上
-        // 藏不乾淨。快速記下頁不受這個開關影響,那是使用者自己叫出來的。
-        IFallbackCommandItem[] fallbacks = options.QuickCaptureEnabled
-            ? [new QuickCaptureFallbackItem(new QuickCaptureCommand(repository), options)]
-            : [];
-
-        return new ProviderState(repository, listPage, capturePage, commands, fallbacks);
+        return new ProviderState(repository, listPage, capturePage, commands);
     }
 
     private void OnSettingsChanged(object? sender, Settings e)
@@ -108,8 +102,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         FileSystemNoteRepository Repository,
         NoteListPage ListPage,
         QuickCapturePage CapturePage,
-        ICommandItem[] Commands,
-        IFallbackCommandItem[] Fallbacks) : IDisposable
+        ICommandItem[] Commands) : IDisposable
     {
         public void Dispose()
         {

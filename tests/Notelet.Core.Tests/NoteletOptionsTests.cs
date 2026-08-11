@@ -4,22 +4,6 @@ namespace Notelet.Core.Tests;
 
 public class NoteletOptionsTests
 {
-    [Theory]
-    [InlineData("n", "n ")]
-    [InlineData("n ", "n ")]
-    [InlineData("note", "note ")]
-    [InlineData("note   ", "note ")]
-    [InlineData(",", ",")]
-    [InlineData(">", ">")]
-    [InlineData("", "")]
-    [InlineData("   ", "")]
-    public void QuickCapturePrefix_IsNormalized(string input, string expected)
-    {
-        var options = new NoteletOptions { NotesDirectory = @"C:\notes", QuickCapturePrefix = input };
-
-        Assert.Equal(expected, options.QuickCapturePrefix);
-    }
-
     [Fact]
     public void DefaultNotesDirectory_PrefersOneDrive()
     {

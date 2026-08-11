@@ -123,13 +123,10 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
     private ListItem CreateCaptureItem(QuickCaptureDraft draft)
     {
-        // 每次重建一個新的命令實例,Draft 在建構時就固定下來。
-        // fallback 那邊共用一個實例、每次輸入改寫 Draft,是因為 CmdPal 只讓它有一列;
-        // 這裡沒有那個限制,不共用可變狀態就少一個「按 Enter 時 Draft 已經被改掉」的風險。
-        var command = new QuickCaptureCommand(_repository, goHomeAfterSave: true)
-        {
-            Draft = draft,
-        };
+        // 每次重建一個新的命令實例,Draft 在建構時就固定下來 —— 不共用可變狀態,
+        // 就少一個「按下 Enter 時 Draft 已經被下一次輸入改掉」的競態。
+        // (按 Enter 與更新查詢是兩次不同的跨進程呼叫,不保證在同一個執行緒。)
+        var command = new QuickCaptureCommand(_repository) { Draft = draft };
 
         return new ListItem(command)
         {

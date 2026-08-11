@@ -4,17 +4,10 @@ namespace Notelet.Core.Tests;
 
 public class QuickCaptureTests
 {
-    private static NoteletOptions Options(string prefix = "n ", bool enabled = true) => new()
-    {
-        NotesDirectory = @"C:\notes",
-        QuickCapturePrefix = prefix,
-        QuickCaptureEnabled = enabled,
-    };
-
     [Fact]
-    public void ExtractsTextAfterThePrefix()
+    public void TakesTheTextAsIs()
     {
-        var draft = QuickCapture.Parse("n 買咖啡機的想法", Options());
+        var draft = QuickCapture.Split("買咖啡機的想法");
 
         Assert.NotNull(draft);
         Assert.Equal("買咖啡機的想法", draft.Title);
@@ -24,77 +17,35 @@ public class QuickCaptureTests
     [Fact]
     public void TrimsSurroundingWhitespace()
     {
-        Assert.Equal("想法", QuickCapture.Parse("n    想法   ", Options())?.Title);
+        Assert.Equal("想法", QuickCapture.Split("   想法   ")?.Title);
+    }
+
+    [Fact]
+    public void DoesNotSecondGuessTheUsersIntent()
+    {
+        // 沒有前綴判斷,也不該有:進得了快速記下頁就代表意圖明確。
+        // 這裡刻意用一句看起來像普通搜索的話 —— 它一樣是合法的筆記標題。
+        Assert.Equal("note about something", QuickCapture.Split("note about something")?.Title);
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
-    [InlineData("buy coffee")]
-    [InlineData("notepad")]
-    [InlineData("note about something")]
-    [InlineData("nginx 設定")]
-    public void DoesNotTriggerOnOrdinaryQueries(string query)
+    [InlineData("   ")]
+    public void ReturnsNullWhenThereIsNothingToRecord(string? text)
     {
-        // 這是整個功能最容易惹人厭的失敗模式:前綴太鬆,結果每次搜索都跳出來,
-        // 而且會把第一個字母吃掉(「note about x」變成記下「ote about x」)。
-        Assert.Null(QuickCapture.Parse(query, Options()));
+        // 頁面剛打開、或使用者還沒打字 —— 這時候不該出現「記下」那一列。
+        Assert.Null(QuickCapture.Split(text));
     }
 
     [Theory]
-    [InlineData("n")]
-    [InlineData("n ")]
-    [InlineData("n     ")]
-    public void DoesNotTriggerWhenThereIsNothingToRecord(string query)
-    {
-        Assert.Null(QuickCapture.Parse(query, Options()));
-    }
-
-    [Fact]
-    public void PrefixWithoutTrailingSpaceStillBehavesCorrectly()
-    {
-        // 使用者在設定裡打 "n" 而不是 "n " 是很自然的事,不該因此就壞掉。
-        var options = Options("n");
-
-        Assert.Equal("一個想法", QuickCapture.Parse("n 一個想法", options)?.Title);
-        Assert.Null(QuickCapture.Parse("note about something", options));
-    }
-
-    [Fact]
-    public void SymbolPrefixDoesNotRequireASpace()
-    {
-        var options = Options(",");
-
-        Assert.Equal("一個想法", QuickCapture.Parse(",一個想法", options)?.Title);
-        Assert.Equal("一個想法", QuickCapture.Parse(", 一個想法", options)?.Title);
-    }
-
-    [Fact]
-    public void IsCaseInsensitive()
-    {
-        Assert.Equal("想法", QuickCapture.Parse("N 想法", Options())?.Title);
-    }
-
-    [Fact]
-    public void ReturnsNullWhenDisabled()
-    {
-        Assert.Null(QuickCapture.Parse("n 想法", Options(enabled: false)));
-    }
-
-    [Fact]
-    public void EmptyPrefixNeverTriggers()
-    {
-        // 空前綴等於每一次搜索都要冒出來。與其吵死使用者,不如乾脆不觸發。
-        Assert.Null(QuickCapture.Parse("隨便打的東西", Options(prefix: "")));
-    }
-
-    [Theory]
-    [InlineData("n 買咖啡機;比較過 Breville 跟 Sage")]
-    [InlineData("n 買咖啡機；比較過 Breville 跟 Sage")]
-    [InlineData("n 買咖啡機 ;  比較過 Breville 跟 Sage  ")]
-    public void SplitsTitleAndBodyOnTheSeparator(string query)
+    [InlineData("買咖啡機;比較過 Breville 跟 Sage")]
+    [InlineData("買咖啡機；比較過 Breville 跟 Sage")]
+    [InlineData("  買咖啡機 ;  比較過 Breville 跟 Sage  ")]
+    public void SplitsTitleAndBodyOnTheSeparator(string text)
     {
         // 全形分號也要認:中文輸入法打出來的就是全形。
-        var draft = QuickCapture.Parse(query, Options());
+        var draft = QuickCapture.Split(text);
 
         Assert.NotNull(draft);
         Assert.Equal("買咖啡機", draft.Title);
@@ -105,7 +56,7 @@ public class QuickCaptureTests
     public void SplitsOnTheFirstSeparatorOnly()
     {
         // 後面的分號是內文的一部分,不再切 —— 內文本來就可能有分號(程式碼、清單)。
-        var draft = QuickCapture.Parse("n 標題;第一段;第二段", Options());
+        var draft = QuickCapture.Split("標題;第一段;第二段");
 
         Assert.NotNull(draft);
         Assert.Equal("標題", draft.Title);
@@ -116,7 +67,7 @@ public class QuickCaptureTests
     public void SeparatorWithoutBodyIsJustATitle()
     {
         // 正在打字的中間狀態:分號打了、內文還沒打。這時候該存的就是標題。
-        var draft = QuickCapture.Parse("n 買咖啡機;", Options());
+        var draft = QuickCapture.Split("買咖啡機;");
 
         Assert.NotNull(draft);
         Assert.Equal("買咖啡機", draft.Title);
@@ -127,50 +78,6 @@ public class QuickCaptureTests
     public void SeparatorWithoutTitleDoesNotTrigger()
     {
         // 沒有標題就沒有筆記。
-        Assert.Null(QuickCapture.Parse("n ;只有內文", Options()));
-    }
-
-    [Fact]
-    public void SplitTakesTheTextAsIsWithoutAnyPrefix()
-    {
-        // 快速記下頁走這條:使用者靠 alias 進來的,意圖沒有疑問,打什麼就記什麼。
-        // 這裡刻意用一句「會被 Parse 當成普通查詢擋掉」的話,證明兩條路的判準確實分開了。
-        var draft = QuickCapture.Split("note about something");
-
-        Assert.NotNull(draft);
-        Assert.Equal("note about something", draft.Title);
-        Assert.Equal(string.Empty, draft.Body);
-    }
-
-    [Theory]
-    [InlineData("買咖啡機;比較過 Breville 跟 Sage")]
-    [InlineData("買咖啡機；比較過 Breville 跟 Sage")]
-    [InlineData("  買咖啡機 ;  比較過 Breville 跟 Sage  ")]
-    public void SplitSeparatesTitleAndBodyTheSameWayAsParse(string text)
-    {
-        var draft = QuickCapture.Split(text);
-
-        Assert.NotNull(draft);
-        Assert.Equal("買咖啡機", draft.Title);
-        Assert.Equal("比較過 Breville 跟 Sage", draft.Body);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(";只有內文")]
-    public void SplitReturnsNullWhenThereIsNoTitle(string? text)
-    {
-        // 頁面剛打開、或使用者才打了一個分號 —— 這時候不該出現「記下」那一列。
-        Assert.Null(QuickCapture.Split(text));
-    }
-
-    [Fact]
-    public void SplitIsNotAffectedByTheDisabledSetting()
-    {
-        // 「啟用快速新增」那個開關管的是主搜尋框的 fallback。頁面是使用者自己叫出來的,
-        // 進來了還不讓記東西沒有道理。
-        Assert.NotNull(QuickCapture.Split("想法"));
+        Assert.Null(QuickCapture.Split(";只有內文"));
     }
 }

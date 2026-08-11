@@ -27,18 +27,6 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         "存放 Markdown 檔的資料夾。放在 OneDrive 之類的雲端硬碟底下,多端同步就完全交給它處理,Notelet 本身不做同步。",
         NoteletOptions.DefaultNotesDirectory());
 
-    private readonly ToggleSetting _quickCaptureEnabled = new(
-        Namespaced(nameof(QuickCaptureEnabled)),
-        "在主搜尋框直接記下(實驗性)",
-        "不必進任何頁面,在 Command Palette 主搜尋框打前綴就能記下想法。預設關閉:目前的 CmdPal 版本沒有把沒命中前綴時隱藏起來的項目濾乾淨,開了會讓每一次搜索都多出一個點不動的空列。平常請改用「Notelet:快速記下」,幫它設一個 alias 效果一樣。",
-        false);
-
-    private readonly TextSetting _quickCapturePrefix = new(
-        Namespaced(nameof(QuickCapturePrefix)),
-        "主搜尋框的觸發前綴",
-        "只有上面那個開關打開時才有作用。打了這個前綴才會出現快速新增,例如「n 買咖啡機」。以字母或數字結尾時會自動補一個空白。標題後面打分號可以接內文:「n 買咖啡機;比較過幾台」。",
-        "n ");
-
     private readonly ChoiceSetSetting _detailsWidth = new(
         Namespaced(nameof(DetailsWidth)),
         "詳細面板寬度",
@@ -54,21 +42,17 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         FilePath = SettingsJsonPath();
 
         Settings.Add(_notesDirectory);
-        Settings.Add(_quickCaptureEnabled);
-        Settings.Add(_quickCapturePrefix);
         Settings.Add(_detailsWidth);
 
         LoadSettings();
-        DiagnosticLog.Write(
-            $"SettingsManager: 載入 {FilePath} prefix='{QuickCapturePrefix}' 寬度={_detailsWidth.Value} 快速新增={QuickCaptureEnabled}");
+        DiagnosticLog.Write($"SettingsManager: 載入 {FilePath} 寬度={_detailsWidth.Value}");
 
         Settings.SettingsChanged += OnSettingsChanged;
     }
 
     private void OnSettingsChanged(object sender, Settings e)
     {
-        DiagnosticLog.Write(
-            $"SettingsChanged: prefix='{QuickCapturePrefix}' 寬度={_detailsWidth.Value} 資料夾='{NotesDirectory}'");
+        DiagnosticLog.Write($"SettingsChanged: 寬度={_detailsWidth.Value} 資料夾='{NotesDirectory}'");
 
         Save("SettingsChanged");
     }
@@ -95,10 +79,6 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     }
 
     public string NotesDirectory => _notesDirectory.Value ?? NoteletOptions.DefaultNotesDirectory();
-
-    public bool QuickCaptureEnabled => _quickCaptureEnabled.Value;
-
-    public string QuickCapturePrefix => _quickCapturePrefix.Value ?? "n ";
 
     /// <summary>
     /// 詳細窗格的寬度。
@@ -137,12 +117,7 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
             ? NoteletOptions.DefaultNotesDirectory()
             : NotesDirectory.Trim();
 
-        return new NoteletOptions
-        {
-            NotesDirectory = directory,
-            QuickCaptureEnabled = QuickCaptureEnabled,
-            QuickCapturePrefix = QuickCapturePrefix,
-        };
+        return new NoteletOptions { NotesDirectory = directory };
     }
 
     private static string Namespaced(string propertyName) => $"{SettingsNamespace}.{propertyName}";
