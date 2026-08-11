@@ -19,6 +19,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
     private readonly string _directory;
     private readonly TimeProvider _timeProvider;
+    private readonly IFileDeleter _fileDeleter;
     private readonly Lock _gate = new();
     private readonly System.Threading.Timer _changeDebounce;
 
@@ -27,12 +28,18 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     private bool _disposed;
     private int _version;
 
-    public FileSystemNoteRepository(NoteletOptions options, TimeProvider? timeProvider = null)
+    public FileSystemNoteRepository(
+        NoteletOptions options,
+        TimeProvider? timeProvider = null,
+        IFileDeleter? fileDeleter = null)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         _directory = options.NotesDirectory;
         _timeProvider = timeProvider ?? TimeProvider.System;
+
+        // 預設是直接刪。UI 層會換成送資源回收筒的那一個 —— 見 IFileDeleter 上的說明。
+        _fileDeleter = fileDeleter ?? new PermanentFileDeleter();
 
         // 先建起來但不啟動;每次檔案異動就往後推遲觸發時間。
         _changeDebounce = new System.Threading.Timer(
@@ -127,6 +134,40 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         Invalidate();
 
         return updated;
+    }
+
+    public void Delete(string id)
+    {
+        var existing = GetById(id)
+            ?? throw NoteNotFoundException.ForId(id);
+
+        _fileDeleter.Delete(existing.FilePath);
+        Invalidate();
+    }
+
+    public int DeleteAll()
+    {
+        var notes = GetAll();
+        var deleted = 0;
+
+        foreach (var note in notes)
+        {
+            try
+            {
+                _fileDeleter.Delete(note.FilePath);
+                deleted++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // 一個檔案刪不掉就放棄整批,只會留下一個「刪到一半」而且說不清楚的狀態。
+                // 繼續刪其他的,漏掉幾則由回傳值反映。
+            }
+        }
+
+        // 一次就好。每刪一則就 Invalidate 的話,清單會在整批刪除的過程中被重建 N 次。
+        Invalidate();
+
+        return deleted;
     }
 
     public void Invalidate()

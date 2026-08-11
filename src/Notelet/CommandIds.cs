@@ -40,4 +40,7 @@ internal static class CommandIds
     /// (fallback 的「Include in the Global result」),不能拿去給頁面用。
     /// </summary>
     public const string QuickCapturePage = "Notelet.QuickCapturePage";
+
+    /// <summary>刪除所有筆記(頂層命令「Notelet:刪除所有筆記」)。</summary>
+    public const string DeleteAll = "Notelet.DeleteAll";
 }

@@ -41,7 +41,8 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
 
         // Repository 整個擴展共用一個。它內部有快取與資料夾監看,
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
-        var repository = new FileSystemNoteRepository(options);
+        // 刪除走資源回收筒,不是直接抹掉 —— 筆記是手打的東西,誤刪要拿得回來。
+        var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
         var listPage = new NoteListPage(repository, options, _settingsManager);
         var capturePage = new QuickCapturePage(repository);
 
@@ -63,6 +64,12 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
                 Title = "Notelet:新增筆記",
                 Subtitle = "開表單寫比較長的內容",
                 Icon = Icons.Add,
+            },
+            new CommandItem(new DeleteAllNotesCommand(repository))
+            {
+                Title = "Notelet:刪除所有筆記",
+                Subtitle = "整個資料夾清空,全部移到資源回收筒",
+                Icon = Icons.Delete,
             },
         ];
 

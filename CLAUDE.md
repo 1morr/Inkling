@@ -40,6 +40,9 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
   CmdPal 的 UI 沒有自動化介面,這一層的驗證只能靠 `docs/manual-test-checklist.md`。
 
 新增行為時先問:這段邏輯能不能放進 Core?能的話就放,並補測試。
+牽涉平台的部分(例如「刪除要送資源回收筒」需要 shell32)在 Core 留一個介面,
+實作放 UI 層並從外面注入 —— `IFileDeleter` / `RecycleBinFileDeleter` 就是這個形狀,
+測試因此可以用假的實作,不會真的去動使用者的資源回收筒。
 
 `NoteletCommandsProvider` 持有一個 `ProviderState`(資料夾 + repository + 清單頁 +
 快速記下頁 + 命令陣列)。**只有資料夾變了才整組重建**並釋放舊的 —— 那時 repository

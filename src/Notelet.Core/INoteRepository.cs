@@ -34,6 +34,23 @@ public interface INoteRepository
     /// <summary>就地更新既有筆記。id、created 與不認得的 front matter 欄位都會保留。</summary>
     Note Update(string id, string title, string body);
 
+    /// <summary>
+    /// 刪除一則筆記。找不到 id 時丟 <see cref="NoteNotFoundException"/>。
+    ///
+    /// 檔案怎麼消失的由 <see cref="IFileDeleter"/> 決定 —— 正式跑起來是送進資源回收筒,
+    /// 測試裡則是直接刪掉。這一層只管快取要失效。
+    /// </summary>
+    void Delete(string id);
+
+    /// <summary>
+    /// 刪掉全部筆記,回傳實際刪掉幾則。
+    ///
+    /// 個別檔案刪不掉(被別的程式鎖住、權限不對)不會中斷整批 —— 回傳值比總數少
+    /// 就代表有漏網的,由呼叫端決定怎麼講。半途丟例外只會留下一個「刪一半」的狀態,
+    /// 而且使用者不知道刪到哪裡。
+    /// </summary>
+    int DeleteAll();
+
     /// <summary>丟掉快取,下次讀取時重新掃描資料夾。</summary>
     void Invalidate();
 }

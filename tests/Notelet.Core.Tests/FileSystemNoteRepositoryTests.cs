@@ -110,6 +110,137 @@ public class FileSystemNoteRepositoryTests
     }
 
     [Fact]
+    public void Delete_RemovesTheFileAndTheNote()
+    {
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        var note = repository.Create("要刪掉的", "內文");
+        var other = repository.Create("留下來的", string.Empty);
+
+        repository.Delete(note.Id);
+
+        Assert.False(File.Exists(note.FilePath));
+        Assert.Null(repository.GetById(note.Id));
+        Assert.Equal([other.Id], repository.GetAll().Select(n => n.Id));
+    }
+
+    [Fact]
+    public void Delete_UnknownId_Throws()
+    {
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        Assert.Throws<NoteNotFoundException>(() => repository.Delete("不存在"));
+    }
+
+    [Fact]
+    public void Delete_BumpsVersionSoCachesRefresh()
+    {
+        // 清單頁的項目快取以 Version 為鍵。刪完不動 Version 的話,畫面上那一則會留著,
+        // 點下去才發現檔案已經不在了。
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        var note = repository.Create("要刪掉的", string.Empty);
+        var before = repository.Version;
+
+        repository.Delete(note.Id);
+
+        Assert.NotEqual(before, repository.Version);
+    }
+
+    [Fact]
+    public void Delete_GoesThroughTheInjectedDeleter()
+    {
+        // 正式跑起來這裡換成送資源回收筒的實作(UI 層的 RecycleBinFileDeleter),
+        // 所以 repository 絕對不能自己呼叫 File.Delete。
+        using var temp = new TempDirectory();
+
+        var deleter = new RecordingFileDeleter();
+        using var repository = new FileSystemNoteRepository(
+            temp.Options, new FixedTimeProvider(DateTimeOffset.UtcNow), deleter);
+
+        var note = repository.Create("要刪掉的", string.Empty);
+        repository.Delete(note.Id);
+
+        Assert.Equal([note.FilePath], deleter.Deleted);
+
+        // 這個 deleter 什麼都沒做,檔案應該還在 —— 證明刪除確實只走它那條路。
+        Assert.True(File.Exists(note.FilePath));
+    }
+
+    [Fact]
+    public void DeleteAll_RemovesEverythingAndReportsTheCount()
+    {
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        repository.Create("一", "a");
+        repository.Create("二", "b");
+        repository.Create("三", "c");
+
+        var deleted = repository.DeleteAll();
+
+        Assert.Equal(3, deleted);
+        Assert.Empty(repository.GetAll());
+        Assert.Empty(Directory.GetFiles(temp.Path, "*.md"));
+    }
+
+    [Fact]
+    public void DeleteAll_OnAnEmptyFolderIsANoOp()
+    {
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        Assert.Equal(0, repository.DeleteAll());
+    }
+
+    [Fact]
+    public void DeleteAll_KeepsGoingWhenOneFileCannotBeDeleted()
+    {
+        // 一個檔案被鎖住不該讓其餘的留在原地 —— 使用者按下「刪除全部」就是要清空,
+        // 半途中止只會留下一個說不清楚的狀態。
+        using var temp = new TempDirectory();
+
+        var deleter = new RecordingFileDeleter { FailOnPathContaining = "壞掉的" };
+        using var repository = new FileSystemNoteRepository(
+            temp.Options, new FixedTimeProvider(DateTimeOffset.UtcNow), deleter);
+
+        repository.Create("好的一", string.Empty);
+        repository.Create("壞掉的", string.Empty);
+        repository.Create("好的二", string.Empty);
+
+        var deleted = repository.DeleteAll();
+
+        // 三則都試過,回報的是真正成功的那兩則。
+        Assert.Equal(2, deleted);
+        Assert.Equal(3, deleter.Attempted.Count);
+    }
+
+    private sealed class RecordingFileDeleter : IFileDeleter
+    {
+        public List<string> Deleted { get; } = [];
+
+        public List<string> Attempted { get; } = [];
+
+        /// <summary>路徑含有這段字的就丟 IOException,用來模擬「檔案被鎖住」。</summary>
+        public string? FailOnPathContaining { get; init; }
+
+        public void Delete(string path)
+        {
+            Attempted.Add(path);
+
+            if (FailOnPathContaining is { } marker && path.Contains(marker, StringComparison.Ordinal))
+            {
+                throw new IOException($"模擬失敗:{path}");
+            }
+
+            Deleted.Add(path);
+        }
+    }
+
+    [Fact]
     public void GetAll_MissingDirectory_ReturnsEmpty()
     {
         var options = new NoteletOptions { NotesDirectory = Path.Combine(Path.GetTempPath(), "notelet-does-not-exist-" + Guid.NewGuid().ToString("n")) };

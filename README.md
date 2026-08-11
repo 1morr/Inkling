@@ -23,8 +23,10 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | 原始文字 | 清單頁按 `Ctrl+U`,詳細窗格在渲染與原始 Markdown 之間切換 |
 | 面板寬度 | 清單頁按 `Ctrl+D`,詳細窗格在窄 / 中 / 寬三檔之間循環 |
 | 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」跳出去改 |
+| 刪除 | 清單頁按 `Ctrl+Del`,確認後**移到資源回收筒**(不是永久刪除) |
+| 清空 | `Notelet:刪除所有筆記`,確認框會先告訴你有幾則,一樣是進資源回收筒 |
 
-刪除/封存、tag 分類、置頂還沒做。檔案格式已經預留 `tags` 欄位。
+封存、tag 分類、置頂還沒做。檔案格式已經預留 `tags` 欄位。
 
 ## 需求
 
@@ -275,6 +277,30 @@ alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 
 只打了 `;;` 還沒打內文不影響,存的就是標題。
 
+### 確認框的預設按鈕是反過來的
+
+`ConfirmationArgs.IsPrimaryCommandCritical` 聽起來像「把按鈕標成危險色」,但 CmdPal 拿它做的
+唯一一件事是:
+
+```csharp
+if (vm.IsPrimaryCommandCritical)
+{
+    dialog.DefaultButton = ContentDialogButton.Close;   // ← 預設落在「取消」
+}
+```
+
+(`ShellPage.xaml.cs`,那段把紅色按鈕的樣式註解掉了,所以連顏色都沒有。)
+
+也就是說**設了它,Enter 就等於放棄**。所以兩個刪除的用法剛好相反:
+
+| | `IsPrimaryCommandCritical` | 為什麼 |
+|---|---|---|
+| 刪一則 | **不設** | 有資源回收筒兜底,不值得為此讓每次刪除都多按一次方向鍵 |
+| 刪全部 | **設** | 清空整個資料夾就該多花那一下 |
+
+SDK 沒有辦法把預設按鈕指定成「確認」—— CmdPal 只有「設成取消」跟「不設」兩種,
+不設時 `ContentDialog.DefaultButton` 是 `None`。
+
 ### 命令 Id 為什麼要寫死
 
 `src/Notelet/CommandIds.cs` 裡那幾個字串是對外承諾,跟資料格式一樣不能改。
@@ -322,10 +348,12 @@ src/
     FileSystemNoteRepository  讀寫、快取、FileSystemWatcher 失效
     NoteSearch        過濾與排序(純函式)
     QuickCapture      標題/內文切分
+    IFileDeleter      刪除的去向(預設永久刪;UI 層換成資源回收筒)
     NoteletOptions    執行期設定
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
+    RecycleBinFileDeleter  SHFileOperationW,把筆記送進資源回收筒
     Pages/            快速記下、清單、預覽、編輯、新增
 tests/
   Notelet.Core.Tests/  xUnit
