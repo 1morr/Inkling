@@ -46,12 +46,16 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         var listPage = new NoteListPage(repository, options, _settingsManager);
         var capturePage = new QuickCapturePage(repository);
 
+        // 自己的設定頁外殼,不用 toolkit 的 Settings.SettingsPage —— 理由見 NoteletSettingsPage。
+        var settingsPage = new NoteletSettingsPage(_settingsManager.Settings);
+        _settingsManager.DetailsWidthChanged += (_, _) => settingsPage.Refresh();
+
         ICommandItem[] commands = [
             new CommandItem(listPage)
             {
                 Title = DisplayName,
                 Subtitle = "瀏覽與搜索筆記",
-                MoreCommands = [new CommandContextItem(_settingsManager.Settings.SettingsPage)],
+                MoreCommands = [new CommandContextItem(settingsPage)],
             },
             new CommandItem(capturePage)
             {

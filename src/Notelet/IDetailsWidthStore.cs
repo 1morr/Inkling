@@ -14,15 +14,15 @@ internal interface IDetailsWidthStore
     ContentSize DetailsWidth { get; set; }
 
     /// <summary>
-    /// 設定頁改了寬度。
+    /// 寬度變了,**不管是誰改的** —— 設定頁按 Save,或清單頁按 Ctrl+D,兩條路都會發。
     ///
     /// 為什麼需要這條路,而不是讓 provider 整組重建就好:CmdPal 手上握著的是使用者
     /// 當下開著的那個頁面實例,重建出來的新頁面它根本不會去拿。實測 log 顯示
     /// <c>BuildState</c> 跑完之後一次 <c>GetItems</c> 都沒有,舊實例的項目快取
     /// (查詢字串與 Version 都沒變)就這樣把舊寬度一路留到 Reload 為止。
     ///
-    /// <see cref="DetailsWidth"/> 的 setter(清單頁按 Ctrl+D 那條)刻意**不**發這個事件:
-    /// 那是頁面自己改的,它早就知道,再通知一次只是繞回自己。
+    /// 兩邊都要收得到,因為兩邊都顯示這個值:清單頁是窗格本身的寬度,設定頁是那個下拉選單。
+    /// 訂閱者自己比對新舊值,發現是自己剛改的就別再動一次(見 <c>NoteListPage</c>)。
     /// </summary>
     event EventHandler? DetailsWidthChanged;
 }

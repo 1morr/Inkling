@@ -88,12 +88,12 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     public string NotesDirectory => _notesDirectory.Value ?? NoteletOptions.DefaultNotesDirectory();
 
     /// <summary>
-    /// 詳細窗格的寬度。
+    /// 詳細窗格的寬度。清單頁按 Ctrl+D 走的是這條。
     ///
-    /// 這裡刻意只呼叫 <see cref="JsonSettingsManager.SaveSettings"/>,不發
-    /// <c>SettingsChanged</c>:那個事件會讓整個 provider 重建(換掉 repository 與清單頁),
-    /// 而按 Ctrl+D 的當下人正看著某一則筆記,清單被翻新一次選中項就跑掉了 ——
-    /// 那正好毀掉這個功能存在的意義。設定頁那條路本來就會發事件,不受影響。
+    /// 這裡刻意**不**發 toolkit 的 <c>SettingsChanged</c>:那個事件是「使用者在設定頁
+    /// 按了 Save」的意思,發它等於謊報,而且會多跑一次整組設定的處理。
+    /// 改發 <see cref="DetailsWidthChanged"/> —— 設定頁靠它把下拉選單更新成新值,
+    /// 否則按完 Ctrl+D 再打開設定頁,看到的還是舊的那一檔。
     /// </summary>
     public ContentSize DetailsWidth
     {
@@ -114,6 +114,9 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
             };
 
             Save("DetailsWidth");
+
+            DiagnosticLog.Write($"DetailsWidth setter: 改成 {_detailsWidth.Value},發出 DetailsWidthChanged");
+            DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 

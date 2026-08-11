@@ -54,5 +54,8 @@ internal static class Icons
     /// <summary>DockRight — 詳細窗格的寬度。</summary>
     public static IconInfo DetailsWidth => Glyph(0xE90D);
 
+    /// <summary>Settings — 設定頁。跟 CmdPal 自己的設定圖示同一個碼位。</summary>
+    public static IconInfo Settings => Glyph(0xE713);
+
     private static IconInfo Glyph(int codepoint) => new(char.ConvertFromUtf32(codepoint));
 }
