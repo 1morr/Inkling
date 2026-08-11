@@ -33,4 +33,7 @@ internal static class Icons
 
     /// <summary>Code — 詳細窗格切換成原始文字。</summary>
     public static IconInfo Source => new("\uE943");
+
+    /// <summary>DockRight — 詳細窗格的寬度。</summary>
+    public static IconInfo DetailsWidth => new("\uE90D");
 }

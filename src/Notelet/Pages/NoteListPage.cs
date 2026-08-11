@@ -25,6 +25,9 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// </summary>
     private readonly AnonymousCommand _toggleSource;
 
+    /// <summary>詳細窗格的寬度切換鈕,跟 <see cref="_toggleSource"/> 一樣全部項目共用一個實例。</summary>
+    private readonly AnonymousCommand _cycleDetailsWidth;
+
     private string _query = string.Empty;
     private IListItem[]? _items;
     private string? _itemsQuery;
@@ -39,6 +42,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private (Note Note, ListItem Item)[] _shown = [];
 
     private bool _showSource;
+    private ContentSize _detailsSize = ContentSize.Small;
     private bool _disposed;
 
     public NoteListPage(INoteRepository repository, NoteletOptions options)
@@ -50,6 +54,13 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         {
             Name = ToggleSourceName,
             Icon = Icons.Source,
+            Result = CommandResult.KeepOpen(),
+        };
+
+        _cycleDetailsWidth = new AnonymousCommand(CycleDetailsWidth)
+        {
+            Name = CycleDetailsWidthName,
+            Icon = Icons.DetailsWidth,
             Result = CommandResult.KeepOpen(),
         };
 
@@ -105,6 +116,21 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
     /// <summary>選單上顯示的字,講的是「按下去之後會看到什麼」。</summary>
     private string ToggleSourceName => _showSource ? "顯示渲染後的預覽" : "顯示原始文字";
+
+    /// <summary>
+    /// 同樣是「按下去會變成什麼」。
+    ///
+    /// 只有三檔是 CmdPal 給的上限:寬度來自 <c>IDetails.Size</c>,而它只認
+    /// Small / Medium / Large,對應清單與詳情的比例 3:1 / 2:1 / 1:1
+    /// (CmdPal 的 <c>DetailsSizeToGridLengthConverter</c>)。沒有無段調整 ——
+    /// 它整個介面裡連一個 GridSplitter 都沒有。
+    /// </summary>
+    private string CycleDetailsWidthName => _detailsSize switch
+    {
+        ContentSize.Small => "詳細面板加寬(中)",
+        ContentSize.Medium => "詳細面板加寬(寬)",
+        _ => "詳細面板縮回最窄",
+    };
 
     private IListItem[] BuildItems(string query)
     {
@@ -162,6 +188,13 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
                 RequestedShortcut = KeyChordHelpers.FromModifiers(
                     ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.U, scanCode: 0),
             },
+            new CommandContextItem(_cycleDetailsWidth)
+            {
+                // 同樣不設 Title,讓選單上的字跟著 _cycleDetailsWidth.Name 走。
+                Subtitle = "在窄 / 中 / 寬三檔之間循環",
+                RequestedShortcut = KeyChordHelpers.FromModifiers(
+                    ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.D, scanCode: 0),
+            },
             new CommandContextItem(new OpenUrlCommand(note.FilePath))
             {
                 Title = "在預設編輯器開啟",
@@ -174,6 +207,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     {
         Title = note.Title,
         Body = BuildDetailsBody(note),
+        Size = _detailsSize,
     };
 
     private string BuildDetailsBody(Note note)
@@ -189,31 +223,56 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             : NotePreview.PreserveLineBreaks(note.Body);
     }
 
+    /// <summary>詳細窗格在「渲染」與「原始文字」之間切換。</summary>
+    private void ToggleSource()
+    {
+        _showSource = !_showSource;
+        _toggleSource.Name = ToggleSourceName;
+
+        RefreshDetails();
+        DiagnosticLog.Write($"ToggleSource: showSource={_showSource}");
+    }
+
+    /// <summary>詳細窗格在三檔寬度之間循環。</summary>
+    private void CycleDetailsWidth()
+    {
+        _detailsSize = _detailsSize switch
+        {
+            ContentSize.Small => ContentSize.Medium,
+            ContentSize.Medium => ContentSize.Large,
+            _ => ContentSize.Small,
+        };
+
+        _cycleDetailsWidth.Name = CycleDetailsWidthName;
+
+        RefreshDetails();
+        DiagnosticLog.Write($"CycleDetailsWidth: size={_detailsSize}");
+    }
+
     /// <summary>
-    /// 詳細窗格在「渲染」與「原始文字」之間切換。
+    /// 把每一則已顯示筆記的 <see cref="ListItem.Details"/> 整個換掉,讓 CmdPal 重讀。
     ///
     /// 這裡不呼叫 <c>RaiseItemsChanged</c>:那會讓 CmdPal 重新拿一次清單,
     /// 而它是用 <c>IListItem</c> 的物件識別去快取 viewmodel 的 —— 想讓它重讀詳細內容
-    /// 就得換掉整批項目物件,而整份清單被翻新一次,選中項就有機會跑掉。按下這個鍵的當下
-    /// 正在看某一則筆記,跳走的話這個功能就沒有意義了。
+    /// 就得換掉整批項目物件,而整份清單被翻新一次,選中項就有機會跑掉。按下這些鍵的當下
+    /// 正在看某一則筆記,跳走的話這些功能就沒有意義了。
     ///
-    /// 所以改成只換掉每個項目的 <see cref="ListItem.Details"/>。
-    ///
-    /// 為什麼是換掉整個 Details 而不是就地改它的 <c>Body</c>(那樣更省):
+    /// 為什麼是換掉整個 Details 而不是就地改它的屬性(那樣更省):
     /// 因為那條路在跨進程時是斷的。CmdPal 的 <c>DetailsViewModel</c> 是全專案唯一
     /// 用執行期型別測試(<c>model is INotifyPropChanged</c>)決定要不要訂閱的 ——
     /// 因為 SDK 的 <c>IDetails</c> 沒有宣告成可觀察介面。那個 QI 跨不過 out-of-process
     /// 邊界,而 <c>BaseObservable.OnPropertyChanged</c> 又把例外整個吞掉,
     /// 結果就是改了值、通知石沉大海、畫面要重進頁面才會更新(實測過)。
     ///
+    /// <c>Size</c> 更是連就地改的選項都沒有:它不走 PropChanged,而是
+    /// <c>DetailsViewModel.InitializeProperties</c> 經由 <c>IExtendedAttributesProvider</c>
+    /// 讀一次就定了,只有換上新的 Details 才會重讀。
+    ///
     /// <c>ICommandItem</c> 則是在 IDL 裡就繼承 <c>INotifyPropChanged</c>,
     /// <c>CommandItemViewModel</c> 對它是無條件訂閱,所以走這條一定收得到。
     /// </summary>
-    private void ToggleSource()
+    private void RefreshDetails()
     {
-        _showSource = !_showSource;
-        _toggleSource.Name = ToggleSourceName;
-
         var shown = _shown;
 
         foreach (var (note, item) in shown)
@@ -221,7 +280,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             item.Details = BuildDetails(note);
         }
 
-        DiagnosticLog.Write($"ToggleSource: showSource={_showSource},換掉 {shown.Length} 則的 Details");
+        DiagnosticLog.Write($"RefreshDetails: 換掉 {shown.Length} 則的 Details");
     }
 
     private void OnRepositoryChanged(object? sender, EventArgs e)
