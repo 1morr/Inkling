@@ -55,8 +55,8 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
             new CommandItem(capturePage)
             {
                 Title = capturePage.Title,
-                Subtitle = "打字記下想法,建議設一個 alias(例如 n)直接叫它",
-                Icon = Icons.Add,
+                Subtitle = "打字直接存成筆記,分號後面接內文",
+                Icon = Icons.Capture,
             },
             new CommandItem(new NewNotePage(repository))
             {

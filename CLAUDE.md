@@ -90,10 +90,12 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 - 改了指令、設定項、資料格式或對外行為,同一輪更新 `README.md` 與
   `docs/manual-test-checklist.md`。
 
-工具面的兩個地雷:
+工具面的地雷:
 
-- `Icons.cs` 用 `\uXXXX` 逸出,**Edit 工具比對不到逸出序列** —— 要改就用 PowerShell
-  單引號 here-string 配 `Set-Content -Encoding utf8NoBOM` 重寫整個檔案。
+- **圖示碼位不要寫成 `\uXXXX`。** `Icons.cs` 現在用 `Glyph(0xE70B)`
+  (`char.ConvertFromUtf32`)。以前用 `\u` 逸出,結果是各種文字處理工具會把它當成
+  逸出序列展開 —— 用工具改那個檔案時碼位會**無聲地**變成一個私用區字元,
+  檔案看起來還是好的,圖示卻全部消失。數字碼位沒有這個問題,Edit 工具也比對得到。
 - commit 用 `git commit -F <訊息檔>`。用 PowerShell here-string 傳 `-m` 曾經把整棵工作樹
   掃進 commit;送出前先 `git diff --cached --name-only` 確認範圍。
 
