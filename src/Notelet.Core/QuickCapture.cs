@@ -22,12 +22,13 @@ public sealed record QuickCaptureDraft(string Title, string Body);
 public static class QuickCapture
 {
     /// <summary>
-    /// 標題與內文的分隔符。
+    /// 算得上分隔符的字元。要**連續兩個**才會切(見 <see cref="IndexOfSeparator"/>)。
     ///
     /// 全形分號也算數:中文輸入法打出來的就是它,要人為了分隔符特地切回半形太荒謬。
-    /// 代價是標題裡不能出現分號 —— 需要分號的標題請走完整表單。
+    /// 半形全形還可以混著用(「;；」也切) —— 中英切換的當下打出哪一個並不受控,
+    /// 為了這種事讓一則筆記存錯太不值得。
     /// </summary>
-    private static readonly char[] Separators = [';', '；'];
+    private static readonly char[] SeparatorChars = [';', '；'];
 
     /// <summary>
     /// 從一段已經確定是「要記下來」的文字裡切出標題與內文,不做任何前綴判斷。
@@ -40,13 +41,36 @@ public static class QuickCapture
             return null;
         }
 
-        var separator = text.IndexOfAny(Separators);
+        var separator = IndexOfSeparator(text);
 
         var title = (separator < 0 ? text : text[..separator]).Trim();
-        var body = separator < 0 ? string.Empty : text[(separator + 1)..].Trim();
 
-        // 沒有標題就沒有筆記 —— 只打了分號跟內文(「;內容」)也不觸發,
+        // 分隔符是兩個字元,所以內文從 +2 開始。
+        var body = separator < 0 ? string.Empty : text[(separator + 2)..].Trim();
+
+        // 沒有標題就沒有筆記 —— 只打了分隔符跟內文(「;;內容」)也不觸發,
         // 那多半是還在打字的中間狀態,不是使用者的意圖。
         return title.Length == 0 ? null : new QuickCaptureDraft(title, body);
+    }
+
+    /// <summary>
+    /// 找出第一組連續兩個分號的位置,沒有就回傳 -1。
+    ///
+    /// 為什麼要兩個而不是一個:單一個分號在筆記標題裡太常見了(程式碼、清單、
+    /// 中文句子裡的頓隔),要求連打兩次才切,標題就能自由使用分號 ——
+    /// 一個人不會無意間打出兩個相連的分號。
+    /// </summary>
+    private static int IndexOfSeparator(string text)
+    {
+        for (var i = 0; i + 1 < text.Length; i++)
+        {
+            if (Array.IndexOf(SeparatorChars, text[i]) >= 0
+                && Array.IndexOf(SeparatorChars, text[i + 1]) >= 0)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }
