@@ -129,4 +129,48 @@ public class QuickCaptureTests
         // 沒有標題就沒有筆記。
         Assert.Null(QuickCapture.Parse("n ;只有內文", Options()));
     }
+
+    [Fact]
+    public void SplitTakesTheTextAsIsWithoutAnyPrefix()
+    {
+        // 快速記下頁走這條:使用者靠 alias 進來的,意圖沒有疑問,打什麼就記什麼。
+        // 這裡刻意用一句「會被 Parse 當成普通查詢擋掉」的話,證明兩條路的判準確實分開了。
+        var draft = QuickCapture.Split("note about something");
+
+        Assert.NotNull(draft);
+        Assert.Equal("note about something", draft.Title);
+        Assert.Equal(string.Empty, draft.Body);
+    }
+
+    [Theory]
+    [InlineData("買咖啡機;比較過 Breville 跟 Sage")]
+    [InlineData("買咖啡機；比較過 Breville 跟 Sage")]
+    [InlineData("  買咖啡機 ;  比較過 Breville 跟 Sage  ")]
+    public void SplitSeparatesTitleAndBodyTheSameWayAsParse(string text)
+    {
+        var draft = QuickCapture.Split(text);
+
+        Assert.NotNull(draft);
+        Assert.Equal("買咖啡機", draft.Title);
+        Assert.Equal("比較過 Breville 跟 Sage", draft.Body);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(";只有內文")]
+    public void SplitReturnsNullWhenThereIsNoTitle(string? text)
+    {
+        // 頁面剛打開、或使用者才打了一個分號 —— 這時候不該出現「記下」那一列。
+        Assert.Null(QuickCapture.Split(text));
+    }
+
+    [Fact]
+    public void SplitIsNotAffectedByTheDisabledSetting()
+    {
+        // 「啟用快速新增」那個開關管的是主搜尋框的 fallback。頁面是使用者自己叫出來的,
+        // 進來了還不讓記東西沒有道理。
+        Assert.NotNull(QuickCapture.Split("想法"));
+    }
 }

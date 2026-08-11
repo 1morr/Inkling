@@ -79,7 +79,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         EmptyContent = new CommandItem(new NoOpCommand())
         {
             Title = "還沒有任何筆記",
-            Subtitle = $"在 Command Palette 主搜尋框打「{options.QuickCapturePrefix}你的想法」就能記下第一則",
+            Subtitle = "用「Notelet:快速記下」記下第一則",
             Icon = Icons.Note,
         };
 

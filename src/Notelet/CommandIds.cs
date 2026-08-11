@@ -30,4 +30,14 @@ internal static class CommandIds
 
     /// <summary>主搜尋框的快速新增。命令與 fallback 項目共用同一個 Id。</summary>
     public const string QuickCapture = "Notelet.QuickCapture";
+
+    /// <summary>
+    /// 快速記下頁(頂層命令「Notelet:快速記下」)。
+    ///
+    /// 刻意跟 <see cref="QuickCapture"/> 分開:CmdPal 是拿 Id 當鍵去存 alias、快速鍵、
+    /// 釘選與 fallback 規則的,同一個 Id 掛著一個頂層命令又掛著一個 fallback,
+    /// 那些設定會互相蓋掉。而 <see cref="QuickCapture"/> 已經寫進使用者的 settings.json
+    /// (fallback 的「Include in the Global result」),不能拿去給頁面用。
+    /// </summary>
+    public const string QuickCapturePage = "Notelet.QuickCapturePage";
 }

@@ -20,8 +20,15 @@ public sealed class NoteletOptions
         init => _quickCapturePrefix = NormalizePrefix(value);
     }
 
-    /// <summary>快速新增是否啟用。</summary>
-    public bool QuickCaptureEnabled { get; init; } = true;
+    /// <summary>
+    /// 主搜尋框的快速新增(fallback)是否啟用。預設關閉。
+    ///
+    /// 關的理由不是它不好用,而是它在目前的 CmdPal 上藏不乾淨:沒命中前綴時我們只能
+    /// 把標題設成空字串,而 0.11.11762.0 在「Include in the Global result」那條路上
+    /// 沒有把空標題的項目濾掉,結果每一次搜索都多出一個點不動的空列。
+    /// 快速記下頁不受這個開關影響 —— 那一頁是使用者自己叫出來的。
+    /// </summary>
+    public bool QuickCaptureEnabled { get; init; }
 
     /// <summary>
     /// 前綴以字母或數字結尾時補一個空白。

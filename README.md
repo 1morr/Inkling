@@ -2,12 +2,12 @@
 
 PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出的想法。
 
-叫出 Command Palette → 打 `n 買咖啡機的想法` → Enter。存檔完成,全程不離開鍵盤,
-也不用進任何頁面。
+叫出 Command Palette → 打 `n 買咖啡機的想法` → Enter。存檔完成,全程不離開鍵盤。
 
-> **裝好之後要手動打開一個開關**,那句「打字→Enter」才成立:CmdPal 設定 →
-> Extensions → Notelet → Fallback commands → 記下想法 → 勾 **Include in the Global
-> result**。CmdPal 對第三方擴展的 fallback 一律預設不勾,見下面〈快速新增為什麼是 fallback〉。
+> **裝好之後要自己設一個 alias**,那句「打字→Enter」才成立:CmdPal 設定 →
+> Extensions → Notelet → `Notelet:快速記下` → Alias 填 `n`。之後打 `n` 空白就直接進
+> 快速記下頁,接著打字、Enter 存檔 —— 按鍵數跟直接在主搜尋框打完全一樣。
+> 想更快就再給它一個全域快速鍵,連 `n` 都省了。
 
 筆記是資料夾裡的純 Markdown 檔(YAML front matter + 內文),任何編輯器都能直接開。
 多端同步交給雲端硬碟處理,Notelet 本身沒有任何同步程式碼。
@@ -16,7 +16,7 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 
 | | |
 |---|---|
-| 快速新增 | 在主搜尋框打 `n <想法>` 直接存檔;想連內文一起記就 `n <標題>;<內文>` |
+| 快速記下 | `Notelet:快速記下` 打字直接存檔;想連內文一起記就 `<標題>;<內文>`。底下會列出標題相近的既有筆記,免得同一件事記兩遍 |
 | 新增(完整) | `Notelet:新增筆記` 開表單,可寫多行內文 |
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
@@ -220,32 +220,47 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
   CmdPal 端唯一的鍵盤提交路徑是 `ContentFormControl.OnFormKeyDown`,只認 Enter、只在單行
   輸入框裡有效,而且 0.11.11762.0 還沒有這段程式碼。真要 `Ctrl+S` 得改 PowerToys 本身。
 
-### 快速新增為什麼是 fallback
+### 快速記下為什麼是頁面,不是 fallback
 
-**只有 fallback 拿得到使用者正在打的字**(`IFallbackHandler.UpdateQuery`)。頂層命令被叫起來時
-搜尋框已經清空了 —— 換句話說「打字→Enter 就存檔」這件事非 fallback 不可,做成命令就只剩
-「開一個頁面再打字」,那已經是 `Notelet:新增筆記` 在做的事。
+**只有 fallback 拿得到使用者正在打的字**(`IFallbackHandler.UpdateQuery`),所以「在主搜尋框
+打字→Enter」這件事本身非 fallback 不可。快速記下曾經就是這樣做的,現在退居實驗性選項
+(預設關),原因是它在目前的 CmdPal 上**藏不乾淨**。
 
-**前綴則是因為筆記沒有形狀。** 內建的 fallback 不需要觸發詞:計算機看查詢算不算得出來、
+**筆記沒有形狀,所以得靠前綴。** 內建的 fallback 不需要觸發詞:計算機看查詢算不算得出來、
 Run 看是不是一個可執行檔、開網址看像不像 URL,不像就自己藏起來。筆記沒有這種判準 ——
-任何一句話都是合法的筆記。所以改用前綴當意圖判斷:有前綴才現身,沒有就把 `Title` 設成
-空字串隱藏(空標題的項目會被 `MainListPage.GetSearchViewItems` 濾掉),不去污染每一次搜索。
+任何一句話都是合法的筆記。所以只能用前綴當意圖判斷,沒命中就把 `Title` 設成空字串隱藏。
 
-CmdPal 端有三個開關會影響它,都在 設定 → Extensions → Notelet:
+而那招要成立,得靠 CmdPal 端把空標題的項目濾掉,**0.11.11762.0 沒有確實做到**:
 
-| 開關 | 要怎麼設 | 為什麼 |
-|---|---|---|
-| Include in the Global result | **要勾** | 不勾的話它只會出現在結果最底下那個 fallback 區塊,而不是跟一般結果一起排。CmdPal 對第三方擴展一律預設不勾(`ProviderSettings.WithConnection` 裡 `wrapper.Extension is null` 才給 true) |
-| Manage fallback order | 隨意 | 這個順序只決定底部 fallback 區塊的排列。勾了 global 之後就走一般計分,跟這個順序無關 |
-| Alias | **別設成 `n`** | alias 比 fallback 早一步處理:`MainListPage.UpdateSearchTextCore` 開頭就 `if (aliases.CheckAlias(newSearch)) return;`。indirect alias 存的鍵是「alias + 空白」,所以 alias `n` 會在你打完 `n ` 的那一刻把搜尋框清掉,快速新增再也看不到那句查詢 |
+- 勾了 Include in the Global result 之後,fallback 走的是 `_scoredFallbackItems`
+  (跟一般結果一起計分),不是底部那個 fallback 區塊。
+- `MainListPageResultFactory.Create` 只對底部區塊那條路過濾空標題,而且陣列大小是按
+  **未過濾**的 count 算的、寫入時才過濾,尾端因此留 null。旁邊還躺著一個沒人呼叫的
+  `GetNonEmptyFallbackItemsCount`,註釋寫 `Empty fallbacks are removed prior to this merge`
+  —— 過濾被提前到呼叫端 `GetSearchViewItems` 了,而那是 main 分支才有的。
+- 佐證版本落差:byte-scan 安裝版的 `Microsoft.CmdPal.UI.exe`,`GetSearchViewItems` 與
+  `MainListPageResultFactory` 在,`MainListRanker` / `ClassifyTier` / `FallbackFloor` **不在**。
 
-排到多前面就不是我們能控制的了:CmdPal 的 `MainListRanker.ClassifyTier` 把**所有** fallback
-一律歸在最低的 `FallbackFloor` 層,任何一個字面命中的命令或應用程式都排在前面。實務上
-`n 買咖啡機` 這種查詢不會命中別的東西,所以它就是第一個。
+表現出來就是:不管打什麼,結果裡永遠多一個點不動的空列。
+
+**頁面版把入口換成 alias,按鍵數一模一樣。** `n` 空白 想法 Enter —— 唯一的差別是中間會跳一次頁。
+換來的是主搜尋框完全乾淨、不再受 CmdPal 版本行為影響,以及一件 fallback 結構上做不到的事:
+fallback 只有一列,頁面有一整個清單,所以「記下」底下能直接列出標題相近的既有筆記。
+
+alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
+
+| | |
+|---|---|
+| indirect alias 存的鍵是「alias + 空白」 | 所以填 `n`,實際觸發的是你打完 `n ` 的那一刻 |
+| 觸發時送 `ClearSearchMessage` + `PerformCommandMessage` | 搜尋框被清空、跳進頁面。**所以 alias 觸發的命令拿不到觸發當下那句話** —— 但跳進去之後打的字,是我們自己 `DynamicListPage.UpdateSearchText` 收的,完全掌控 |
+
+alias 比 fallback 早一步處理(`MainListPage.UpdateSearchTextCore` 開頭就
+`if (aliases.CheckAlias(newSearch)) return;`)。所以**若你要開實驗性的 fallback,別把
+alias 也設成同一個前綴** —— alias 會先把搜尋框清掉,fallback 再也看不到那句查詢。
 
 ### 標題與內文用分號分隔
 
-`n 買咖啡機;比較過 Breville 跟 Sage` → 標題是「買咖啡機」,分號之後的都進內文。
+`買咖啡機;比較過 Breville 跟 Sage` → 標題是「買咖啡機」,分號之後的都進內文。
 只切第一個分號(內文本來就可能有分號),全形 `；` 一樣算 —— 中文輸入法打出來的就是它。
 代價是**標題裡不能有分號**,需要的話請走完整表單。只打了分號還沒打內文不影響,存的就是標題。
 
@@ -268,9 +283,12 @@ settings.json 裡留下了兩個 Notelet fallback 條目,把其中一個的雜�
 | 設定 | 預設 | 說明 |
 |---|---|---|
 | 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置 |
-| 啟用快速新增 | 開 | 關掉就不會在主搜尋框出現 |
-| 快速新增前綴 | `n ` | 以字母或數字結尾時會自動補一個空白 |
+| 在主搜尋框直接記下(實驗性) | **關** | 見上面〈快速記下為什麼是頁面〉。開了會讓每次搜索多一個空列,等 CmdPal 修好才建議開 |
+| 主搜尋框的觸發前綴 | `n ` | 只在上面那個開關打開時有作用。以字母或數字結尾時會自動補一個空白 |
 | 詳細面板寬度 | 窄 | 清單頁按 `Ctrl+D` 也能循環,兩邊改的是同一個值 |
+
+`Notelet:快速記下` 這一頁**不受那個開關影響**,也沒有前綴 —— 進得了那一頁就代表意圖很明確,
+打什麼就記什麼。它的入口(alias、全域快速鍵)由 CmdPal 那邊設,不在這份設定裡。
 
 前綴為什麼要補空白:設成 `n` 而不補的話,`note about x` 這種普通查詢會被當成快速新增,
 而且第一個字母會被吃掉變成記下 `ote about x`。符號前綴(例如 `,`)則不需要空白。
@@ -291,13 +309,13 @@ src/
     NoteFileName      id 產生與檔名 slug
     FileSystemNoteRepository  讀寫、快取、FileSystemWatcher 失效
     NoteSearch        過濾與排序(純函式)
-    QuickCapture      快速新增的觸發判斷與標題/內文切分
+    QuickCapture      標題/內文切分(Split)與主搜尋框的前綴判斷(Parse)
     NoteletOptions    執行期設定
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
-    QuickCaptureFallbackItem  主搜尋框的快速新增
-    Pages/            清單、預覽、編輯、新增
+    QuickCaptureFallbackItem  主搜尋框的快速新增(實驗性,預設關)
+    Pages/            快速記下、清單、預覽、編輯、新增
 tests/
   Notelet.Core.Tests/  xUnit
 tools/

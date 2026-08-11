@@ -11,16 +11,26 @@ namespace Notelet.Commands;
 internal sealed partial class QuickCaptureCommand : InvokableCommand
 {
     private readonly INoteRepository _repository;
+    private readonly bool _goHomeAfterSave;
 
-    public QuickCaptureCommand(INoteRepository repository)
+    /// <param name="goHomeAfterSave">
+    /// 存完之後要不要回主頁。
+    ///
+    /// 快速記下頁要 true:記完就該離開,否則使用者停在那一頁、搜尋框還留著剛打的字,
+    /// 想記下一則得先自己清掉。主搜尋框的 fallback 要 false:人本來就在主頁,
+    /// 再 GoHome 一次只是讓畫面白閃。
+    /// </param>
+    public QuickCaptureCommand(INoteRepository repository, bool goHomeAfterSave = false)
     {
         _repository = repository;
+        _goHomeAfterSave = goHomeAfterSave;
+
         Id = CommandIds.QuickCapture;
         Name = "記下";
         Icon = Icons.Add;
     }
 
-    /// <summary>要記下的內容。由 fallback item 在使用者每次輸入時整個換掉。</summary>
+    /// <summary>要記下的內容。由 fallback item 或快速記下頁在使用者每次輸入時整個換掉。</summary>
     public QuickCaptureDraft? Draft { get; set; }
 
     public override CommandResult Invoke()
@@ -34,7 +44,16 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
         try
         {
             var note = _repository.Create(draft.Title, draft.Body);
-            return CommandResult.ShowToast($"已記下:{note.Title}");
+
+            // Toast 帶著後續動作一起送:ToastArgs.Result 就是 CmdPal 顯示完提示要做的事。
+            // 分兩次回傳做不到 —— Invoke 只有一次回傳的機會。
+            return _goHomeAfterSave
+                ? CommandResult.ShowToast(new ToastArgs
+                {
+                    Message = $"已記下:{note.Title}",
+                    Result = CommandResult.GoHome(),
+                })
+                : CommandResult.ShowToast($"已記下:{note.Title}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

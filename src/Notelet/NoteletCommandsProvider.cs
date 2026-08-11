@@ -43,6 +43,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
         var repository = new FileSystemNoteRepository(options);
         var listPage = new NoteListPage(repository, options, _settingsManager);
+        var capturePage = new QuickCapturePage(repository);
 
         ICommandItem[] commands = [
             new CommandItem(listPage)
@@ -50,6 +51,12 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
                 Title = DisplayName,
                 Subtitle = "瀏覽與搜索筆記",
                 MoreCommands = [new CommandContextItem(_settingsManager.Settings.SettingsPage)],
+            },
+            new CommandItem(capturePage)
+            {
+                Title = capturePage.Title,
+                Subtitle = "打字記下想法,建議設一個 alias(例如 n)直接叫它",
+                Icon = Icons.Add,
             },
             new CommandItem(new NewNotePage(repository))
             {
@@ -59,11 +66,13 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
             },
         ];
 
+        // fallback 預設是關的,見 SettingsManager 那邊的說明 —— 它在目前的 CmdPal 上
+        // 藏不乾淨。快速記下頁不受這個開關影響,那是使用者自己叫出來的。
         IFallbackCommandItem[] fallbacks = options.QuickCaptureEnabled
             ? [new QuickCaptureFallbackItem(new QuickCaptureCommand(repository), options)]
             : [];
 
-        return new ProviderState(repository, listPage, commands, fallbacks);
+        return new ProviderState(repository, listPage, capturePage, commands, fallbacks);
     }
 
     private void OnSettingsChanged(object? sender, Settings e)
@@ -98,12 +107,14 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     private sealed partial record ProviderState(
         FileSystemNoteRepository Repository,
         NoteListPage ListPage,
+        QuickCapturePage CapturePage,
         ICommandItem[] Commands,
         IFallbackCommandItem[] Fallbacks) : IDisposable
     {
         public void Dispose()
         {
             ListPage.Dispose();
+            CapturePage.Dispose();
             Repository.Dispose();
         }
     }
