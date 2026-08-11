@@ -11,6 +11,16 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     private readonly SettingsManager _settingsManager = new();
     private readonly Lock _gate = new();
 
+    /// <summary>
+    /// 設定頁,整個 provider 生命週期只有這一個。
+    ///
+    /// 不能跟著 <see cref="ProviderState"/> 重建:CmdPal 在 provider 剛連上時就把
+    /// <see cref="CommandProvider.Settings"/> 讀走存成自己的 viewmodel,之後不再過問。
+    /// 換了實例它也不知道,只會繼續用手上那個 —— 而 Ctrl+D 要通知的正是它。
+    /// 這一頁本來也不依賴 repository,跟著資料夾重建沒有意義。
+    /// </summary>
+    private readonly NoteletSettingsPage _settingsPage;
+
     private ProviderState _state;
 
     public NoteletCommandsProvider()
@@ -19,7 +29,13 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         DisplayName = "Notelet";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
 
-        Settings = _settingsManager.Settings;
+        _settingsPage = new NoteletSettingsPage(_settingsManager.Settings);
+
+        // 包一層自己的 ICommandSettings,理由見 NoteletCommandSettings。
+        Settings = new NoteletCommandSettings(_settingsPage);
+
+        // 清單頁按 Ctrl+D 改寬度時,設定頁的下拉選單要跟著變。
+        _settingsManager.DetailsWidthChanged += (_, _) => _settingsPage.Refresh();
 
         _state = BuildState();
 
@@ -46,16 +62,14 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         var listPage = new NoteListPage(repository, options, _settingsManager);
         var capturePage = new QuickCapturePage(repository);
 
-        // 自己的設定頁外殼,不用 toolkit 的 Settings.SettingsPage —— 理由見 NoteletSettingsPage。
-        var settingsPage = new NoteletSettingsPage(_settingsManager.Settings);
-        _settingsManager.DetailsWidthChanged += (_, _) => settingsPage.Refresh();
-
         ICommandItem[] commands = [
             new CommandItem(listPage)
             {
                 Title = DisplayName,
                 Subtitle = "瀏覽與搜索筆記",
-                MoreCommands = [new CommandContextItem(settingsPage)],
+
+                // 跟 CmdPal 設定裡那一頁是同一個實例,兩邊看到的永遠一致。
+                MoreCommands = [new CommandContextItem(_settingsPage)],
             },
             new CommandItem(capturePage)
             {

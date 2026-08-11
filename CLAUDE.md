@@ -78,11 +78,17 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    但進到自己的 `DynamicListPage` 之後打的字完全掌控 —— 那正是這個做法能成立的原因。
 4. **Adaptive Cards 表單能調的極少**:欄位順序決定游標落在哪(沒有 autofocus / tabIndex)、
    多行輸入框的高度完全不可控(只能靠預填內容撐開)、沒有 `Ctrl+S`(表單值只活在 CmdPal 進程裡)。
-5. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload
+5. **設定頁有兩個入口**(清單頁 `Ctrl+K` → 設定,以及 CmdPal 設定 → Extensions → Notelet)。
+   後者 CmdPal **只初始化一次**,而且它拿的是 `ICommandSettings.SettingsPage` ——
+   所以我們自己實作了 `ICommandSettings`(見 `NoteletCommandSettings`),把
+   `NoteletSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
+   **不能跟著 `ProviderState` 重建**:CmdPal 在 provider 剛連上時就把 `Settings` 讀走了。
+   細節見 README〈設定頁有兩個入口〉。
+6. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload
    一次即可,不必重開 PowerToys。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
    之前開著的設定頁是綁在舊擴展實例上的死物件,按 Save 靜靜地什麼都不做** ——
    不寫檔、不重建、不報錯。查這種「改設定沒反應」之前,先把設定頁關掉重開。
-6. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
+7. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
    trimming 只在 `dotnet publish` 生效,所以 trimming 相關的問題只有 Release 部署才驗得到。
 
 ## 慣例

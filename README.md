@@ -285,6 +285,40 @@ CmdPal 的搜尋框是單行 `TextBox`,往裡面貼一段多行的 Markdown **�
 所以快速記下頁在偵測到剪貼簿是多行文字時,會多給一列「內文取自剪貼簿(N 行)」——
 標題還是用打的,內文直接讀剪貼簿原文,換行、縮排、程式碼區塊通通留著,完全不經過搜尋框。
 
+### 設定頁有兩個入口,而且只有一個會自己更新
+
+同一份設定,CmdPal 讓使用者從兩個地方看到:
+
+| 入口 | CmdPal 怎麼拿 |
+|---|---|
+| 清單頁 `Ctrl+K` → 設定 | 我們放在 `MoreCommands` 裡的頁面,每次導覽進去都重建 viewmodel |
+| 設定 → Extensions → Notelet | `ICommandSettings.SettingsPage`,**整個 CmdPal 生命週期只初始化一次** |
+
+第二條路是這樣寫的(`ProviderSettingsViewModel`):
+
+```csharp
+if (_provider.Settings.Initialized)
+{
+    return _provider.Settings.SettingsPage;   // 永遠是同一個 viewmodel
+}
+
+_initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
+```
+
+那個 viewmodel 只有在頁面發出 `ItemsChanged` 時才會重新 `GetContent()`。toolkit 的
+`SettingsContentPage` 確實會轉發 —— 但它轉發的來源是 `Settings.SettingsChanged`,
+而**擴展發不出那個事件**:`RaiseSettingsChanged()` 是 `internal`,唯一的呼叫者是
+使用者按下 Save 時走的 `SettingsForm.SubmitForm`。
+
+結果就是:清單頁按 `Ctrl+D` 改了寬度、檔案也存了,那一頁卻停在啟動時的值。
+
+修法是**自己實作 `ICommandSettings`**(整個介面只有 `SettingsPage` 一個成員),
+把 `NoteletSettingsPage` 交出去,發 `ItemsChanged` 的權力就回到我們手上。
+兩個入口共用同一個頁面實例,所以看到的永遠一致。
+
+那個頁面因此**不能跟著 `ProviderState` 重建** —— CmdPal 在 provider 剛連上時就把
+`Settings` 讀走了,換了實例它不知道,只會繼續用手上那個。
+
 ### 確認框的預設按鈕是反過來的
 
 `ConfirmationArgs.IsPrimaryCommandCritical` 聽起來像「把按鈕標成危險色」,但 CmdPal 拿它做的

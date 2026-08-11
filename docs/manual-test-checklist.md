@@ -189,14 +189,18 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 - [ ] 接著在清單頁按 `Ctrl+D`,`Ctrl+K` 選單上的字是從**設定頁那一檔**接下去循環的,
       不是從舊值(兩邊改的是同一個值,選單文字也得跟上)
 
-反過來從 `Ctrl+D` 改(**也曾經壞掉**):
+反過來從 `Ctrl+D` 改(**也曾經壞掉,而且要驗兩個入口**):
+
+設定頁有兩個入口,曾經只有第一個是對的 —— 見 README〈設定頁有兩個入口〉。
 
 - [ ] 清單頁按 `Ctrl+D` 換一檔 → `Ctrl+K` → 設定 → **下拉選單顯示的就是剛才那一檔**
-      (壞掉時的症狀:設定頁顯示舊值,要 Reload 才對得上。原因是 toolkit 的
-      `SettingsContentPage` 只在 `SettingsChanged` 時才叫 CmdPal 重拿表單,
-      而那個事件擴展發不出來 —— `RaiseSettingsChanged()` 是 internal,
-      唯一的呼叫者是使用者按 Save。修法是自己套一層 `NoteletSettingsPage`,
-      把「什麼時候重拿」的控制權拿回來)
+- [ ] **再驗另一個入口**:設定 → Extensions → Notelet → 那一頁的下拉選單
+      **也是剛才那一檔**
+      (壞掉時的症狀:這一個停在「開啟 CmdPal 時」的值,不管改幾次都不動,
+      連 Reload 都未必救得回來。`ProviderSettingsViewModel` 用
+      `_initializeSettingsTask ??=` 只初始化一次,而它拿的是 `ICommandSettings.SettingsPage`。
+      修法是自己實作 `ICommandSettings`,把我們的頁面交出去)
+- [ ] 兩個入口顯示的值**永遠一致**(它們是同一個頁面實例)
 - [ ] 在那個設定頁直接按 Save(不改任何東西),清單頁的寬度**不會跳掉**
 
 ## 6. Markdown 預覽(需求 3)
