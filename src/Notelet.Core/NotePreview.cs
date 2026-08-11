@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Notelet.Core;
 
 /// <summary>
@@ -11,10 +13,11 @@ public static class NotePreview
     /// <summary>Markdown 的硬換行寫法:行尾兩個空白。</summary>
     private const string HardBreak = "  ";
 
-    private const char Backtick = '`';
-
-    /// <summary>圍欄式程式碼區塊的最短長度,由 CommonMark 規定。</summary>
-    private const int MinFenceLength = 3;
+    /// <summary>
+    /// CommonMark 允許用反斜線逃脫的字元,就是這些 ASCII 標點,一個不多一個不少。
+    /// 全部逃脫掉,整行就只剩字面意義。
+    /// </summary>
+    private const string Escapable = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 
     public static string Render(Note note)
     {
@@ -36,12 +39,18 @@ public static class NotePreview
     }
 
     /// <summary>
-    /// 把內文原封不動包成程式碼區塊,讓渲染器一個字都不要動它。
+    /// 把內文逐字逃脫,讓每個 Markdown 符號都以字面顯示出來。
     ///
     /// 用途是「我要看到檔案裡真正的那幾個字」:標題的 <c>#</c>、粗體的 <c>**</c>、
     /// 連結的 <c>[](…)</c> 渲染完就消失了,但要複製走的往往正是這些符號本身。
-    /// 包成程式碼區塊是唯一能保證原文一字不差的做法 —— 逐字逃脫也做得到,
-    /// 但那樣複製出去的會是加了反斜線的版本,等於沒有解決問題。
+    ///
+    /// 逃脫不影響複製:反斜線只存在於送給渲染器的字串裡,畫面上顯示的、
+    /// 使用者選取複製走的,都是還原後的原文。
+    ///
+    /// 為什麼不包成程式碼區塊(那樣連空白都能一字不差):CmdPal 會替程式碼區塊
+    /// 畫上外框與底色,樣式寫在它自己的資源裡,擴展改不動,在窄窄的詳細窗格裡很搶版面。
+    ///
+    /// 代價是行首縮排與連續空行會被渲染器正規化 —— 這是刻意接受的取捨。
     /// </summary>
     public static string RenderSource(string body)
     {
@@ -50,35 +59,47 @@ public static class NotePreview
             return string.Empty;
         }
 
-        // 圍欄要比內文裡最長的一串反引號再多一個。內文本來就含程式碼區塊時,
-        // 用固定的三個反引號會被它提前關掉,後半段就漏出去被渲染了。
-        var fence = new string(Backtick, Math.Max(MinFenceLength, LongestBacktickRun(body) + 1));
+        var lines = body.Split('\n');
+        var result = new StringBuilder(body.Length * 2);
 
-        return $"{fence}\n{body}\n{fence}";
-    }
-
-    private static int LongestBacktickRun(string text)
-    {
-        var longest = 0;
-        var current = 0;
-
-        foreach (var c in text)
+        for (var i = 0; i < lines.Length; i++)
         {
-            if (c != Backtick)
+            // 行首空白一定要去掉:段落開頭的四個空白在 CommonMark 裡就是縮排程式碼區塊,
+            // 那正好把我們想避開的外框畫回來。段落中間的行首空白反正也會被解析器吃掉,
+            // 統一去掉至少行為一致。
+            var line = lines[i].Trim();
+
+            if (line.Length > 0)
             {
-                current = 0;
-                continue;
+                Escape(line, result);
+
+                // 下一行還有字才需要硬換行;下一行是空的話,空行本身就是段落分隔。
+                if (i + 1 < lines.Length && lines[i + 1].Trim().Length > 0)
+                {
+                    result.Append(HardBreak);
+                }
             }
 
-            current++;
-
-            if (current > longest)
+            if (i + 1 < lines.Length)
             {
-                longest = current;
+                result.Append('\n');
             }
         }
 
-        return longest;
+        return result.ToString();
+    }
+
+    private static void Escape(string line, StringBuilder builder)
+    {
+        foreach (var c in line)
+        {
+            if (Escapable.Contains(c, StringComparison.Ordinal))
+            {
+                builder.Append('\\');
+            }
+
+            builder.Append(c);
+        }
     }
 
     /// <summary>

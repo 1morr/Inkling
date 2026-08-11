@@ -170,39 +170,53 @@ public class NotePreviewTests
     }
 
     [Fact]
-    public void RenderSource_WrapsTheBodyInACodeFence()
+    public void RenderSource_EscapesMarkdownSyntaxSoItShowsUpLiterally()
     {
-        Assert.Equal("```\n# 標題\n**粗體**\n```", NotePreview.RenderSource("# 標題\n**粗體**"));
-    }
-
-    [Fact]
-    public void RenderSource_DoesNotTouchTheContent()
-    {
-        // 這是原始文字模式存在的理由:一個字都不能改,包括不補硬換行。
-        const string Body = "111\n222\n  尾巴有空白  ";
-
-        Assert.Equal($"```\n{Body}\n```", NotePreview.RenderSource(Body));
+        // 反斜線只存在於送給渲染器的字串裡;畫面上顯示的是 "# 標題",
+        // 使用者選取複製走的也是 "# 標題"。
+        Assert.Equal("\\# 標題  \n\\*\\*粗體\\*\\*", NotePreview.RenderSource("# 標題\n**粗體**"));
     }
 
     [Theory]
-    [InlineData("```\ncode\n```", "````")]
-    [InlineData("~~~\ncode\n~~~", "```")]
-    [InlineData("行內 `code` 而已", "```")]
-    [InlineData("````\ncode\n````", "`````")]
-    public void RenderSource_UsesAFenceLongerThanAnythingInTheBody(string body, string expectedFence)
+    [InlineData("```", "\\`\\`\\`")]
+    [InlineData("- 清單", "\\- 清單")]
+    [InlineData("| a | b |", "\\| a \\| b \\|")]
+    [InlineData("[連結](url)", "\\[連結\\]\\(url\\)")]
+    [InlineData("1. 項目", "1\\. 項目")]
+    [InlineData("<div>", "\\<div\\>")]
+    public void RenderSource_EscapesEveryConstructThatWouldOtherwiseRender(string body, string expected)
     {
-        // 內文自己的程式碼區塊會把長度相同的外層圍欄提前關掉,
-        // 後半段就漏出去被渲染 —— 那正是要避免的事。
-        var result = NotePreview.RenderSource(body);
+        Assert.Equal(expected, NotePreview.RenderSource(body));
+    }
 
-        Assert.StartsWith(expectedFence + "\n", result, StringComparison.Ordinal);
-        Assert.EndsWith("\n" + expectedFence, result, StringComparison.Ordinal);
+    [Fact]
+    public void RenderSource_LeavesNonAsciiAlone()
+    {
+        // 中文與全形標點都不在 CommonMark 的逃脫集合裡,補反斜線只會讓它顯示出來。
+        // (半形標點就該逃脫,連 : 也在集合內 —— 這裡刻意避開,測的是非 ASCII。)
+        const string Text = "買咖啡機、順便看看濾杯。「這個要記住」";
+
+        Assert.Equal(Text, NotePreview.RenderSource(Text));
+    }
+
+    [Fact]
+    public void RenderSource_BlankLineStaysAParagraphBreak()
+    {
+        // 空行前面不補硬換行 —— 空行本身就是段落分隔,補了只是多出看不見的空白。
+        Assert.Equal("111\n\n222", NotePreview.RenderSource("111\n\n222"));
+    }
+
+    [Fact]
+    public void RenderSource_DropsLeadingIndentation()
+    {
+        // 刻意接受的取捨。段落開頭的四個空白在 CommonMark 裡是縮排程式碼區塊,
+        // 那會把我們正想避開的外框畫回來。
+        Assert.Equal("縮排的行", NotePreview.RenderSource("    縮排的行"));
     }
 
     [Fact]
     public void RenderSource_EmptyBody_ReturnsEmpty()
     {
-        // 空的程式碼區塊只會畫出一個空灰框,不如交給呼叫端顯示自己的提示。
         Assert.Equal(string.Empty, NotePreview.RenderSource(string.Empty));
     }
 }
