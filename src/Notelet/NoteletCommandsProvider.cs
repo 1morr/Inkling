@@ -40,7 +40,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         // Repository 整個擴展共用一個。它內部有快取與資料夾監看,
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
         var repository = new FileSystemNoteRepository(options);
-        var listPage = new NoteListPage(repository, options);
+        var listPage = new NoteListPage(repository, options, _settingsManager);
 
         ICommandItem[] commands = [
             new CommandItem(listPage)

@@ -15,6 +15,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 {
     private readonly INoteRepository _repository;
     private readonly NoteletOptions _options;
+    private readonly IDetailsWidthStore _widthStore;
 
     /// <summary>
     /// 詳細窗格的「渲染 / 原始文字」切換鈕。
@@ -42,13 +43,17 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private (Note Note, ListItem Item)[] _shown = [];
 
     private bool _showSource;
-    private ContentSize _detailsSize = ContentSize.Small;
+    private ContentSize _detailsSize;
     private bool _disposed;
 
-    public NoteListPage(INoteRepository repository, NoteletOptions options)
+    public NoteListPage(INoteRepository repository, NoteletOptions options, IDetailsWidthStore widthStore)
     {
         _repository = repository;
         _options = options;
+        _widthStore = widthStore;
+
+        // 寬度是存在設定裡的,重開之後照使用者上次選的來。
+        _detailsSize = widthStore.DetailsWidth;
 
         _toggleSource = new AnonymousCommand(ToggleSource)
         {
@@ -234,7 +239,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         DiagnosticLog.Write($"ToggleSource: showSource={_showSource}");
     }
 
-    /// <summary>詳細窗格在三檔寬度之間循環。</summary>
+    /// <summary>詳細窗格在三檔寬度之間循環,順便存回設定 —— 重開之後還是這個寬度。</summary>
     private void CycleDetailsWidth()
     {
         _detailsSize = _detailsSize switch
@@ -245,6 +250,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         };
 
         _cycleDetailsWidth.Name = CycleDetailsWidthName;
+        _widthStore.DetailsWidth = _detailsSize;
 
         RefreshDetails();
         DiagnosticLog.Write($"CycleDetailsWidth: size={_detailsSize}");
