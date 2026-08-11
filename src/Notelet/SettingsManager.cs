@@ -50,11 +50,18 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         Settings.SettingsChanged += OnSettingsChanged;
     }
 
+    /// <inheritdoc />
+    public event EventHandler? DetailsWidthChanged;
+
     private void OnSettingsChanged(object sender, Settings e)
     {
         DiagnosticLog.Write($"SettingsChanged: 寬度={_detailsWidth.Value} 資料夾='{NotesDirectory}'");
 
         Save("SettingsChanged");
+
+        // 這條只有設定頁走得到。頁面自己按 Ctrl+D 改寬度時走的是 DetailsWidth 的 setter,
+        // 那裡不發事件 —— 見 IDetailsWidthStore 上的說明。
+        DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>

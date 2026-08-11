@@ -41,10 +41,16 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 
 新增行為時先問:這段邏輯能不能放進 Core?能的話就放,並補測試。
 
-`NoteletCommandsProvider` 持有一個 `ProviderState`(repository + 清單頁 + 快速記下頁 +
-命令陣列)。設定一改就**整組重建**並釋放舊的 —— 舊 repository 還盯著舊資料夾。
-會訂閱 `repository.Changed` 的頁面都要進 `ProviderState` 並在 `Dispose` 裡退訂,
-否則設定改幾次之後同一個事件會有好幾個死頁面在聽。
+`NoteletCommandsProvider` 持有一個 `ProviderState`(資料夾 + repository + 清單頁 +
+快速記下頁 + 命令陣列)。**只有資料夾變了才整組重建**並釋放舊的 —— 那時 repository
+非換不可。會訂閱 `repository.Changed` 的頁面都要進 `ProviderState` 並在 `Dispose` 裡退訂,
+否則改幾次資料夾之後同一個事件會有好幾個死頁面在聽。
+
+**其他設定不能靠重建生效。** CmdPal 手上握著的是使用者當下開著的那個頁面實例,
+新建的頁面它不會去拿(實測 log:`BuildState` 之後一次 `GetItems` 都沒有,直到 Reload)。
+硬重建反而會把還在被使用的 repository 給 Dispose 掉。這類設定要讓**現有頁面自己響應**,
+範例見 `IDetailsWidthStore.DetailsWidthChanged`。
+
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
 
 ## 跟 CmdPal 打交道的硬規則

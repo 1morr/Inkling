@@ -85,6 +85,10 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         // 別台機器經 OneDrive 同步下來、或使用者拿別的編輯器改了檔案時自動更新。
         _repository.Changed += OnRepositoryChanged;
+
+        // 設定頁改寬度時,更新的必須是「使用者當下開著的這一個」頁面實例 ——
+        // 見 IDetailsWidthStore.DetailsWidthChanged 上的說明。
+        _widthStore.DetailsWidthChanged += OnDetailsWidthChanged;
     }
 
     public override void UpdateSearchText(string oldSearch, string newSearch)
@@ -297,6 +301,29 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         RaiseItemsChanged();
     }
 
+    /// <summary>
+    /// 設定頁改了寬度。走的路跟 Ctrl+D 完全一樣:換掉每一則的 Details 讓 CmdPal 重讀,
+    /// 不動整份清單 —— 理由見 <see cref="RefreshDetails"/>。
+    /// </summary>
+    private void OnDetailsWidthChanged(object? sender, EventArgs e)
+    {
+        var width = _widthStore.DetailsWidth;
+
+        if (width == _detailsSize)
+        {
+            return;
+        }
+
+        _detailsSize = width;
+
+        // 選單上那行字講的是「按下去會變成什麼」,寬度從別的地方被改掉了它也得跟上,
+        // 否則 Ctrl+D 的提示會跟實際狀態差一格。
+        _cycleDetailsWidth.Name = CycleDetailsWidthName;
+
+        RefreshDetails();
+        DiagnosticLog.Write($"OnDetailsWidthChanged: size={_detailsSize}");
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -306,5 +333,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         _disposed = true;
         _repository.Changed -= OnRepositoryChanged;
+        _widthStore.DetailsWidthChanged -= OnDetailsWidthChanged;
     }
 }

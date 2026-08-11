@@ -66,15 +66,32 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
             },
         ];
 
-        return new ProviderState(repository, listPage, capturePage, commands);
+        return new ProviderState(options.NotesDirectory, repository, listPage, capturePage, commands);
     }
 
+    /// <summary>
+    /// 設定變更。
+    ///
+    /// **只有資料夾變了才整組重建** —— 那時 repository 非換不可,它還盯著舊資料夾。
+    /// 其他設定(寬度)刻意不重建,因為重建對它們根本沒用:CmdPal 手上握著的是使用者
+    /// 當下開著的那個頁面實例,新建的頁面它不會去拿(實測 log:<c>BuildState</c> 之後
+    /// 一次 <c>GetItems</c> 都沒有,直到 Reload)。硬重建反而更糟 —— 會把還在被使用的
+    /// repository 給 Dispose 掉,連 FileSystemWatcher 一起收走。
+    /// 寬度改走 <see cref="IDetailsWidthStore.DetailsWidthChanged"/>,由頁面自己更新。
+    /// </summary>
     private void OnSettingsChanged(object? sender, Settings e)
     {
+        var directory = _settingsManager.ToOptions().NotesDirectory;
         ProviderState previous;
 
         lock (_gate)
         {
+            if (string.Equals(_state.NotesDirectory, directory, StringComparison.OrdinalIgnoreCase))
+            {
+                DiagnosticLog.Write("SettingsChanged: 資料夾沒變,不重建");
+                return;
+            }
+
             previous = _state;
             _state = BuildState();
         }
@@ -93,12 +110,14 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     }
 
     /// <summary>
-    /// 一組「跟著目前設定走」的東西。設定一改就整組換掉,舊的那組要確實釋放,
+    /// 一組「跟著目前資料夾走」的東西。資料夾一改就整組換掉(其他設定不會,
+    /// 見 <see cref="OnSettingsChanged"/>),舊的那組要確實釋放,
     /// 否則 FileSystemWatcher 與事件訂閱會一直累積。
     /// </summary>
     /// 標成 partial 是 CsWinRT 的要求:任何實作了 WinRT 投影介面(這裡是 IDisposable)
     /// 的型別都得讓來源產生器有地方掛程式碼,否則 trimming/AOT 下會出問題。
     private sealed partial record ProviderState(
+        string NotesDirectory,
         FileSystemNoteRepository Repository,
         NoteListPage ListPage,
         QuickCapturePage CapturePage,
