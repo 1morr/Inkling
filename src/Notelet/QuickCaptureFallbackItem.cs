@@ -41,6 +41,10 @@ internal sealed partial class QuickCaptureFallbackItem : FallbackCommandItem
         // 判斷規則放在 Core.QuickCapture,那裡有單元測試涵蓋;這裡只負責把結果變成 UI。
         var draft = QuickCapture.Parse(query, _options);
 
+        // 「改了前綴卻沒反應」查起來只有兩種可能:CmdPal 沒把新的查詢送過來,
+        // 或是這個物件手上的前綴還是舊的。兩者都只有這一行分得出來。
+        DiagnosticLog.Write($"UpdateQuery: query='{query}' prefix='{_options.QuickCapturePrefix}' → {(draft is null ? "不觸發" : $"標題='{draft.Title}' 內文='{draft.Body}'")}");
+
         if (draft is null)
         {
             Hide();

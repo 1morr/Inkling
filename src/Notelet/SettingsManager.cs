@@ -59,8 +59,39 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         Settings.Add(_detailsWidth);
 
         LoadSettings();
+        DiagnosticLog.Write(
+            $"SettingsManager: 載入 {FilePath} prefix='{QuickCapturePrefix}' 寬度={_detailsWidth.Value} 快速新增={QuickCaptureEnabled}");
 
-        Settings.SettingsChanged += (_, _) => SaveSettings();
+        Settings.SettingsChanged += OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged(object sender, Settings e)
+    {
+        DiagnosticLog.Write(
+            $"SettingsChanged: prefix='{QuickCapturePrefix}' 寬度={_detailsWidth.Value} 資料夾='{NotesDirectory}'");
+
+        Save("SettingsChanged");
+    }
+
+    /// <summary>
+    /// 存檔並留下痕跡。
+    ///
+    /// toolkit 的 <see cref="JsonSettingsManager.SaveSettings"/> 自己把例外吞掉,
+    /// 只往 CmdPal 的 log 丟一行字。設定存不起來的時候使用者看到的是「按了 Save 什麼都沒發生」,
+    /// 查不出原因 —— 實際被這件事咬過一次,所以這裡自己記一筆。
+    /// </summary>
+    private void Save(string reason)
+    {
+        try
+        {
+            SaveSettings();
+            DiagnosticLog.Write($"SaveSettings({reason}): 已寫入 {FilePath}");
+        }
+        catch (Exception ex)
+        {
+            // 設定存不起來不該讓整個擴展掛掉,但也不能無聲無息。
+            DiagnosticLog.Write($"SaveSettings({reason}) 失敗:{ex}");
+        }
     }
 
     public string NotesDirectory => _notesDirectory.Value ?? NoteletOptions.DefaultNotesDirectory();
@@ -95,7 +126,7 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
                 _ => NarrowWidth,
             };
 
-            SaveSettings();
+            Save("DetailsWidth");
         }
     }
 

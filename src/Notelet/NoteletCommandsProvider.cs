@@ -36,6 +36,8 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     private ProviderState BuildState()
     {
         var options = _settingsManager.ToOptions();
+        DiagnosticLog.Write(
+            $"BuildState: prefix='{options.QuickCapturePrefix}' 快速新增={options.QuickCaptureEnabled} 資料夾='{options.NotesDirectory}'");
 
         // Repository 整個擴展共用一個。它內部有快取與資料夾監看,
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
