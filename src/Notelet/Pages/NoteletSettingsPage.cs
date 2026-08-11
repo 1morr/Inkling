@@ -19,6 +19,25 @@ namespace Notelet.Pages;
 /// </summary>
 internal sealed partial class NoteletSettingsPage : ContentPage
 {
+    /// <summary>
+    /// 表單前面那段說明。
+    ///
+    /// **它的存在不只是為了說明 —— 拿掉它焦點就會被搶走。**
+    /// CmdPal 的 <c>ContentFormControl</c> 在載入後會自動聚焦第一個可輸入的欄位,
+    /// 但只在自己是「頁面上唯一的控件」時才做(<c>OnFrameworkElementLoaded</c> 裡的
+    /// <c>OnlyControlOnPage</c> 判斷,而那個旗標就是 <c>ContentPageViewModel</c>
+    /// 依內容數量算出來的)。
+    ///
+    /// 我們每按一次 Ctrl+D 就得叫 CmdPal 重讀表單,而重讀等於整個控件重建、
+    /// 再觸發一次 Loaded。設定視窗要是開在背景,那一下就會把焦點從主視窗搶過去。
+    /// 多這一塊內容,<c>OnlyControlOnPage</c> 就是 false,重建也不會搶焦點。
+    ///
+    /// 代價:打開設定頁時游標不會自動落在第一個欄位,要點一下或按 Tab。
+    /// 對「偶爾來改一次」的設定頁來說,這比背景視窗亂跳好得多。
+    /// </summary>
+    private readonly MarkdownContent _intro = new(
+        "清單頁按 `Ctrl+D` 也能循環詳細面板的寬度,跟這裡改的是同一個值。");
+
     private readonly Settings _settings;
 
     public NoteletSettingsPage(Settings settings)
@@ -32,14 +51,10 @@ internal sealed partial class NoteletSettingsPage : ContentPage
 
     public override IContent[] GetContent()
     {
-        // 這一行是診斷「Ctrl+D 之後設定頁還是舊值」用的。CmdPal 只在頁面**開著**的時候
-        // 聽 ItemsChanged(ContentPageViewModel 在離開頁面時就退訂了),所以問題是
-        // 「打開頁面時它到底有沒有重新來拿」—— 有這行 log 就分得出來:
-        // 打開設定頁時有出現 → CmdPal 有重拿,值不對就是別的原因;
-        // 沒出現 → CmdPal 用的是快取的 ViewModel,得換一個新的頁面實例才會重建。
-        DiagnosticLog.Write("SettingsPage.GetContent: CmdPal 來拿表單了");
+        DiagnosticLog.Write("SettingsPage.GetContent: 重新產生表單");
 
-        return _settings.ToContent();
+        // 順序有意義:說明在前,而且它必須留著 —— 見 _intro 上的說明。
+        return [_intro, .. _settings.ToContent()];
     }
 
     /// <summary>值被頁面以外的地方改掉了(目前只有清單頁的 Ctrl+D),叫 CmdPal 重拿表單。</summary>

@@ -319,6 +319,25 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 那個頁面因此**不能跟著 `ProviderState` 重建** —— CmdPal 在 provider 剛連上時就把
 `Settings` 讀走了,換了實例它不知道,只會繼續用手上那個。
 
+#### 表單前面那行說明是承重牆
+
+設定頁的表單上方有一行「清單頁按 `Ctrl+D` 也能循環…」。**它不能刪**,刪了焦點就會亂跳。
+
+`ContentFormControl` 載入後會自動聚焦第一個輸入欄位,但只在自己是頁面上唯一的控件時:
+
+```csharp
+element.Loaded -= OnFrameworkElementLoaded;
+
+if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不聚焦
+```
+
+`OnlyControlOnPage` 是 `ContentPageViewModel` 按內容數量算的(`newContent.Count == 1`)。
+而我們每按一次 `Ctrl+D` 就得叫 CmdPal 重讀表單 —— 重讀等於控件重建、再觸發一次 `Loaded`。
+設定視窗開在背景時,那一下就把焦點從主視窗搶了過去。
+
+多一塊內容,`OnlyControlOnPage` 就是 false,重建也不搶焦點。代價是打開設定頁時
+游標不會自動落在第一個欄位。編輯與新增那兩個表單不受影響,它們仍然只有一塊內容。
+
 ### 確認框的預設按鈕是反過來的
 
 `ConfirmationArgs.IsPrimaryCommandCritical` 聽起來像「把按鈕標成危險色」,但 CmdPal 拿它做的

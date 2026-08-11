@@ -83,6 +83,8 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    所以我們自己實作了 `ICommandSettings`(見 `NoteletCommandSettings`),把
    `NoteletSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
    **不能跟著 `ProviderState` 重建**:CmdPal 在 provider 剛連上時就把 `Settings` 讀走了。
+   設定頁表單上方那行說明也**不能刪** —— `ContentFormControl` 只在自己是頁面上唯一的
+   控件時才自動聚焦,多那一塊內容才擋得住「每按一次 Ctrl+D,背景的設定視窗就跳到前面」。
    細節見 README〈設定頁有兩個入口〉。
 6. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload
    一次即可,不必重開 PowerToys。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,

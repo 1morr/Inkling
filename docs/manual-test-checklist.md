@@ -202,6 +202,14 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
       修法是自己實作 `ICommandSettings`,把我們的頁面交出去)
 - [ ] 兩個入口顯示的值**永遠一致**(它們是同一個頁面實例)
 - [ ] 在那個設定頁直接按 Save(不改任何東西),清單頁的寬度**不會跳掉**
+- [ ] **焦點不會被搶**:設定視窗開在背景 → 回主視窗按 `Ctrl+D` → 焦點**留在主視窗**,
+      設定頁的下拉選單仍然跟著變
+      (壞掉時的症狀:每按一次 Ctrl+D,背景的設定視窗就跳到前面來。
+      `ContentFormControl` 載入後會自動聚焦,而我們每次都得叫它重讀表單 = 重建 + Loaded。
+      靠表單上方那行說明讓 `OnlyControlOnPage` 變成 false 才擋掉 ——
+      **那行字是承重牆,不要當成多餘的文案刪掉**,見 README)
+- [ ] 設定頁的表單上方看得到那行說明,排版正常
+- [ ] 對照組:`Notelet:新增筆記` 的表單**游標仍然自動落在標題框**(它只有一塊內容,不受影響)
 
 ## 6. Markdown 預覽(需求 3)
 
