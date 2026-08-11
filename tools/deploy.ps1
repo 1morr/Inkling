@@ -28,16 +28,34 @@
 .PARAMETER SkipBuild
     跳過 build,只重新註冊既有的輸出。
 
+.PARAMETER Reload
+    部署完自動叫 CmdPal 重新載入擴展(x-cmdpal://reload),不必手動去執行 Reload。
+    需要先在 CmdPal 設定 > 一般 > For developers 打開 "Enable external reload"。
+
+    順帶解掉「Reload 後出現兩個 Notelet」:重新註冊套件會讓 Windows 的套件目錄發出
+    安裝事件,CmdPal 收到後會為同一個擴展再加一個 provider(它那邊沒有去重)。
+    手動 Reload 如果搶在那個事件之前跑完,清空的是舊清單,之後補進來的就變成第二個。
+    所以這裡先等事件落地再重新載入。
+
+.PARAMETER ReloadDelaySeconds
+    重新載入前等幾秒,讓套件目錄的安裝事件先處理完。預設 5 秒。
+
 .EXAMPLE
     .\tools\deploy.ps1
     .\tools\deploy.ps1 -Configuration Release
+    .\tools\deploy.ps1 -Configuration Release -Reload
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
 
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+
+    [switch]$Reload,
+
+    [ValidateRange(0, 60)]
+    [int]$ReloadDelaySeconds = 5
 )
 
 $ErrorActionPreference = 'Stop'
@@ -149,5 +167,38 @@ if ($LASTEXITCODE -ne 0) { throw "驗證失敗:套件沒有註冊成 Command Pal
 
 Write-Host ''
 Write-Host "部署完成($Configuration)。" -ForegroundColor Green
-Write-Host "接著在 Command Palette 執行 'Reload'(選副標題是 'Reload Command Palette extensions' 那一個)," -ForegroundColor Yellow
-Write-Host "否則 CmdPal 會繼續用舊的擴展實例。" -ForegroundColor Yellow
+
+# --- 重新載入 --------------------------------------------------------------
+if (-not $Reload) {
+    Write-Host "接著在 Command Palette 執行 'Reload'(選副標題是 'Reload Command Palette extensions' 那一個)," -ForegroundColor Yellow
+    Write-Host "否則 CmdPal 會繼續用舊的擴展實例。或者下次加上 -Reload 讓腳本自己來。" -ForegroundColor Yellow
+    return
+}
+
+# 外部重新載入沒開的話,x-cmdpal://reload 會被 CmdPal 靜靜丟掉(只寫進它自己的 log)。
+# 與其讓人以為載入過了,不如在這裡明講。
+$cmdPalSettings = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json'
+$externalReloadEnabled = $false
+if (Test-Path $cmdPalSettings) {
+    try {
+        $externalReloadEnabled = [bool](Get-Content $cmdPalSettings -Raw | ConvertFrom-Json).AllowExternalReload
+    }
+    catch {
+        # 設定檔讀不動不該讓部署失敗,退回「當作沒開」的提示。
+        $externalReloadEnabled = $false
+    }
+}
+
+if (-not $externalReloadEnabled) {
+    Write-Host ''
+    Write-Host "-Reload 需要先打開 CmdPal 設定 > 一般 > For developers > Enable external reload。" -ForegroundColor Yellow
+    Write-Host "目前是關的,這次請手動執行 Reload。" -ForegroundColor Yellow
+    return
+}
+
+Write-Step "等 $ReloadDelaySeconds 秒讓套件目錄的安裝事件落地"
+Start-Sleep -Seconds $ReloadDelaySeconds
+
+Write-Step "叫 CmdPal 重新載入擴展"
+Start-Process 'x-cmdpal://reload'
+Write-Host "    已送出 x-cmdpal://reload" -ForegroundColor DarkGray
