@@ -5,6 +5,10 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 叫出 Command Palette → 打 `n 買咖啡機的想法` → Enter。存檔完成,全程不離開鍵盤,
 也不用進任何頁面。
 
+> **裝好之後要手動打開一個開關**,那句「打字→Enter」才成立:CmdPal 設定 →
+> Extensions → Notelet → Fallback commands → 記下想法 → 勾 **Include in the Global
+> result**。CmdPal 對第三方擴展的 fallback 一律預設不勾,見下面〈快速新增為什麼是 fallback〉。
+
 筆記是資料夾裡的純 Markdown 檔(YAML front matter + 內文),任何編輯器都能直接開。
 多端同步交給雲端硬碟處理,Notelet 本身沒有任何同步程式碼。
 
@@ -12,7 +16,7 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 
 | | |
 |---|---|
-| 快速新增 | 在主搜尋框打 `n <想法>` 直接存檔 |
+| 快速新增 | 在主搜尋框打 `n <想法>` 直接存檔;想連內文一起記就 `n <標題>;<內文>` |
 | 新增(完整) | `Notelet:新增筆記` 開表單,可寫多行內文 |
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
@@ -192,6 +196,10 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 經由 `IExtendedAttributesProvider.GetProperties()` 讀一次就定了。所以切換寬度跟切換原始文字
 走同一條路 —— 換上新的 `Details` 物件,別無他法。
 
+選好的檔位會存回擴展設定,重開之後照舊。存的時候刻意只寫檔、不發 `SettingsChanged`:
+那個事件會讓整個 provider 重建(換掉 repository 與清單頁),而按 `Ctrl+D` 的當下人正看著
+某一則筆記,清單被翻新一次選中項就跑掉了。設定頁裡也有同一個選項,兩邊改的是同一個值。
+
 ### 編輯表單
 
 表單是 Adaptive Cards,能調的東西比想像中少。下面三件事都是繞出來的:
@@ -212,6 +220,49 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
   CmdPal 端唯一的鍵盤提交路徑是 `ContentFormControl.OnFormKeyDown`,只認 Enter、只在單行
   輸入框裡有效,而且 0.11.11762.0 還沒有這段程式碼。真要 `Ctrl+S` 得改 PowerToys 本身。
 
+### 快速新增為什麼是 fallback
+
+**只有 fallback 拿得到使用者正在打的字**(`IFallbackHandler.UpdateQuery`)。頂層命令被叫起來時
+搜尋框已經清空了 —— 換句話說「打字→Enter 就存檔」這件事非 fallback 不可,做成命令就只剩
+「開一個頁面再打字」,那已經是 `Notelet:新增筆記` 在做的事。
+
+**前綴則是因為筆記沒有形狀。** 內建的 fallback 不需要觸發詞:計算機看查詢算不算得出來、
+Run 看是不是一個可執行檔、開網址看像不像 URL,不像就自己藏起來。筆記沒有這種判準 ——
+任何一句話都是合法的筆記。所以改用前綴當意圖判斷:有前綴才現身,沒有就把 `Title` 設成
+空字串隱藏(空標題的項目會被 `MainListPage.GetSearchViewItems` 濾掉),不去污染每一次搜索。
+
+CmdPal 端有三個開關會影響它,都在 設定 → Extensions → Notelet:
+
+| 開關 | 要怎麼設 | 為什麼 |
+|---|---|---|
+| Include in the Global result | **要勾** | 不勾的話它只會出現在結果最底下那個 fallback 區塊,而不是跟一般結果一起排。CmdPal 對第三方擴展一律預設不勾(`ProviderSettings.WithConnection` 裡 `wrapper.Extension is null` 才給 true) |
+| Manage fallback order | 隨意 | 這個順序只決定底部 fallback 區塊的排列。勾了 global 之後就走一般計分,跟這個順序無關 |
+| Alias | **別設成 `n`** | alias 比 fallback 早一步處理:`MainListPage.UpdateSearchTextCore` 開頭就 `if (aliases.CheckAlias(newSearch)) return;`。indirect alias 存的鍵是「alias + 空白」,所以 alias `n` 會在你打完 `n ` 的那一刻把搜尋框清掉,快速新增再也看不到那句查詢 |
+
+排到多前面就不是我們能控制的了:CmdPal 的 `MainListRanker.ClassifyTier` 把**所有** fallback
+一律歸在最低的 `FallbackFloor` 層,任何一個字面命中的命令或應用程式都排在前面。實務上
+`n 買咖啡機` 這種查詢不會命中別的東西,所以它就是第一個。
+
+### 標題與內文用分號分隔
+
+`n 買咖啡機;比較過 Breville 跟 Sage` → 標題是「買咖啡機」,分號之後的都進內文。
+只切第一個分號(內文本來就可能有分號),全形 `；` 一樣算 —— 中文輸入法打出來的就是它。
+代價是**標題裡不能有分號**,需要的話請走完整表單。只打了分號還沒打內文不影響,存的就是標題。
+
+### 命令 Id 為什麼要寫死
+
+`src/Notelet/CommandIds.cs` 裡那幾個字串是對外承諾,跟資料格式一樣不能改。
+
+CmdPal 把使用者對命令做的設定 —— alias、全域快速鍵、釘選、fallback 的顯示規則與排序 ——
+全部存在自己的 settings.json 裡,鍵就是命令的 `Id`。而**命令沒有設 `Id` 時 CmdPal 會現場算一個**:
+`TopLevelViewModel.GenerateId` 拿 `ProviderId + DisplayTitle + Title + Subtitle` 去做 WyHash64。
+也就是說標題變一個字,那個命令對 CmdPal 來說就變成了另一個命令,使用者設過的東西全部對不上。
+
+對 fallback 更致命,它的標題本來就跟著使用者打的字一直變。這是實際踩到的:CmdPal 的
+settings.json 裡留下了兩個 Notelet fallback 條目,把其中一個的雜湊反推回去,正好是標題
+`記下:你好` —— 某次重新載入時搜尋框裡剛好是那句話。表現出來就是「改了一次設定,
+快速新增就莫名其妙不會出現了,連改回原本的前綴也救不回來」。
+
 ## 設定項
 
 | 設定 | 預設 | 說明 |
@@ -219,9 +270,16 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 | 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置 |
 | 啟用快速新增 | 開 | 關掉就不會在主搜尋框出現 |
 | 快速新增前綴 | `n ` | 以字母或數字結尾時會自動補一個空白 |
+| 詳細面板寬度 | 窄 | 清單頁按 `Ctrl+D` 也能循環,兩邊改的是同一個值 |
 
 前綴為什麼要補空白:設成 `n` 而不補的話,`note about x` 這種普通查詢會被當成快速新增,
 而且第一個字母會被吃掉變成記下 `ote about x`。符號前綴(例如 `,`)則不需要空白。
+
+設定存在 `%LOCALAPPDATA%\Packages\Notelet_<套件雜湊>\LocalState\settings.json`
+(`Utilities.BaseSettingsPath` 會走 MSIX 的路徑重導向),跟其他擴展的做法一致 —— 一人一份,
+互不干涉。CmdPal 自己那份(啟用與否、alias、快速鍵、釘選、fallback 規則)則存在 CmdPal
+的套件底下,由 CmdPal 管理,擴展碰不到,所以那些設定不會跟著擴展重新部署被清掉 ——
+只有命令的 `Id` 變了才會對不上。
 
 ## 專案結構
 
@@ -233,10 +291,11 @@ src/
     NoteFileName      id 產生與檔名 slug
     FileSystemNoteRepository  讀寫、快取、FileSystemWatcher 失效
     NoteSearch        過濾與排序(純函式)
-    QuickCapture      快速新增的觸發判斷
+    QuickCapture      快速新增的觸發判斷與標題/內文切分
     NoteletOptions    執行期設定
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
+    CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
     QuickCaptureFallbackItem  主搜尋框的快速新增
     Pages/            清單、預覽、編輯、新增
 tests/
@@ -254,12 +313,26 @@ tools/
 ## 開發
 
 ```powershell
-dotnet test                                    # Core 的全部行為
-.\tools\deploy.ps1                             # Debug 部署
-.\tools\deploy.ps1 -Configuration Release      # trimmed 部署
+dotnet test                                        # Core 的全部行為
+.\tools\deploy.ps1                                 # Debug 部署
+.\tools\deploy.ps1 -Configuration Release          # trimmed 部署
+.\tools\deploy.ps1 -Configuration Release -Reload  # 部署完自動重新載入
 ```
 
-改完程式重新部署後,記得在 Command Palette 執行 **Reload**。
+改完程式重新部署後,記得在 Command Palette 執行 **Reload**,或用 `-Reload` 讓腳本代勞
+(需要先打開 CmdPal 設定 → 一般 → For developers → **Enable external reload**,
+它走的是 `x-cmdpal://reload` 這個 protocol)。
+
+### 為什麼 Reload 之後有時會冒出兩個 Notelet
+
+CmdPal 那邊的問題,不是擴展的。重新註冊套件會讓 Windows 的套件目錄發出**安裝**事件
+(套件版本從頭到尾都是 0.1.0.0,所以它算是重裝而不是升級 —— 升級走的是「先移除再安裝」,
+反而不會出事)。CmdPal 收到安裝事件後會替同一個擴展再建一個 `CommandProviderWrapper`,
+而 `TopLevelCommandManager.RegisterAndLoadCommandsAsync` 是直接 `AddRange`,不去重。
+
+手動 Reload 如果搶在那個非同步事件之前跑完,被清掉的是舊清單,事件補進來的就成了第二個。
+所以 `-Reload` 會先等幾秒再送重新載入。已經看到兩個的話,再 Reload 一次就好,
+不必重開 PowerToys 或 CmdPal。
 
 ### 查 SDK 的實際簽章
 
@@ -321,6 +394,18 @@ Get-Content "$ls\diagnostic.log" -Encoding utf8 -Wait   # 邊操作邊看
 ```powershell
 (Get-AppxPackage -Name Notelet).InstallLocation
 ```
+
+**設定頁按 Save 什麼都沒發生** — 那個頁面是綁在**某一個擴展實例**上的。中間只要發生過
+Reload 或重新部署,舊的擴展進程就被換掉了,設定頁手上的物件已經死了,按下去靜靜地什麼也不會做:
+不寫檔、不重建、不報錯。**把設定頁關掉重開**(退回 Extensions 清單再點進來)就好。
+
+查證方式是打開 `DiagnosticLog`(見上一節)再按一次 Save:
+
+- 什麼都沒印 → 呼叫根本沒到擴展這邊,就是上面這件事
+- 印出 `SettingsChanged: prefix=…` 跟 `SaveSettings(...): 已寫入 …` → 設定確實存下去了
+
+擴展這一側的存檔失敗現在也會記進同一個檔。toolkit 的 `JsonSettingsManager.SaveSettings`
+自己把例外吞掉,只往 CmdPal 的 log 丟一行字,所以 `SettingsManager.Save` 另外記了一筆完整的例外。
 
 **擴展沒出現在 CmdPal 裡** — 跑 `dotnet run --project tools\VerifyRegistration`。
 它會列出 Windows 認得的所有 CmdPal 擴展。Notelet 不在裡面就是註冊沒成功;

@@ -17,12 +17,20 @@ Command Palette 沒有提供 UI 自動化介面,擴展又跑在獨立的 COM 進
 ## 每次改動後的前置動作
 
 ```powershell
-.\tools\deploy.ps1 -Configuration Release
+.\tools\deploy.ps1 -Configuration Release -Reload
 ```
 
-然後在 Command Palette 執行 **Reload**,要選副標題是
-`Reload Command Palette extensions` 的那一個。沒跑 Reload 的話 CmdPal 會繼續用舊的
+`-Reload` 需要先打開 CmdPal 設定 → 一般 → For developers → Enable external reload;
+沒開的話腳本會提醒你,改成在 Command Palette 手動執行 **Reload**(要選副標題是
+`Reload Command Palette extensions` 的那一個)。沒跑 Reload 的話 CmdPal 會繼續用舊的
 擴展實例,你會以為改動沒生效。
+
+設定頁的擴展清單出現**兩個 Notelet** 的話,再 Reload 一次就會收回一個 —— 那是 CmdPal
+在套件重新註冊時多建了一個 provider,不是擴展壞掉,不必重開 PowerToys。
+
+**每次 Reload 或重新部署之後,設定頁要關掉重開**(退回 Extensions 清單再點進來)。
+那個頁面綁在舊的擴展實例上,不重開的話按 Save 會靜靜地什麼都不做 —— 驗設定相關的項目時
+先做這一步,否則你驗到的是一顆死按鈕。
 
 ---
 
@@ -42,6 +50,17 @@ Reload 之後跑這段,確認 CmdPal 載入的是你剛部署的那一份 ——
 兩者應該指向同一個資料夾。第二行沒有輸出代表 CmdPal 還沒把擴展的 COM server 拉起來,
 先進一次 Notelet 頁面再看。
 
+再確認 CmdPal 認的是我們寫死的 Id,而不是它自己拿標題算出來的雜湊:
+
+```powershell
+$s = Get-Content "$env:LOCALAPPDATA\Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json" -Raw | ConvertFrom-Json
+$s.ProviderSettings.PSObject.Properties | Where-Object { $_.Name -like '*Notelet*' } | ForEach-Object { $_.Value.FallbackCommands }
+```
+
+- [ ] 印出來的鍵是 `Notelet.QuickCapture`,而不是 `Notelet_…!App!Notelet` 後面接一串數字
+- [ ] 設定 → Extensions → Notelet → Fallback commands → 記下想法 → **Include in the Global
+      result 是勾起來的**(CmdPal 對第三方擴展預設不勾;命令 Id 換過之後也要重勾一次)
+
 ## 2. 快速新增(需求 1)
 
 - [ ] 在主搜尋框打 `n 測試想法一`,清單出現 **記下:測試想法一**
@@ -53,6 +72,24 @@ Reload 之後跑這段,確認 CmdPal 載入的是你剛部署的那一份 ——
 - [ ] **不吵人檢查**:打一般查詢(例如 `notepad`、`note about x`、`chrome`),
       清單裡**不應該**出現 Notelet 的快速新增項目
 - [ ] 只打 `n ` 不打內容時,不應該出現「記下:」
+
+分號分隔標題與內文:
+
+- [ ] 打 `n 測試想法二;這是內文`,項目標題是 **記下:測試想法二**,副標題是 **內文:這是內文**
+- [ ] Enter 之後,檔案的 `title` 是「測試想法二」,內文是「這是內文」,檔名用的是標題
+- [ ] 全形分號 `；`(中文輸入法直接打出來的那個)一樣有效
+- [ ] `n 標題;第一段;第二段` 只切第一個分號,內文是 `第一段;第二段`
+- [ ] `n 標題;`(分號打了、內文還沒打)照樣可以存,存出來只有標題
+- [ ] `n ;只有內文` 不會出現「記下:」
+
+改前綴之後仍然可用(這是曾經壞掉的地方):
+
+- [ ] 設定頁把前綴改成 `j`,Save
+- [ ] 回主搜尋框打 `j 測試想法三`,**照樣出現**「記下:測試想法三」並且存得起來
+- [ ] 改回 `n`,`n 測試想法四` 也照樣可用
+      (曾經有 bug:命令沒有設 `Id`,CmdPal 就拿標題去算一個雜湊當 Id,而 fallback 的標題
+      跟著使用者打的字變。重新載入時只要搜尋框裡有字,Id 就變了一個,CmdPal 那邊
+      「Include in the Global result」的勾選對不上,快速新增就此消失。修法是寫死 `Id`)
 
 ## 3. 瀏覽與搜索(需求 2)
 
@@ -108,6 +145,9 @@ Reload 之後跑這段,確認 CmdPal 載入的是你剛部署的那一份 ——
 - [ ] 寬度與 `Ctrl+U` 互不干擾:在原始文字模式下調寬度,仍然是原始文字;調完寬度按
       `Ctrl+U` 也仍然是剛才那個寬度
 - [ ] 打字搜索、上下移動選中項,寬度都保持不變
+- [ ] **調完寬度離開 CmdPal 再回來(或 Reload、甚至重開機),寬度還是剛才那一檔**
+- [ ] 設定頁的「詳細面板寬度」顯示的就是剛才 `Ctrl+D` 選到的那一檔
+- [ ] 反過來也對:在設定頁改寬度並 Save,回清單頁就是新的寬度
 
 ## 6. Markdown 預覽(需求 3)
 
