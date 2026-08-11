@@ -48,6 +48,14 @@ internal static class Icons
     /// <summary>Paste — 內文取自剪貼簿。</summary>
     public static IconInfo Paste => Glyph(0xE77F);
 
+    /// <summary>
+    /// Warning — 不是 Notelet 建立的檔案。
+    ///
+    /// 用警告而不是另一種文件圖示:它只出現在「刪除所有筆記」那一頁,
+    /// 而在那個情境下這件事就是個警告 —— 這個檔案是別人的。
+    /// </summary>
+    public static IconInfo External => Glyph(0xE7BA);
+
     /// <summary>Code — 詳細窗格切換成原始文字。</summary>
     public static IconInfo Source => Glyph(0xE943);
 

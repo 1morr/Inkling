@@ -43,13 +43,17 @@ public interface INoteRepository
     void Delete(string id);
 
     /// <summary>
-    /// 刪掉全部筆記,回傳實際刪掉幾則。
+    /// 刪掉指定的那些筆記,回傳實際刪掉幾則。
+    ///
+    /// 為什麼是「刪這些」而不是「全刪」:範圍是呼叫端的判斷。使用者可能只想清掉
+    /// Notelet 自己建的那些,留下別的工具丟進資料夾的 .md ——
+    /// 見 <see cref="Note.IsExternal"/>。這一層只負責刪。
     ///
     /// 個別檔案刪不掉(被別的程式鎖住、權限不對)不會中斷整批 —— 回傳值比總數少
     /// 就代表有漏網的,由呼叫端決定怎麼講。半途丟例外只會留下一個「刪一半」的狀態,
     /// 而且使用者不知道刪到哪裡。
     /// </summary>
-    int DeleteAll();
+    int DeleteMany(IEnumerable<Note> notes);
 
     /// <summary>丟掉快取,下次讀取時重新掃描資料夾。</summary>
     void Invalidate();

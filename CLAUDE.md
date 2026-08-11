@@ -45,7 +45,7 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 測試因此可以用假的實作,不會真的去動使用者的資源回收筒。
 
 `NoteletCommandsProvider` 持有一個 `ProviderState`(資料夾 + repository + 清單頁 +
-快速記下頁 + 命令陣列)。**只有資料夾變了才整組重建**並釋放舊的 —— 那時 repository
+快速記下頁 + 刪除全部頁 + 命令陣列)。**只有資料夾變了才整組重建**並釋放舊的 —— 那時 repository
 非換不可。會訂閱 `repository.Changed` 的頁面都要進 `ProviderState` 並在 `Dispose` 裡退訂,
 否則改幾次資料夾之後同一個事件會有好幾個死頁面在聽。
 

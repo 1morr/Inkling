@@ -232,7 +232,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// <c>IsPrimaryCommandCritical</c> 這裡刻意**不設**。它聽起來只是「把按鈕標成危險」,
     /// 但 CmdPal 拿它做的事是 <c>dialog.DefaultButton = ContentDialogButton.Close</c> ——
     /// 也就是把預設按鈕設成「取消」,Enter 下去等於放棄。單則刪除有資源回收筒兜底,
-    /// 不值得為此讓每次刪除都多按一次方向鍵。「刪除所有筆記」那個維持 critical。
+    /// 不值得為此讓每次刪除都多按一次方向鍵。刪除全部那一頁上的兩個批次刪除維持 critical。
     /// </summary>
     private AnonymousCommand CreateDeleteCommand(Note note) => new(() => { })
     {

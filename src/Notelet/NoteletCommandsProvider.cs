@@ -39,7 +39,8 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
 
         _state = BuildState();
 
-        // 改了資料夾路徑或前綴之後,整組命令要跟著換掉 —— 舊的 repository 還盯著舊資料夾。
+        // 改了資料夾路徑之後,整組命令要跟著換掉 —— 舊的 repository 還盯著舊資料夾。
+        // (只有資料夾會觸發重建,理由見 OnSettingsChanged。)
         _settingsManager.Settings.SettingsChanged += OnSettingsChanged;
     }
 
@@ -61,6 +62,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
         var listPage = new NoteListPage(repository, options, _settingsManager);
         var capturePage = new QuickCapturePage(repository);
+        var deletePage = new DeleteAllNotesPage(repository, options, _settingsManager);
 
         ICommandItem[] commands = [
             new CommandItem(listPage)
@@ -83,15 +85,19 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
                 Subtitle = "開表單寫比較長的內容",
                 Icon = Icons.Add,
             },
-            new CommandItem(new DeleteAllNotesCommand(repository))
+            new CommandItem(deletePage)
             {
-                Title = "Notelet:刪除所有筆記",
-                Subtitle = "整個資料夾清空,全部移到資源回收筒",
+                Title = deletePage.Title,
+
+                // 副標講的是「按下去會發生什麼」:進去只是看,不是當場刪。
+                // 舊的版本寫「整個資料夾清空」,那句話兩頭都不準 ——
+                // 清的只有 .md,而它清的又不只是 Notelet 自己建的那些。
+                Subtitle = "先列出會刪掉哪些檔案,確認後才動手",
                 Icon = Icons.Delete,
             },
         ];
 
-        return new ProviderState(options.NotesDirectory, repository, listPage, capturePage, commands);
+        return new ProviderState(options.NotesDirectory, repository, listPage, capturePage, deletePage, commands);
     }
 
     /// <summary>
@@ -146,12 +152,14 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         FileSystemNoteRepository Repository,
         NoteListPage ListPage,
         QuickCapturePage CapturePage,
+        DeleteAllNotesPage DeletePage,
         ICommandItem[] Commands) : IDisposable
     {
         public void Dispose()
         {
             ListPage.Dispose();
             CapturePage.Dispose();
+            DeletePage.Dispose();
             Repository.Dispose();
         }
     }

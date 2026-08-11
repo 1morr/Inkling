@@ -27,6 +27,15 @@ public sealed record Note
     public required string FilePath { get; init; }
 
     /// <summary>
+    /// 這個檔案不是 Notelet 建立的:front matter 裡沒有 id,<see cref="Id"/> 是從路徑推導出來的。
+    ///
+    /// 列清單時兩者一視同仁 —— 使用者自己丟進資料夾的 .md 本來就該看得到,那是資料格式的承諾。
+    /// 但**批次刪除必須分得出來**:筆記資料夾要是被指到既有的 Obsidian vault 或某個
+    /// 專案目錄,「刪除全部」掃到的就遠不只是 Notelet 寫過的東西。
+    /// </summary>
+    public bool IsExternal { get; init; }
+
+    /// <summary>
     /// front matter 裡 Notelet 不認得的欄位,原始文字逐行保留。
     ///
     /// 存在的理由:這些筆記是純檔案,使用者隨時可能用 Obsidian 之類的工具加上自己的

@@ -145,9 +145,10 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         Invalidate();
     }
 
-    public int DeleteAll()
+    public int DeleteMany(IEnumerable<Note> notes)
     {
-        var notes = GetAll();
+        ArgumentNullException.ThrowIfNull(notes);
+
         var deleted = 0;
 
         foreach (var note in notes)
@@ -165,7 +166,12 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         }
 
         // 一次就好。每刪一則就 Invalidate 的話,清單會在整批刪除的過程中被重建 N 次。
-        Invalidate();
+        // 一則都沒刪掉時連這一次都不必 —— 磁碟上什麼都沒變,發個 Changed 只是叫
+        // 正開著的頁面白重建一遍。
+        if (deleted > 0)
+        {
+            Invalidate();
+        }
 
         return deleted;
     }
@@ -248,6 +254,9 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             Tags = parsed.Tags,
             ExtraFrontMatter = parsed.ExtraFrontMatter,
             FilePath = path,
+
+            // front matter 裡沒有 id,就代表這個檔案不是 Notelet 寫的 —— 上面那個 id 是我們推的。
+            IsExternal = parsed.Id is null,
         };
     }
 

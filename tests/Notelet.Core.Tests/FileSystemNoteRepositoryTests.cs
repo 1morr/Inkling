@@ -171,7 +171,7 @@ public class FileSystemNoteRepositoryTests
     }
 
     [Fact]
-    public void DeleteAll_RemovesEverythingAndReportsTheCount()
+    public void DeleteMany_RemovesEverythingAndReportsTheCount()
     {
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
@@ -180,7 +180,7 @@ public class FileSystemNoteRepositoryTests
         repository.Create("二", "b");
         repository.Create("三", "c");
 
-        var deleted = repository.DeleteAll();
+        var deleted = repository.DeleteMany(repository.GetAll());
 
         Assert.Equal(3, deleted);
         Assert.Empty(repository.GetAll());
@@ -188,16 +188,49 @@ public class FileSystemNoteRepositoryTests
     }
 
     [Fact]
-    public void DeleteAll_OnAnEmptyFolderIsANoOp()
+    public void DeleteMany_OnlyTouchesTheNotesItWasGiven()
+    {
+        // 「只刪 Notelet 建立的」走的就是這條路:外來的 .md 一個都不能少。
+        using var temp = new TempDirectory();
+        temp.WriteFile("別人的/筆記.md", "# 不是 Notelet 寫的");
+
+        using var repository = CreateRepository(temp, out _);
+        repository.Create("Notelet 的一", string.Empty);
+        repository.Create("Notelet 的二", string.Empty);
+
+        var deleted = repository.DeleteMany(repository.GetAll().Where(n => !n.IsExternal));
+
+        Assert.Equal(2, deleted);
+        var left = Assert.Single(repository.GetAll());
+        Assert.True(left.IsExternal);
+        Assert.Equal("不是 Notelet 寫的", left.Title);
+    }
+
+    [Fact]
+    public void DeleteMany_OnAnEmptyFolderIsANoOp()
     {
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
-        Assert.Equal(0, repository.DeleteAll());
+        Assert.Equal(0, repository.DeleteMany(repository.GetAll()));
     }
 
     [Fact]
-    public void DeleteAll_KeepsGoingWhenOneFileCannotBeDeleted()
+    public void DeleteMany_DeletingNothingDoesNotBumpVersion()
+    {
+        // 版本一動,正開著的頁面就會重建一次項目。什麼都沒刪掉還讓它重建是白做工。
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        repository.Create("留著", string.Empty);
+        var before = repository.Version;
+
+        Assert.Equal(0, repository.DeleteMany([]));
+        Assert.Equal(before, repository.Version);
+    }
+
+    [Fact]
+    public void DeleteMany_KeepsGoingWhenOneFileCannotBeDeleted()
     {
         // 一個檔案被鎖住不該讓其餘的留在原地 —— 使用者按下「刪除全部」就是要清空,
         // 半途中止只會留下一個說不清楚的狀態。
@@ -211,7 +244,7 @@ public class FileSystemNoteRepositoryTests
         repository.Create("壞掉的", string.Empty);
         repository.Create("好的二", string.Empty);
 
-        var deleted = repository.DeleteAll();
+        var deleted = repository.DeleteMany(repository.GetAll());
 
         // 三則都試過,回報的是真正成功的那兩則。
         Assert.Equal(2, deleted);
@@ -280,6 +313,45 @@ public class FileSystemNoteRepositoryTests
         Assert.Equal("外面來的標題", note.Title);
         Assert.NotEmpty(note.Id);
         Assert.Equal(0, repository.SkippedFileCount);
+    }
+
+    [Fact]
+    public void GetAll_MarksFilesNotWrittenByNoteletAsExternal()
+    {
+        // 批次刪除靠這個旗標決定範圍,認錯就是刪掉別人的檔案。
+        using var temp = new TempDirectory();
+        temp.WriteFile("沒有 front matter.md", "# 外面來的");
+        temp.WriteFile("有別人的 front matter.md", "---\ntitle: Obsidian 寫的\ntags: [a]\n---\n\n內文");
+
+        using var repository = CreateRepository(temp, out _);
+        repository.Create("Notelet 自己建的", string.Empty);
+
+        var notes = repository.GetAll();
+
+        Assert.Equal(3, notes.Count);
+        Assert.False(Assert.Single(notes, n => n.Title == "Notelet 自己建的").IsExternal);
+        Assert.True(Assert.Single(notes, n => n.Title == "外面來的").IsExternal);
+
+        // front matter 有沒有不是重點,有沒有 Notelet 的 id 才是 —— 別的工具也會寫 front matter。
+        Assert.True(Assert.Single(notes, n => n.Title == "Obsidian 寫的").IsExternal);
+    }
+
+    [Fact]
+    public void Update_MakesAnExternalNoteOurs()
+    {
+        // 編輯外來檔案會替它補上 Notelet 的 front matter(含 id),那之後它就不算外來的了。
+        // 這條記下來是因為它決定「只刪 Notelet 建立的」會不會把它掃進去 ——
+        // 會,而且合理:那個檔案確實是我們寫過的。
+        using var temp = new TempDirectory();
+        temp.WriteFile("外來.md", "# 外面來的");
+
+        using var repository = CreateRepository(temp, out _);
+        var external = Assert.Single(repository.GetAll());
+        Assert.True(external.IsExternal);
+
+        repository.Update(external.Id, "改過標題", "改過內文");
+
+        Assert.False(Assert.Single(repository.GetAll()).IsExternal);
     }
 
     [Fact]

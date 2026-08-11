@@ -28,7 +28,13 @@ internal static class CommandIds
     /// <summary>完整表單的新增頁(頂層命令「Notelet:新增筆記」)。</summary>
     public const string NewNote = "Notelet.NewNote";
 
-    /// <summary>主搜尋框的快速新增。命令與 fallback 項目共用同一個 Id。</summary>
+    /// <summary>
+    /// 「記下」這個動作本身(快速記下頁裡的第一列)。
+    ///
+    /// 這個 Id 曾經同時掛在已經移除的 fallback 項目上,所以它八成還躺在使用者的
+    /// CmdPal settings.json 裡。**別拿它去給別的東西用** —— 舊設定會直接套到新命令上。
+    /// 頁面用的是底下那個分開的 <see cref="QuickCapturePage"/>。
+    /// </summary>
     public const string QuickCapture = "Notelet.QuickCapture";
 
     /// <summary>
@@ -41,6 +47,12 @@ internal static class CommandIds
     /// </summary>
     public const string QuickCapturePage = "Notelet.QuickCapturePage";
 
-    /// <summary>刪除所有筆記(頂層命令「Notelet:刪除所有筆記」)。</summary>
+    /// <summary>
+    /// 刪除所有筆記那一頁(頂層命令「Notelet:刪除所有筆記」)。
+    ///
+    /// 這個 Id 原本掛在一個按下去就跳確認框的命令上,現在掛在頁面上。
+    /// **刻意沿用同一個字串**:對 CmdPal 來說那只是「同一個命令換了行為」,
+    /// 使用者設過的 alias 與釘選都還對得上。
+    /// </summary>
     public const string DeleteAll = "Notelet.DeleteAll";
 }
