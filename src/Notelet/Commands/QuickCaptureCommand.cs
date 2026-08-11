@@ -5,8 +5,11 @@ using Notelet.Core;
 namespace Notelet.Commands;
 
 /// <summary>
-/// 把主搜尋框裡的一句話直接存成一則新筆記。這是整個擴展存在的理由:
-/// 叫出 Command Palette、打字、Enter,不進任何頁面。
+/// 把快速記下頁搜尋框裡的一句話存成一則新筆記。這是整個擴展存在的理由:
+/// 叫出 Command Palette、alias、打字、Enter,中間不必碰任何表單。
+///
+/// (原本連那一次 alias 都不用 —— 走的是主搜尋框的 fallback。為什麼改掉,
+/// 見 <see cref="Notelet.Pages.QuickCapturePage"/>。)
 /// </summary>
 internal sealed partial class QuickCaptureCommand : InvokableCommand
 {

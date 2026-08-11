@@ -8,8 +8,9 @@ namespace Notelet.Pages;
 /// <summary>
 /// 快速記下:進到這一頁,打字,Enter 存檔。
 ///
-/// 為什麼有了 <see cref="QuickCaptureFallbackItem"/> 還要這一頁 —— fallback 那條路
-/// 拿得到主搜尋框的字,不必跳頁,但代價是它得跟所有命令與應用程式擠在同一個清單裡。
+/// 這是快速記下**唯一**的入口。曾經有一條走主搜尋框 fallback 的路(型別叫
+/// <c>QuickCaptureFallbackItem</c>,已經整個移除,<c>git log --diff-filter=D</c> 找得到) ——
+/// 那條路拿得到主搜尋框的字,不必跳頁,但代價是它得跟所有命令與應用程式擠在同一個清單裡。
 /// 沒有前綴命中時我們只能把 <c>Title</c> 設成空字串把自己藏起來,而那招要成立,
 /// 得靠 CmdPal 端把空標題的項目濾掉 —— 0.11.11762.0 在「Include in the Global result」
 /// 這條路上沒有確實做到,結果就是每一次搜索都多出一個點不動的空列。
