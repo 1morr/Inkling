@@ -168,4 +168,41 @@ public class NotePreviewTests
 
         Assert.Equal("# test\n\n111  \n222  \n333", result);
     }
+
+    [Fact]
+    public void RenderSource_WrapsTheBodyInACodeFence()
+    {
+        Assert.Equal("```\n# 標題\n**粗體**\n```", NotePreview.RenderSource("# 標題\n**粗體**"));
+    }
+
+    [Fact]
+    public void RenderSource_DoesNotTouchTheContent()
+    {
+        // 這是原始文字模式存在的理由:一個字都不能改,包括不補硬換行。
+        const string Body = "111\n222\n  尾巴有空白  ";
+
+        Assert.Equal($"```\n{Body}\n```", NotePreview.RenderSource(Body));
+    }
+
+    [Theory]
+    [InlineData("```\ncode\n```", "````")]
+    [InlineData("~~~\ncode\n~~~", "```")]
+    [InlineData("行內 `code` 而已", "```")]
+    [InlineData("````\ncode\n````", "`````")]
+    public void RenderSource_UsesAFenceLongerThanAnythingInTheBody(string body, string expectedFence)
+    {
+        // 內文自己的程式碼區塊會把長度相同的外層圍欄提前關掉,
+        // 後半段就漏出去被渲染 —— 那正是要避免的事。
+        var result = NotePreview.RenderSource(body);
+
+        Assert.StartsWith(expectedFence + "\n", result, StringComparison.Ordinal);
+        Assert.EndsWith("\n" + expectedFence, result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RenderSource_EmptyBody_ReturnsEmpty()
+    {
+        // 空的程式碼區塊只會畫出一個空灰框,不如交給呼叫端顯示自己的提示。
+        Assert.Equal(string.Empty, NotePreview.RenderSource(string.Empty));
+    }
 }

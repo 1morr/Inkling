@@ -11,6 +11,11 @@ public static class NotePreview
     /// <summary>Markdown 的硬換行寫法:行尾兩個空白。</summary>
     private const string HardBreak = "  ";
 
+    private const char Backtick = '`';
+
+    /// <summary>圍欄式程式碼區塊的最短長度,由 CommonMark 規定。</summary>
+    private const int MinFenceLength = 3;
+
     public static string Render(Note note)
     {
         ArgumentNullException.ThrowIfNull(note);
@@ -28,6 +33,52 @@ public static class NotePreview
         return body.Length == 0
             ? $"# {note.Title}"
             : $"# {note.Title}\n\n{body}";
+    }
+
+    /// <summary>
+    /// 把內文原封不動包成程式碼區塊,讓渲染器一個字都不要動它。
+    ///
+    /// 用途是「我要看到檔案裡真正的那幾個字」:標題的 <c>#</c>、粗體的 <c>**</c>、
+    /// 連結的 <c>[](…)</c> 渲染完就消失了,但要複製走的往往正是這些符號本身。
+    /// 包成程式碼區塊是唯一能保證原文一字不差的做法 —— 逐字逃脫也做得到,
+    /// 但那樣複製出去的會是加了反斜線的版本,等於沒有解決問題。
+    /// </summary>
+    public static string RenderSource(string body)
+    {
+        if (string.IsNullOrEmpty(body))
+        {
+            return string.Empty;
+        }
+
+        // 圍欄要比內文裡最長的一串反引號再多一個。內文本來就含程式碼區塊時,
+        // 用固定的三個反引號會被它提前關掉,後半段就漏出去被渲染了。
+        var fence = new string(Backtick, Math.Max(MinFenceLength, LongestBacktickRun(body) + 1));
+
+        return $"{fence}\n{body}\n{fence}";
+    }
+
+    private static int LongestBacktickRun(string text)
+    {
+        var longest = 0;
+        var current = 0;
+
+        foreach (var c in text)
+        {
+            if (c != Backtick)
+            {
+                current = 0;
+                continue;
+            }
+
+            current++;
+
+            if (current > longest)
+            {
+                longest = current;
+            }
+        }
+
+        return longest;
     }
 
     /// <summary>

@@ -16,6 +16,7 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | 新增(完整) | `Notelet:新增筆記` 開表單,可寫多行內文 |
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
+| 原始文字 | 清單頁按 `Ctrl+U`,詳細窗格在渲染與原始 Markdown 之間切換 |
 | 編輯 | 表單式編輯(`Ctrl+E`),或用「在預設編輯器開啟」跳出去改 |
 
 刪除/封存、tag 分類、置頂還沒做。檔案格式已經預留 `tags` 欄位。
@@ -141,6 +142,37 @@ Obsidian、Bear、Apple Notes、Google Keep 這些做筆記的一律預設保留
 Obsidian 把嚴格 CommonMark 做成 Strict line breaks 設定,預設也是關閉。要處理那個 case
 的話,顯式開關(front matter 欄位或全域設定)比啟發式判斷可靠 —— 目前沒有需求,先不加。
 
+### 原始文字模式(`Ctrl+U`)
+
+清單頁按 `Ctrl+U`,右邊的詳細窗格在「渲染結果」與「原始 Markdown」之間切換,**不必進預覽頁**。
+用途是直接在清單上選取、複製帶符號的原文:標題的 `#`、粗體的 `**`、連結的 `[](…)`
+渲染完就消失了,但要複製走的往往正是這些符號。
+
+實作上的兩個重點:
+
+- **切換不會重建清單。** 只換掉每個項目的 `ListItem.Details`,CmdPal 收到屬性變更後
+  只重畫右邊那一塊。若改用 `RaiseItemsChanged`,CmdPal 是拿 `IListItem` 的**物件識別**
+  當鍵在快取 viewmodel 的,想讓它重讀詳細內容就得換掉整批項目物件,整份清單翻新一次,
+  選中項就有機會跑掉 —— 而按下這個鍵的當下正在看某一則筆記,跳走就沒有意義了。
+- **原文一個字都不能改**,所以包成程式碼區塊交給渲染器,而不是逐字加反斜線逃脫
+  (那樣複製出去的會是加了反斜線的版本)。圍欄長度會比內文裡最長的一串反引號多一個,
+  否則內文自己的程式碼區塊會把外層提前關掉,後半段就漏出去被渲染。
+
+切換狀態會記住,搜索、切換筆記都不會跑掉,直到擴展重載或改設定為止。
+
+#### 為什麼不是就地改 `Details.Body`
+
+那樣更省,而且 `Details.Body` 的 setter 確實會發出屬性變更通知 —— 但**跨進程時那條路是斷的**,
+實測結果是值改到了、畫面不動,要重新進入清單頁才看得到。
+
+原因在 SDK 的 `IDetails` 沒有宣告成可觀察介面。CmdPal 的 `DetailsViewModel` 因此是全專案唯一
+用執行期型別測試(`model is INotifyPropChanged`)決定要不要訂閱的,而那個 QI 過不了
+out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞掉,失敗完全無聲。
+
+`ICommandItem` 相反 —— 它在 IDL 裡就繼承 `INotifyPropChanged`,`CommandItemViewModel`
+對它是無條件訂閱。所以要通知 CmdPal「這一項變了」,走 `ListItem` 的屬性一定收得到,
+走 `Details` 的屬性則不一定。
+
 ## 設定項
 
 | 設定 | 預設 | 說明 |
@@ -200,6 +232,26 @@ Microsoft Learn 上的 Command Palette API 參考有些頁面是 2025 年初寫�
 dotnet run --project tools\ApiDump -- FallbackCommandItem CommandResult ListItem
 dotnet run --project tools\ApiDump -- --paths     # 設定檔存在哪
 ```
+
+### 排錯:讓擴展自己說話
+
+擴展跑在獨立的 COM server 進程裡,沒有主控台;`Debug.WriteLine` 又掛著
+`[Conditional("DEBUG")]`,Release 建置整個編掉,而日常安裝的正是 Release。
+所以要確認某段程式有沒有被執行到,得看 `DiagnosticLog` 寫出來的檔。
+
+預設關閉。開啟方式是在設定資料夾裡建一個空檔,然後 Reload:
+
+```powershell
+$ls = "$env:LOCALAPPDATA\Packages\Notelet_bf0n0751x5hse\LocalState"
+New-Item -ItemType File "$ls\diagnostic.on"
+Get-Content "$ls\diagnostic.log" -Encoding utf8 -Wait   # 邊操作邊看
+```
+
+(資料夾名稱裡的雜湊值由套件識別決定,`dotnet run --project tools\ApiDump -- --paths`
+在未封裝情況下印的是另一個路徑,別搞混。)
+
+沒有 `diagnostic.on` 時每次呼叫只是一個布林判斷。用完把 `.on` 檔刪掉即可。
+`Ctrl+U` 那個功能就是靠它定位的:紀錄顯示值明明改到了,才確定問題出在通知而不是命令。
 
 ### 效能上的規矩
 

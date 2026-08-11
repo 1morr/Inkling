@@ -30,4 +30,7 @@ internal static class Icons
 
     /// <summary>Copy — 複製內文。</summary>
     public static IconInfo Copy => new("\uE8C8");
+
+    /// <summary>Code — 詳細窗格切換成原始文字。</summary>
+    public static IconInfo Source => new("\uE943");
 }
