@@ -17,7 +17,8 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
 | 原始文字 | 清單頁按 `Ctrl+U`,詳細窗格在渲染與原始 Markdown 之間切換 |
-| 編輯 | 表單式編輯(`Ctrl+E`),或用「在預設編輯器開啟」跳出去改 |
+| 面板寬度 | 清單頁按 `Ctrl+D`,詳細窗格在窄 / 中 / 寬三檔之間循環 |
+| 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」跳出去改 |
 
 刪除/封存、tag 分類、置頂還沒做。檔案格式已經預留 `tags` 欄位。
 
@@ -177,6 +178,39 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 `ICommandItem` 相反 —— 它在 IDL 裡就繼承 `INotifyPropChanged`,`CommandItemViewModel`
 對它是無條件訂閱。所以要通知 CmdPal「這一項變了」,走 `ListItem` 的屬性一定收得到,
 走 `Details` 的屬性則不一定。
+
+### 詳細面板寬度(`Ctrl+D`)
+
+清單頁按 `Ctrl+D`,詳細窗格在**窄 → 中 → 寬**三檔之間循環,對應清單與詳情的比例
+3:1 → 2:1 → 1:1。看原始文字時特別有感,窄窗格會把幾乎每一行都折斷。
+
+**只有三檔,而且拖不動。** 寬度來自 `IDetails.Size`,CmdPal 只認 `Small / Medium / Large`
+(`DetailsSizeToGridLengthConverter`);自由拖曳這件事它自己也沒做 —— 整個介面裡連一個
+`GridSplitter` 都沒有。
+
+`Size` 比 `Body` 更沒得商量:它根本不走屬性變更通知,而是 `DetailsViewModel.InitializeProperties`
+經由 `IExtendedAttributesProvider.GetProperties()` 讀一次就定了。所以切換寬度跟切換原始文字
+走同一條路 —— 換上新的 `Details` 物件,別無他法。
+
+### 編輯表單
+
+表單是 Adaptive Cards,能調的東西比想像中少。下面三件事都是繞出來的:
+
+- **游標落在哪一格,由欄位順序決定。** CmdPal 進表單頁後會聚焦卡片裡第一個可聚焦的控件
+  (`ContentFormControl.FindFirstFocusableElement`),而 Adaptive Cards 既沒有 autofocus
+  也沒有 tabIndex。所以**編輯**時內文排在標題前面 —— 進來就是要改內容,標題頁首已經寫著了;
+  **新增**時維持標題在前,因為是先想標題。
+- **新增時內文框預填 5 行空白。** 渲染器對多行輸入只設 `AcceptsReturn` 與 `TextWrapping`,
+  完全不碰高度,所以空的內文框就是一行高,看起來像只能寫一行。卡片沒有「幾行高」這種屬性,
+  唯一撐得開它的就是內容本身。代價是 placeholder 不再顯示(框裡有東西了),而空行有機會
+  被存進檔案,所以新增的存檔路徑會 `Trim()`;編輯時不動,那些空行是使用者自己的排版。
+  (`Container` 的 `minHeight` 配上 `height: stretch` 試過,不成立:輸入框連同它的標籤會被
+  包進一個 `StackPanel`,多出來的空間留在容器裡,框還是一行。)
+- **沒有 `Ctrl+S`,存檔是 Tab 到「儲存」按 Enter。** 表單的輸入值只活在 CmdPal 進程裡的
+  `RenderedAdaptiveCard.UserInputs`,擴展唯一的取值管道是 CmdPal 反過來呼叫
+  `SubmitForm(inputs)` —— 就算把 `Ctrl+S` 綁到擴展的命令上,手上也沒有使用者剛打的字。
+  CmdPal 端唯一的鍵盤提交路徑是 `ContentFormControl.OnFormKeyDown`,只認 Enter、只在單行
+  輸入框裡有效,而且 0.11.11762.0 還沒有這段程式碼。真要 `Ctrl+S` 得改 PowerToys 本身。
 
 ## 設定項
 
