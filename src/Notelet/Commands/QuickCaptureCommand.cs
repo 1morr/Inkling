@@ -15,6 +15,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
     public QuickCaptureCommand(INoteRepository repository)
     {
         _repository = repository;
+        Id = CommandIds.QuickCapture;
         Name = "記下";
         Icon = Icons.Add;
     }

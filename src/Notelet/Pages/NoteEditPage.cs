@@ -57,6 +57,7 @@ internal sealed partial class NewNotePage : ContentPage
     {
         _repository = repository;
 
+        Id = CommandIds.NewNote;
         Icon = Icons.Add;
         Title = "新增筆記";
         Name = "新增";

@@ -64,6 +64,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             Result = CommandResult.KeepOpen(),
         };
 
+        Id = CommandIds.List;
         Icon = Icons.Note;
         Title = "Notelet";
         Name = "開啟";

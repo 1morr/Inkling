@@ -19,11 +19,8 @@ internal sealed partial class QuickCaptureFallbackItem : FallbackCommandItem
     private readonly QuickCaptureCommand _command;
     private readonly NoteletOptions _options;
 
-    /// <summary>CmdPal 用這個 id 記住這個 fallback 的使用者設定,不能隨版本改動。</summary>
-    private const string FallbackId = "Notelet.QuickCapture";
-
     public QuickCaptureFallbackItem(QuickCaptureCommand command, NoteletOptions options)
-        : base(command, "記下想法", FallbackId)
+        : base(command, "記下想法", CommandIds.QuickCapture)
     {
         _command = command;
         _options = options;

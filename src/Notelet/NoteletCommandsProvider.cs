@@ -15,6 +15,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
 
     public NoteletCommandsProvider()
     {
+        Id = CommandIds.Provider;
         DisplayName = "Notelet";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
 
