@@ -45,6 +45,9 @@ internal static class Icons
     /// <summary>Delete — 把筆記送進資源回收筒。</summary>
     public static IconInfo Delete => Glyph(0xE74D);
 
+    /// <summary>Paste — 內文取自剪貼簿。</summary>
+    public static IconInfo Paste => Glyph(0xE77F);
+
     /// <summary>Code — 詳細窗格切換成原始文字。</summary>
     public static IconInfo Source => Glyph(0xE943);
 

@@ -277,6 +277,14 @@ alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 
 只打了 `;;` 還沒打內文不影響,存的就是標題。
 
+### 貼上多行內容
+
+CmdPal 的搜尋框是單行 `TextBox`,往裡面貼一段多行的 Markdown **只有第一行進得來**,
+其餘的無聲消失。那是 CmdPal 的控件,擴展改不了。
+
+所以快速記下頁在偵測到剪貼簿是多行文字時,會多給一列「內文取自剪貼簿(N 行)」——
+標題還是用打的,內文直接讀剪貼簿原文,換行、縮排、程式碼區塊通通留著,完全不經過搜尋框。
+
 ### 確認框的預設按鈕是反過來的
 
 `ConfirmationArgs.IsPrimaryCommandCritical` 聽起來像「把按鈕標成危險色」,但 CmdPal 拿它做的
@@ -354,7 +362,7 @@ src/
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
     RecycleBinFileDeleter  SHFileOperationW,把筆記送進資源回收筒
-    Pages/            快速記下、清單、預覽、編輯、新增
+    Pages/            快速記下、清單、預覽、編輯、新增、設定
 tests/
   Notelet.Core.Tests/  xUnit
 tools/

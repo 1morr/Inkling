@@ -106,7 +106,12 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
             return [];
         }
 
-        var items = new List<IListItem>(MaxSimilarNotes + 1) { CreateCaptureItem(draft) };
+        var items = new List<IListItem>(MaxSimilarNotes + 2) { CreateCaptureItem(draft) };
+
+        if (CreateClipboardItem(draft) is { } fromClipboard)
+        {
+            items.Add(fromClipboard);
+        }
 
         // 用標題而不是整句原始輸入去比對:分號後面的內文可能很長,
         // 拿它一起去搜只會讓命中率降到零,提醒就失效了。
@@ -135,6 +140,62 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
             Icon = Icons.Add,
             Section = CaptureSection,
         };
+    }
+
+    /// <summary>
+    /// 「內文取自剪貼簿」那一列。剪貼簿不是多行文字時回傳 null,不佔位子。
+    ///
+    /// 為什麼需要它:CmdPal 的搜尋框是單行 <c>TextBox</c>(<c>SearchBar.xaml</c> 沒有
+    /// <c>AcceptsReturn</c>),往裡面貼一段多行的 Markdown,**只有第一行進得來**,
+    /// 其餘的無聲消失。那是 CmdPal 的控件,我們改不了。
+    ///
+    /// 但剪貼簿本身是完整的 —— 繞過搜尋框直接讀它就行:標題還是用打的,
+    /// 內文取原文,換行、縮排、程式碼區塊通通留著。
+    /// </summary>
+    private ListItem? CreateClipboardItem(QuickCaptureDraft draft)
+    {
+        var clipboard = TryGetClipboardText();
+
+        // 只在真的多行時才出現。單行的話搜尋框自己貼得進去,多這一列只是噪音。
+        if (clipboard is null || !clipboard.Contains('\n', StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var text = clipboard.ReplaceLineEndings().TrimEnd();
+        var lineCount = text.Split(Environment.NewLine).Length;
+
+        var command = new QuickCaptureCommand(_repository)
+        {
+            Draft = draft with { Body = text },
+        };
+
+        return new ListItem(command)
+        {
+            Title = $"記下:{draft.Title}",
+            Subtitle = $"內文取自剪貼簿({lineCount} 行) —— 搜尋框只吃得下第一行",
+            Icon = Icons.Paste,
+            Section = CaptureSection,
+        };
+    }
+
+    /// <summary>
+    /// 讀剪貼簿。讀不到就當作沒有 —— 剪貼簿隨時可能被別的程式佔住,
+    /// 那不是使用者做錯什麼,不該讓整個頁面炸掉或跳錯誤。
+    /// </summary>
+    private static string? TryGetClipboardText()
+    {
+        try
+        {
+            var text = ClipboardHelper.GetText();
+
+            return string.IsNullOrWhiteSpace(text) ? null : text;
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLog.Write($"TryGetClipboardText 失敗:{ex.Message}");
+            return null;
+        }
     }
 
     private ListItem CreateSimilarItem(Note note) => new(new NotePreviewPage(_repository, note))
