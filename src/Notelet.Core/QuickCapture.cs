@@ -22,31 +22,37 @@ public sealed record QuickCaptureDraft(string Title, string Body);
 public static class QuickCapture
 {
     /// <summary>
-    /// 算得上分隔符的字元。要**連續兩個**才會切(見 <see cref="IndexOfSeparator"/>)。
+    /// 沒有設定時用的分隔符。
     ///
-    /// 全形分號也算數:中文輸入法打出來的就是它,要人為了分隔符特地切回半形太荒謬。
-    /// 半形全形還可以混著用(「;；」也切) —— 中英切換的當下打出哪一個並不受控,
-    /// 為了這種事讓一則筆記存錯太不值得。
+    /// 為什麼是兩個半形分號:`;` 在 home row 上,右手小指原位,不用按 Shift,連打兩下最快;
+    /// 而**連續兩個**分號在自然語句裡幾乎不出現,所以標題可以自由使用單一個分號
+    /// (`for (var i = 0; i < 10; i++)`、中文句子的頓隔)。要求連打兩次,誤觸的成本就沒了。
+    ///
+    /// 唯一真的會撞到的是 C 系的無限迴圈寫法 `for (;;)` —— 常寫那種筆記的人可以在設定裡
+    /// 換成 `,,`(碰撞更少,鍵位一樣不用 Shift)。設定欄位的說明就是這樣寫的。
     /// </summary>
-    private static readonly char[] SeparatorChars = [';', '；'];
+    public const string DefaultSeparator = ";;";
 
     /// <summary>
     /// 從一段已經確定是「要記下來」的文字裡切出標題與內文,不做任何前綴判斷。
-    /// 回傳 null 代表這段文字還構不成一則筆記(空白、或只有分號後面的內文)。
+    /// 回傳 null 代表這段文字還構不成一則筆記(空白、或只有分隔符後面的內文)。
     /// </summary>
-    public static QuickCaptureDraft? Split(string? text)
+    /// <param name="separator">
+    /// 使用者自訂的分隔符;null / 空白代表用 <see cref="DefaultSeparator"/>。
+    /// 比對時半形全形視為同一個字,見 <see cref="Fold"/>。
+    /// </param>
+    public static QuickCaptureDraft? Split(string? text, string? separator = null)
     {
         if (string.IsNullOrEmpty(text))
         {
             return null;
         }
 
-        var separator = IndexOfSeparator(text);
+        var marker = NormalizeSeparator(separator);
+        var index = IndexOfSeparator(text, marker);
 
-        var title = (separator < 0 ? text : text[..separator]).Trim();
-
-        // 分隔符是兩個字元,所以內文從 +2 開始。
-        var body = separator < 0 ? string.Empty : text[(separator + 2)..].Trim();
+        var title = (index < 0 ? text : text[..index]).Trim();
+        var body = index < 0 ? string.Empty : text[(index + marker.Length)..].Trim();
 
         // 沒有標題就沒有筆記 —— 只打了分隔符跟內文(「;;內容」)也不觸發,
         // 那多半是還在打字的中間狀態,不是使用者的意圖。
@@ -54,18 +60,28 @@ public static class QuickCapture
     }
 
     /// <summary>
-    /// 找出第一組連續兩個分號的位置,沒有就回傳 -1。
+    /// 把設定裡讀到的分隔符整理成真正拿去比對的那一個。設定頁存檔前也走這裡,
+    /// 所以輸入框裡顯示的永遠就是實際生效的值。
     ///
-    /// 為什麼要兩個而不是一個:單一個分號在筆記標題裡太常見了(程式碼、清單、
-    /// 中文句子裡的頓隔),要求連打兩次才切,標題就能自由使用分號 ——
-    /// 一個人不會無意間打出兩個相連的分號。
+    /// 為什麼要 <c>Trim</c>:這個值是從 Adaptive Cards 的單行輸入框來的,而尾隨空白
+    /// 在那種框裡**完全看不見**。複製貼上多帶一個空格,分隔符就從此再也切不動,
+    /// 而使用者盯著設定頁只會看到一個長得完全正確的值 —— 這種無聲失效比「不支援
+    /// 前後帶空白的分隔符」糟糕得多。真想要「前後有空格」的效果,標題與內文本來就會
+    /// 各自 <c>Trim</c> 一次,加不加空白沒有差別。
     /// </summary>
-    private static int IndexOfSeparator(string text)
+    public static string NormalizeSeparator(string? separator)
     {
-        for (var i = 0; i + 1 < text.Length; i++)
+        var trimmed = separator?.Trim() ?? string.Empty;
+
+        return trimmed.Length == 0 ? DefaultSeparator : trimmed;
+    }
+
+    /// <summary>找出第一組分隔符的位置,沒有就回傳 -1。</summary>
+    private static int IndexOfSeparator(string text, string separator)
+    {
+        for (var i = 0; i + separator.Length <= text.Length; i++)
         {
-            if (Array.IndexOf(SeparatorChars, text[i]) >= 0
-                && Array.IndexOf(SeparatorChars, text[i + 1]) >= 0)
+            if (MatchesAt(text, i, separator))
             {
                 return i;
             }
@@ -73,4 +89,38 @@ public static class QuickCapture
 
         return -1;
     }
+
+    private static bool MatchesAt(string text, int start, string separator)
+    {
+        for (var offset = 0; offset < separator.Length; offset++)
+        {
+            if (Fold(text[start + offset]) != Fold(separator[offset]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 把全形 ASCII 折回半形,好讓 <c>;;</c> 與 <c>；；</c>、<c>;；</c> 算同一個分隔符。
+    ///
+    /// 中文輸入法打出來的就是全形,而中英切換的當下打出哪一個並不受控 ——
+    /// 為了這種事讓一則筆記存錯太不值得。設定欄位那一頭也走同一個折算,
+    /// 所以使用者在設定裡填 <c>；；</c>、打字時打 <c>;;</c> 一樣切得開。
+    ///
+    /// 這個對照是**逐字元、長度不變**的(全形 ASCII U+FF01–U+FF5E 與半形一一對應,
+    /// 差值固定 0xFEE0),所以折算後的索引可以直接拿去切原字串,不必另外換算位置。
+    /// 沒有半形對應的中文標點(<c>、</c> <c>。</c>)不在範圍內,填那些就只認它自己。
+    ///
+    /// 碼位寫成數字而不是字面字元:全形標點在等寬字型裡跟半形難以分辨,而全形空白根本
+    /// 看不見 —— 跟 <c>Icons.cs</c> 不用 <c>\uXXXX</c> 是同一類理由,那種字元經不起
+    /// 文字處理工具轉手。
+    /// </summary>
+    private static char Fold(char c) => c switch
+    {
+        >= (char)0xFF01 and <= (char)0xFF5E => (char)(c - 0xFEE0),
+        _ => c,
+    };
 }

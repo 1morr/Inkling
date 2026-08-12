@@ -13,7 +13,7 @@ namespace Notelet;
 /// 跟其他擴展的做法一致。CmdPal 自己那份設定(啟用與否、alias、快速鍵、fallback 的顯示規則)
 /// 則存在 CmdPal 的套件底下,由 CmdPal 管理,擴展碰不到。
 /// </summary>
-internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWidthStore
+internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWidthStore, ICaptureSeparatorStore
 {
     private const string SettingsNamespace = "Notelet";
 
@@ -26,6 +26,18 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         "筆記資料夾",
         "放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Notelet 自己不做同步。",
         NoteletOptions.DefaultNotesDirectory());
+
+    private readonly TextSetting _captureSeparator = new(
+        Namespaced(nameof(CaptureSeparator)),
+        "快速記下的分隔符",
+
+        // 這段字會原樣進 Adaptive Cards 的 TextBlock,而它只認得粗體 / 斜體 / 清單 / 連結
+        // 那幾種 markdown —— 反引號會照字面印出來,所以引用一律用「」。
+        "快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,"
+            + "而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號;"
+            + "常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。"
+            + "半形全形算同一個:設定填「;;」、打字打「；；」照樣切得開。",
+        QuickCapture.DefaultSeparator);
 
     private readonly ChoiceSetSetting _detailsWidth = new(
         Namespaced(nameof(DetailsWidth)),
@@ -42,14 +54,19 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         FilePath = SettingsJsonPath();
 
         Settings.Add(_notesDirectory);
+        Settings.Add(_captureSeparator);
         Settings.Add(_detailsWidth);
 
         LoadSettings();
-        DiagnosticLog.Write($"SettingsManager: 載入 {FilePath} 寬度={_detailsWidth.Value}");
+        DiagnosticLog.Write(
+            $"SettingsManager: 載入 {FilePath} 分隔符='{CaptureSeparator}' 寬度={_detailsWidth.Value}");
     }
 
     /// <inheritdoc />
     public event EventHandler? DetailsWidthChanged;
+
+    /// <inheritdoc />
+    public event EventHandler? CaptureSeparatorChanged;
 
     /// <summary>
     /// 設定頁送出表單之後發出(不管值有沒有真的變)。
@@ -66,23 +83,33 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     public TextSetting NotesDirectorySetting => _notesDirectory;
 
     /// <inheritdoc cref="NotesDirectorySetting" />
+    public TextSetting CaptureSeparatorSetting => _captureSeparator;
+
+    /// <inheritdoc cref="NotesDirectorySetting" />
     public ChoiceSetSetting DetailsWidthSetting => _detailsWidth;
 
     /// <summary>
     /// 表單送出(按「儲存」,或選完資料夾)之後的唯一入口:寫值、存檔、通知。
     /// </summary>
     /// <param name="notesDirectory">使用者填的路徑;空白代表回到預設資料夾。</param>
+    /// <param name="captureSeparator">快速記下的分隔符;空白代表回到預設值。</param>
     /// <param name="detailsWidth">下拉選單的值;不認得就當作沒改。</param>
-    public void Apply(string notesDirectory, string detailsWidth)
+    public void Apply(string notesDirectory, string captureSeparator, string detailsWidth)
     {
         var directory = string.IsNullOrWhiteSpace(notesDirectory)
             ? NoteletOptions.DefaultNotesDirectory()
             : notesDirectory.Trim();
 
+        // 存回去的是**整理過**的值(去空白、空的話退回預設),而不是使用者原本打的那串。
+        // 這樣設定頁下次打開時顯示的就是實際生效的分隔符,不會出現「看起來設了、其實沒生效」。
+        var separator = QuickCapture.NormalizeSeparator(captureSeparator);
+        var separatorChanged = !string.Equals(CaptureSeparator, separator, StringComparison.Ordinal);
+
         var widthChanged = _detailsWidth.Choices.Any(choice => choice.Value == detailsWidth)
             && !string.Equals(_detailsWidth.Value, detailsWidth, StringComparison.Ordinal);
 
         _notesDirectory.Value = directory;
+        _captureSeparator.Value = separator;
 
         if (widthChanged)
         {
@@ -90,12 +117,19 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         }
 
         Save("Apply");
-        DiagnosticLog.Write($"Apply: 資料夾='{directory}' 寬度={_detailsWidth.Value}");
+        DiagnosticLog.Write($"Apply: 資料夾='{directory}' 分隔符='{separator}' 寬度={_detailsWidth.Value}");
 
         // 資料夾變了就得換掉整組 repository,那是 provider 的事 —— 它自己比對舊值。
         Applied?.Invoke(this, EventArgs.Empty);
 
-        // 清單頁開著的話,詳細面板要當場跟著變 —— 見 IDetailsWidthStore 上的說明。
+        // 剩下這兩個都是「頁面自己響應」的路 —— 見 IDetailsWidthStore 上的說明。
+        // 排在 Applied 後面沒有關係:資料夾真的變了的話,provider 已經把舊頁面
+        // 連同它的訂閱一起釋放,新頁面本來就是拿新值建的。
+        if (separatorChanged)
+        {
+            CaptureSeparatorChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         if (widthChanged)
         {
             DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
@@ -124,6 +158,13 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     }
 
     public string NotesDirectory => _notesDirectory.Value ?? NoteletOptions.DefaultNotesDirectory();
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 每次都重新整理一遍,不快取:舊版的 settings.json 裡根本沒有這個鍵,而使用者也可能
+    /// 直接拿編輯器去改那個檔案。讓讀取端永遠拿到可用的值,比在載入時修一次可靠。
+    /// </remarks>
+    public string CaptureSeparator => QuickCapture.NormalizeSeparator(_captureSeparator.Value);
 
     /// <summary>
     /// 詳細窗格的寬度。清單頁按 Ctrl+D 走的是這條。

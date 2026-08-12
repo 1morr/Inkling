@@ -36,34 +36,62 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private const string SimilarSection = "已經記過的";
 
     private readonly INoteRepository _repository;
+    private readonly ICaptureSeparatorStore _separatorStore;
+
+    /// <summary>
+    /// 還沒打字時那塊提示。留著參照是為了在分隔符改掉之後就地更新它的副標 ——
+    /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
+    /// 走這條一定收得到(<c>IDetails</c> 就不行,見 <c>NoteListPage.RefreshDetails</c>)。
+    /// </summary>
+    private readonly CommandItem _emptyContent;
 
     private string _query = string.Empty;
     private IListItem[]? _items;
     private string? _itemsQuery;
+    private string? _itemsSeparator;
     private int _itemsVersion = -1;
     private bool _disposed;
 
-    public QuickCapturePage(INoteRepository repository)
+    public QuickCapturePage(INoteRepository repository, ICaptureSeparatorStore separatorStore)
     {
         _repository = repository;
+        _separatorStore = separatorStore;
+
+        var separator = separatorStore.CaptureSeparator;
 
         Id = CommandIds.QuickCapturePage;
         Icon = Icons.Add;
         Title = "Notelet:快速記下";
         Name = "開啟";
-        PlaceholderText = "打字記下想法,分號後面接內文…";
+        PlaceholderText = PlaceholderFor(separator);
 
-        EmptyContent = new CommandItem(new NoOpCommand())
+        _emptyContent = new CommandItem(new NoOpCommand())
         {
             Title = "打字就記下",
-            Subtitle = "「買咖啡機;比較過幾台」—— 分號前面是標題,後面是內文",
+            Subtitle = HintFor(separator),
             Icon = Icons.Add,
         };
+
+        EmptyContent = _emptyContent;
 
         // 別台機器經 OneDrive 同步下來、或使用者拿別的編輯器改了檔案時,
         // 底下那份「已經記過的」要跟著更新,否則提醒的是過期的內容。
         _repository.Changed += OnRepositoryChanged;
+
+        // 設定頁改了分隔符,要更新的是使用者當下開著的這一個頁面實例 ——
+        // 見 ICaptureSeparatorStore.CaptureSeparatorChanged 上的說明。
+        _separatorStore.CaptureSeparatorChanged += OnCaptureSeparatorChanged;
     }
+
+    /// <summary>
+    /// 提示裡的分隔符一律照使用者設的那個寫,不要寫死「分號」——
+    /// 換成 <c>,,</c> 之後還教人打分號,那比沒有提示更糟。
+    /// </summary>
+    private static string PlaceholderFor(string separator) => $"打字記下想法,{separator} 後面接內文…";
+
+    /// <inheritdoc cref="PlaceholderFor" />
+    private static string HintFor(string separator) =>
+        $"「買咖啡機{separator}比較過幾台」—— {separator} 前面是標題,後面是內文";
 
     public override void UpdateSearchText(string oldSearch, string newSearch)
     {
@@ -81,25 +109,31 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         // 快取的規則跟清單頁一樣:GetItems 會被頻繁呼叫,但鍵一定要帶上 repository 的
         // Version —— 只看查詢字串的話,剛記下的那則不會出現在底下的「已經記過的」裡,
         // 使用者會以為存檔沒生效,然後再記一次。
+        //
+        // 分隔符也在鍵裡面:同一句話在換掉分隔符之後切出來的標題與內文完全不同,
+        // 少了它會拿到用舊分隔符切出來的那一列。
         var version = _repository.Version;
+        var separator = _separatorStore.CaptureSeparator;
 
         if (_items is not null
             && _itemsVersion == version
-            && string.Equals(_itemsQuery, _query, StringComparison.Ordinal))
+            && string.Equals(_itemsQuery, _query, StringComparison.Ordinal)
+            && string.Equals(_itemsSeparator, separator, StringComparison.Ordinal))
         {
             return _items;
         }
 
-        _items = BuildItems(_query);
+        _items = BuildItems(_query, separator);
         _itemsQuery = _query;
+        _itemsSeparator = separator;
         _itemsVersion = version;
         return _items;
     }
 
-    private IListItem[] BuildItems(string query)
+    private IListItem[] BuildItems(string query, string separator)
     {
         // 沒有前綴判斷:能走到這一頁,使用者已經用 alias 表達過意圖了。
-        var draft = QuickCapture.Split(query);
+        var draft = QuickCapture.Split(query, separator);
 
         if (draft is null)
         {
@@ -213,6 +247,21 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         RaiseItemsChanged();
     }
 
+    /// <summary>
+    /// 設定頁改了分隔符。項目那邊靠快取鍵自己會重建(見 <see cref="GetItems"/>),
+    /// 這裡負責的是兩塊寫死在屬性上的提示文字。
+    /// </summary>
+    private void OnCaptureSeparatorChanged(object? sender, EventArgs e)
+    {
+        var separator = _separatorStore.CaptureSeparator;
+
+        PlaceholderText = PlaceholderFor(separator);
+        _emptyContent.Subtitle = HintFor(separator);
+
+        RaiseItemsChanged();
+        DiagnosticLog.Write($"QuickCapturePage.OnCaptureSeparatorChanged: 分隔符='{separator}'");
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -222,5 +271,6 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
         _disposed = true;
         _repository.Changed -= OnRepositoryChanged;
+        _separatorStore.CaptureSeparatorChanged -= OnCaptureSeparatorChanged;
     }
 }

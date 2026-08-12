@@ -108,4 +108,123 @@ public class QuickCaptureTests
         // 沒有標題就沒有筆記。
         Assert.Null(QuickCapture.Split(";;只有內文"));
     }
+
+    [Theory]
+    [InlineData(",,", "買咖啡機,,比較過幾台")]
+    [InlineData("//", "買咖啡機//比較過幾台")]
+    [InlineData("|", "買咖啡機|比較過幾台")]
+    [InlineData("->", "買咖啡機->比較過幾台")]
+    [InlineData("、、", "買咖啡機、、比較過幾台")]
+    public void UsesTheConfiguredSeparator(string separator, string text)
+    {
+        // 長度不限一個或兩個字元 —— 使用者填什麼就是什麼。
+        var draft = QuickCapture.Split(text, separator);
+
+        Assert.NotNull(draft);
+        Assert.Equal("買咖啡機", draft.Title);
+        Assert.Equal("比較過幾台", draft.Body);
+    }
+
+    [Fact]
+    public void TheDefaultSeparatorStopsWorkingOnceAnotherOneIsConfigured()
+    {
+        // 換了分隔符之後,`;;` 就只是普通文字 —— 不留舊的那一組當備援,
+        // 否則使用者永遠沒辦法把分號寫進標題,換設定就失去意義。
+        var draft = QuickCapture.Split("標題;;內文", ",,");
+
+        Assert.NotNull(draft);
+        Assert.Equal("標題;;內文", draft.Title);
+        Assert.Equal(string.Empty, draft.Body);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void FallsBackToTheDefaultSeparator(string? separator)
+    {
+        // 舊的 settings.json 沒有這個鍵,而使用者也可能把欄位清空。
+        var draft = QuickCapture.Split("標題;;內文", separator);
+
+        Assert.NotNull(draft);
+        Assert.Equal("標題", draft.Title);
+        Assert.Equal("內文", draft.Body);
+    }
+
+    [Theory]
+    [InlineData("  ;;  ")]
+    [InlineData(";;")]
+    public void SurroundingWhitespaceInTheSeparatorIsIgnored(string separator)
+    {
+        // 尾隨空白在單行輸入框裡完全看不見。不去掉的話,分隔符會無聲失效,
+        // 而使用者盯著設定頁只會看到一個長得完全正確的值。
+        var draft = QuickCapture.Split("標題;;內文", separator);
+
+        Assert.NotNull(draft);
+        Assert.Equal("標題", draft.Title);
+        Assert.Equal("內文", draft.Body);
+    }
+
+    [Theory]
+    [InlineData(",,", "買咖啡機,,比較過幾台")]
+    [InlineData(",,", "買咖啡機，，比較過幾台")]
+    [InlineData("，，", "買咖啡機,,比較過幾台")]
+    [InlineData("，，", "買咖啡機，，比較過幾台")]
+    [InlineData(",，", "買咖啡機，,比較過幾台")]
+    public void HalfAndFullWidthAreTheSameSeparator(string separator, string text)
+    {
+        // 設定欄位那一頭也走同一個折算:使用者用中文輸入法把設定填成全形、
+        // 打字時打出半形(或反過來)都要成立。
+        var draft = QuickCapture.Split(text, separator);
+
+        Assert.NotNull(draft);
+        Assert.Equal("買咖啡機", draft.Title);
+        Assert.Equal("比較過幾台", draft.Body);
+    }
+
+    [Fact]
+    public void FullWidthOnlyPunctuationHasNoHalfWidthTwin()
+    {
+        // 、 和 。 不在全形 ASCII 的範圍裡,沒有半形對應版本可以折算,
+        // 填那些就只認它自己 —— 這是規則的邊界,寫成測試免得哪天被「順手擴充」。
+        Assert.Equal("標題、、內文", QuickCapture.Split("標題、、內文", "``")?.Title);
+    }
+
+    [Fact]
+    public void MultiCharSeparatorSplitsOnTheFirstMatchOnly()
+    {
+        var draft = QuickCapture.Split("標題-->第一段-->第二段", "-->");
+
+        Assert.NotNull(draft);
+        Assert.Equal("標題", draft.Title);
+        Assert.Equal("第一段-->第二段", draft.Body);
+    }
+
+    [Fact]
+    public void APartialSeparatorAtTheEndIsOrdinaryText()
+    {
+        // 打到一半:分隔符只打了前半個字元。整句都還是標題,不能提早切。
+        var draft = QuickCapture.Split("標題--", "-->");
+
+        Assert.NotNull(draft);
+        Assert.Equal("標題--", draft.Title);
+        Assert.Equal(string.Empty, draft.Body);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void NormalizeSeparatorFallsBackToTheDefault(string? separator)
+    {
+        Assert.Equal(QuickCapture.DefaultSeparator, QuickCapture.NormalizeSeparator(separator));
+    }
+
+    [Fact]
+    public void NormalizeSeparatorKeepsWhatTheUserActuallyTyped()
+    {
+        // 設定頁存回去的是這個結果,所以它必須是「原樣、只去掉前後空白」。
+        Assert.Equal("->", QuickCapture.NormalizeSeparator("  ->  "));
+        Assert.Equal("，，", QuickCapture.NormalizeSeparator("，，"));
+    }
 }

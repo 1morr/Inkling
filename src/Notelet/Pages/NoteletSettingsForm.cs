@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Notelet.Core;
 
 namespace Notelet.Pages;
 
@@ -21,10 +22,14 @@ namespace Notelet.Pages;
 internal sealed partial class NoteletSettingsForm : FormContent
 {
     private const string DirectoryField = "directory";
+    private const string SeparatorField = "separator";
     private const string WidthField = "width";
 
     /// <summary>Adaptive Cards 的樣板佔位符,值由 <see cref="FormContent.DataJson"/> 填。</summary>
     private const string DirectoryBinding = "${" + DirectoryField + "}";
+
+    /// <inheritdoc cref="DirectoryBinding" />
+    private const string SeparatorBinding = "${" + SeparatorField + "}";
 
     /// <summary>
     /// 整頁共通的一句提醒。
@@ -52,11 +57,13 @@ internal sealed partial class NoteletSettingsForm : FormContent
 
         TemplateJson = BuildTemplate(settings);
 
-        // 路徑是使用者輸入的,一律經由 DataJson 帶進去。直接拼進 TemplateJson 的話,
-        // 資料夾名稱裡的 ${...} 會被樣板引擎當成佔位符解讀 —— 跟筆記內文同一個理由。
+        // 路徑與分隔符都是使用者輸入的,一律經由 DataJson 帶進去。直接拼進 TemplateJson 的話,
+        // 裡面的 ${...} 會被樣板引擎當成佔位符解讀 —— 跟筆記內文同一個理由。
+        // 分隔符尤其要小心:那個欄位本來就是拿來放標點的,`${` 打得出來。
         DataJson = new JsonObject
         {
             [DirectoryField] = settings.NotesDirectory,
+            [SeparatorField] = settings.CaptureSeparator,
         }.ToJsonString();
     }
 
@@ -70,14 +77,15 @@ internal sealed partial class NoteletSettingsForm : FormContent
         }
 
         var directory = form[DirectoryField]?.ToString() ?? string.Empty;
+        var separator = form[SeparatorField]?.ToString() ?? string.Empty;
         var width = form[WidthField]?.ToString() ?? string.Empty;
 
         if (ActionOf(data) == BrowseAction)
         {
-            return Browse(directory, width);
+            return Browse(directory, separator, width);
         }
 
-        _settings.Apply(directory, width);
+        _settings.Apply(directory, separator, width);
         new ToastStatusMessage("設定已儲存").Show();
 
         return CommandResult.GoHome();
@@ -101,7 +109,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
         }
     }
 
-    private CommandResult Browse(string directory, string width)
+    private CommandResult Browse(string directory, string separator, string width)
     {
         var opened = FolderPicker.TryShow(
             "選擇筆記資料夾",
@@ -112,8 +120,9 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 // 就會把自己藏起來(MainWindow 的 Deactivated → HideWindow,沒有開關可以關掉),
                 // 這張表單跟著一起消失 —— 那時候還壓在表單裡的值,使用者既看不到也按不到。
                 //
-                // 寬度一起套用,因為它就是使用者按下「瀏覽…」當下卡片上顯示的值。
-                _settings.Apply(picked, width);
+                // 分隔符與寬度一起套用,因為那就是使用者按下「瀏覽…」當下卡片上顯示的值 ——
+                // 表單既然會消失,壓在上面的改動就只有這一次機會存下來。
+                _settings.Apply(picked, separator, width);
                 new ToastStatusMessage($"筆記資料夾:{picked}").Show();
 
                 _refreshPage();
@@ -135,7 +144,8 @@ internal sealed partial class NoteletSettingsForm : FormContent
     ///
     /// 下拉選單也包在 <c>ColumnSet</c> 裡,但目的相反:限寬。Adaptive Cards 的
     /// <c>Input.ChoiceSet</c> 沒有寬度屬性,不包的話「寬(1:1)」四個字會撐滿整頁 ——
-    /// 設定視窗開大的時候特別難看。分隔線把兩個設定項切開。
+    /// 設定視窗開大的時候特別難看。分隔符那一格同理,它只放得下兩三個字元,
+    /// 一個佔滿整頁的輸入框會讓人以為該填一長串。分隔線把三個設定項切開。
     ///
     /// 說明文字擺在欄位**下面**當註腳,而不是像 toolkit 那樣頂在標籤的位置。
     /// 卡片層級只留「儲存」一顆:在單行輸入框裡按 Enter 時,CmdPal 送出的是
@@ -145,6 +155,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
     private static string BuildTemplate(SettingsManager settings)
     {
         var directory = settings.NotesDirectorySetting;
+        var separator = settings.CaptureSeparatorSetting;
         var width = settings.DetailsWidthSetting;
 
         var choices = string.Join(
@@ -202,6 +213,34 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 {
                     "type": "TextBlock",
                     "text": {{Json(directory.Description)}},
+                    "wrap": true,
+                    "isSubtle": true,
+                    "size": "small",
+                    "spacing": "small"
+                },
+                {
+                    "type": "ColumnSet",
+                    "separator": true,
+                    "spacing": "large",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "180px",
+                            "items": [
+                                {
+                                    "type": "Input.Text",
+                                    "id": "{{SeparatorField}}",
+                                    "label": {{Json(separator.Label)}},
+                                    "value": "{{SeparatorBinding}}",
+                                    "placeholder": {{Json(QuickCapture.DefaultSeparator)}}
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "text": {{Json(separator.Description)}},
                     "wrap": true,
                     "isSubtle": true,
                     "size": "small",

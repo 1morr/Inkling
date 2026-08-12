@@ -51,8 +51,11 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 
 **其他設定不能靠重建生效。** CmdPal 手上握著的是使用者當下開著的那個頁面實例,
 新建的頁面它不會去拿(實測 log:`BuildState` 之後一次 `GetItems` 都沒有,直到 Reload)。
-硬重建反而會把還在被使用的 repository 給 Dispose 掉。這類設定要讓**現有頁面自己響應**,
-範例見 `IDetailsWidthStore.DetailsWidthChanged`。
+硬重建反而會把還在被使用的 repository 給 Dispose 掉。這類設定要讓**現有頁面自己響應**:
+`SettingsManager` 為每一項開一個窄介面 + 一個事件,由頁面自己訂閱 ——
+`IDetailsWidthStore.DetailsWidthChanged`(清單頁)與
+`ICaptureSeparatorStore.CaptureSeparatorChanged`(快速記下頁)就是這個形狀。
+頁面上快取項目的地方,快取鍵也要帶上那個設定值,否則事件收到了、拿到的還是舊結果。
 
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
 

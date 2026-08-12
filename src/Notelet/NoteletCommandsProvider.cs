@@ -61,7 +61,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         // 刪除走資源回收筒,不是直接抹掉 —— 筆記是手打的東西,誤刪要拿得回來。
         var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
         var listPage = new NoteListPage(repository, options, _settingsManager);
-        var capturePage = new QuickCapturePage(repository);
+        var capturePage = new QuickCapturePage(repository, _settingsManager);
         var deletePage = new DeleteAllNotesPage(repository, options, _settingsManager);
 
         ICommandItem[] commands = [
@@ -76,7 +76,9 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
             new CommandItem(capturePage)
             {
                 Title = capturePage.Title,
-                Subtitle = "打字直接存成筆記,分號後面接內文",
+                // 這裡刻意不寫「分號」:分隔符是可以改的設定,而這一列的副標沒有跟著它更新
+                // (頂層命令陣列只在資料夾變了才重建)。頁面裡的提示才會照使用者設的那個顯示。
+                Subtitle = "打字直接存成筆記,分隔符後面接內文",
                 Icon = Icons.Capture,
             },
             new CommandItem(new NewNotePage(repository))
