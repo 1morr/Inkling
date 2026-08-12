@@ -9,11 +9,12 @@ namespace Notelet;
 internal interface ICapturePreviewStore
 {
     /// <summary>
-    /// true 代表 Enter 記下之後進預覽頁,Ctrl+Enter 才是記完直接收起;false 兩者對調。
+    /// true 代表 Enter 記下之後停在筆記的預覽頁,再按一次 Enter 才收起;
+    /// false 是記完直接收起(toast + 關掉)。
     ///
-    /// 兩條路**永遠都在**,這個值只決定哪一條掛在 Enter 上 —— 所以改設定不會讓任何操作消失,
-    /// 只是換手。預設 false:Notelet 的賣點是「叫出來、打字、Enter」一次到底,
-    /// 多按一個 Enter 是每次都要付的成本,要不要付由使用者決定。
+    /// 同一時間**只有一條路**在:另一條不會掛到 Ctrl+Enter,也不會出現在選單裡。
+    /// 預設 false:Notelet 的賣點是「叫出來、打字、Enter」一次到底,多按一個 Enter
+    /// 是每次都要付的成本,要不要付由使用者決定。
     /// </summary>
     bool ShowCapturePreview { get; }
 

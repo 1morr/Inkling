@@ -148,24 +148,23 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 
 ### 2c. 記下後先看一眼(設定 → 記下後先看一眼)
 
-兩條路永遠都在,設定只決定哪一條掛在 Enter 上。詳細理由見 README
+同一時間只有一條路在,設定決定是哪一條。詳細理由見 README
 〈記下之後要不要先看一眼〉。
 
 設定**關閉**時(預設):
 
-- [ ] 快速記下頁打一個標題,`Ctrl+K` 打開選單 —— 除了「記下」,還有一項
-      **記下,先看一眼**
-- [ ] 按 `Ctrl+Enter`(不是 Enter):存檔之後**停在一頁 Markdown 上**,
-      看得到剛記下的標題與內文,**沒有** toast,Command Palette **沒有消失**
-- [ ] 在那一頁按 Enter → 整個 Command Palette 收起來(不是回到主搜尋框)
-- [ ] Enter 走的還是原本的路:toast「已記下」+ Command Palette 消失
+- [ ] 快速記下頁打一個標題按 Enter:toast「已記下」+ Command Palette 消失
+- [ ] `Ctrl+K` 打開選單,**只有**「記下」一項 —— 沒有另一個「先看一眼」的變體
+      (做過又拿掉的東西,回歸的話選單會多一列)
 
 設定**開啟**之後(從 CmdPal 設定 → Extensions → Notelet 勾起來存檔):
 
 - [ ] **先把快速記下頁開著**再去改設定,回到那個**還開著的**頁面(不要 Reload、不要重進):
       打字之後按 Enter,走的已經是預覽那條路 —— 項目快取的鍵有帶這個設定值,
       少了它會看到「設定改了、Enter 行為沒變」
-- [ ] `Ctrl+K` 選單裡那一項變成 **記下,直接收起**,按 `Ctrl+Enter` 走的是 toast 那條路
+- [ ] 存檔之後**停在一頁 Markdown 上**,看得到剛記下的標題與內文,
+      **沒有** toast,Command Palette **沒有消失**
+- [ ] 在那一頁按 Enter → 整個 Command Palette 收起來(不是回到主搜尋框)
 - [ ] 預覽頁上 `Ctrl+E` 進編輯表單,改完存檔回到預覽頁,**內容跟著更新**
       (CmdPal 不會因為導覽回來就重新取內容,靠的是表單回呼)
 - [ ] 預覽頁的選單裡「在預設編輯器開啟」與「複製內文」都在,而且指的是剛記下的那則

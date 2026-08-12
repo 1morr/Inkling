@@ -181,35 +181,28 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         Icons.Add);
 
     /// <summary>
-    /// 一列「記下」。存檔的路有兩條,兩條**永遠都在**,設定只決定哪一條掛在 Enter 上 ——
-    /// 另一條就落到 Ctrl+Enter(CmdPal 把 <see cref="ListItem.MoreCommands"/> 的第一個項目
-    /// 當成次要命令,見 <c>NoteListPage.CreateItem</c>)。所以改設定不會讓任何操作消失。
+    /// 一列「記下」。存檔的路有兩條,但同一時間**只掛一條** —— 設定決定是哪一條,
+    /// 另一條不會出現在 Ctrl+Enter 或選單上。
     ///
-    /// 兩條路都各自建新的命令實例,Draft 在建構時就固定下來 —— 不共用可變狀態,
-    /// 就少一個「按下 Enter 時 Draft 已經被下一次輸入改掉」的競態。
+    /// 曾經做成「兩條都在,設定只決定哪一條掛 Enter」,拿掉了:使用者不會為了看一眼
+    /// 特地去按 Ctrl+Enter,那一列留著只是讓選單多一項要讀的東西。設定就是設定。
+    ///
+    /// 命令實例每次重建,Draft 在建構時就固定下來 —— 不共用可變狀態,就少一個
+    /// 「按下 Enter 時 Draft 已經被下一次輸入改掉」的競態。
     /// (按 Enter 與更新查詢是兩次不同的跨進程呼叫,不保證在同一個執行緒。)
     /// </summary>
     private ListItem CreateCaptureItem(QuickCaptureDraft draft, bool preview, string subtitle, IconInfo icon)
     {
-        ICommand save = new QuickCaptureCommand(_repository) { Draft = draft };
-        ICommand savePreview = new CapturedNotePage(_repository, draft);
+        ICommand command = preview
+            ? new CapturedNotePage(_repository, draft)
+            : new QuickCaptureCommand(_repository) { Draft = draft };
 
-        return new ListItem(preview ? savePreview : save)
+        return new ListItem(command)
         {
             Title = $"記下:{draft.Title}",
             Subtitle = subtitle,
             Icon = icon,
             Section = CaptureSection,
-            MoreCommands = [
-                new CommandContextItem(preview ? save : savePreview)
-                {
-                    Title = preview ? "記下,直接收起" : "記下,先看一眼",
-                    Subtitle = preview
-                        ? "存好就關掉 Command Palette,不停留"
-                        : "存好之後停在筆記上,再按一次 Enter 才收起",
-                    Icon = preview ? Icons.Add : Icons.Preview,
-                },
-            ],
         };
     }
 

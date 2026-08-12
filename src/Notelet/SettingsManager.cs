@@ -44,11 +44,9 @@ internal sealed partial class SettingsManager
         Namespaced(nameof(ShowCapturePreview)),
         "記下後先看一眼",
 
-        // 這段字會原樣進 Adaptive Cards 的 TextBlock,只認得粗體 / 斜體 / 清單 / 連結
-        // 那幾種 markdown —— 引用一律用「」,理由見分隔符那一項。
-        "開著的話,Enter 記下之後會停在筆記的預覽頁,再按一次 Enter 才收起 Command Palette;"
-            + "Ctrl+Enter 則是記完直接收起。關著就是兩者對調 —— 兩條路永遠都在,這裡只決定哪一條掛在 Enter 上。"
-            + "預設關閉:多按一個 Enter 是每次記下都要付的成本,而切出來的標題與內文在按下 Enter 前就看得到了。",
+        // 說明只留「按下去會發生什麼」。取捨的理由(為什麼預設關、為什麼沒有第二條路)
+        // 屬於 README,不是設定頁 —— 那段字每次打開設定都要看一次。
+        "記下之後停在筆記上,再按一次 Enter 才收起 Command Palette。",
         false);
 
     private readonly ChoiceSetSetting _detailsWidth = new(
