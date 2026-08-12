@@ -61,7 +61,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         // 刪除走資源回收筒,不是直接抹掉 —— 筆記是手打的東西,誤刪要拿得回來。
         var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
         var listPage = new NoteListPage(repository, options, _settingsManager);
-        var capturePage = new QuickCapturePage(repository, _settingsManager);
+        var capturePage = new QuickCapturePage(repository, _settingsManager, _settingsManager);
         var deletePage = new DeleteAllNotesPage(repository, options, _settingsManager);
 
         ICommandItem[] commands = [

@@ -17,6 +17,7 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | | |
 |---|---|
 | 快速記下 | `Notelet:快速記下` 打字直接存檔;想連內文一起記就 `<標題>;;<內文>`(分隔符可以在設定裡換掉)。底下會列出標題相近的既有筆記,免得同一件事記兩遍 |
+| 記下後先看一眼 | 存好之後停在筆記上,確認沒記錯再按一次 Enter 收起。`Ctrl+Enter` 是另一條路,設定可以對調哪一條掛在 Enter 上 |
 | 新增(完整) | `Notelet:新增筆記` 開表單,可寫多行內文 |
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
@@ -306,6 +307,45 @@ alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 理由跟 `Ctrl+D` 那條路一樣,見〈詳細面板寬度〉。頂層那一列的副標刻意寫「分隔符」而不是
 「分號」—— 命令陣列只在資料夾變了才重建,它跟不上。
 
+### 記下之後要不要先看一眼
+
+預設是記完就收:存檔 → toast「已記下:標題」→ Command Palette 消失。設定裡的
+**「記下後先看一眼」**打開之後對調成:Enter 記下並停在那則筆記的完整 Markdown 上,
+再按一次 Enter 才收起 Command Palette。
+
+**兩條路永遠都在**,設定只決定哪一條掛在 Enter 上,另一條落到 `Ctrl+Enter`
+(CmdPal 把 `MoreCommands` 的第一個項目當成次要命令)。所以改設定不會讓任何操作消失,
+只是換手。預設維持「記完就收」——多按一個 Enter 是每次記下都要付的成本,而切出來的
+標題與內文在按下 Enter **之前**清單上就看得到了。
+
+實作上有三件事是被 CmdPal 逼出來的:
+
+**1. 停留就不能發 toast。** toast 是另一個會搶焦點的視窗,而 CmdPal 主視窗一失焦就把自己
+藏起來(`MainWindow_Activated` → `EndSession("LostFocus")`,沒有開關)。「記下之後
+Command Palette 整個消失」其實是 toast 造成的,不是 `GoHome()` —— 後者的語意明明白白是
+「回主頁但**保持開著**」。所以預覽這條路一個 toast 都不發,存檔失敗的訊息直接畫在頁面上。
+
+**2. `CommandResult.GoToPage` 是空殼。** SDK 有那個型別,但 CmdPal 的
+`ShellViewModel.UnsafeHandleCommandResult` 那個 switch 裡根本沒有 `GoToPage` 這個
+case —— 0.11.11762.0 沒有,連 `main` 都沒有。「存完之後叫 CmdPal 跳到某一頁」用回傳值
+做不到。唯一還通的路是讓那一列的命令**本身就是一個頁面**(CmdPal 對 `IPage` 的處理是導覽,
+不是 `Invoke`),寫檔因此發生在 `CapturedNotePage.GetContent()` 裡。
+
+「打字打到一半就存檔了」不會發生:清單項的 `CommandViewModel.InitializeProperties` 只讀
+Id / Name / Icon,不碰 `GetContent`。內容是使用者真的按下 Enter、CmdPal 建出
+`ContentPageViewModel` 時才取的。`GetContent` 本身可能被呼叫很多次(編輯完回來、
+`RaiseItemsChanged`),所以存檔那一段有一道只跑一次的旗標 —— 少了它同一則想法會存成好幾個檔。
+
+**3. 命令列要分兩次交出去。** 「編輯」「在預設編輯器開啟」都要拿到存好的 `Note`(檔案路徑、
+id)才建得出來,而 CmdPal 讀 `Commands` 的時機比 `GetContent` **早**
+(`InitializeProperties` 裡先 `BuildCommandViewModels`,後 `FetchContent`)。所以建構時只掛
+「完成」一顆,存檔成功後換掉整個 `Commands` 陣列,靠 `PropChanged` 讓 CmdPal 重讀 ——
+`IContentPage` 走的是無條件訂閱那條路,不是 `IDetails` 那種斷掉的(見〈詳細面板寬度〉)。
+
+「完成」回傳的是 `Dismiss()` 而不是 `GoHome()`:使用者記完這則想法就要回去做原本的事,
+留一個主搜尋框在畫面上只是多一次 Esc。存檔失敗時它會改成 `GoBack()` —— 剛打的那句話
+還在快速記下頁的搜尋框裡,退回去就能重試。
+
 ### 貼上多行內容
 
 CmdPal 的搜尋框是單行 `TextBox`,往裡面貼一段多行的 Markdown **只有第一行進得來**,
@@ -530,10 +570,18 @@ settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的�
 |---|---|---|
 | 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置。旁邊的「瀏覽…」會開系統的選資料夾對話框,選好就直接存 |
 | 快速記下的分隔符 | `;;` | 前面是標題、後面是內文。長度不限,半形全形算同一個,清空就回到 `;;`。改完當下開著的快速記下頁就會跟上,不必 Reload。挑選的理由與 `,,` 的建議見〈標題與內文用分隔符切開〉 |
+| 記下後先看一眼 | 關閉 | 開啟後 Enter 記下並停在筆記上、再按一次才收起,`Ctrl+Enter` 則是記完直接收起;關閉時兩者對調。兩條路永遠都在,見〈記下之後要不要先看一眼〉 |
 | 詳細面板寬度 | 窄 | 清單頁按 `Ctrl+D` 也能循環,兩邊改的是同一個值 |
 
-只有三項。快速記下沒有前綴設定 —— 它的入口(alias、全域快速鍵)由 CmdPal 那邊管,
+只有四項。快速記下沒有前綴設定 —— 它的入口(alias、全域快速鍵)由 CmdPal 那邊管,
 不在這份設定裡;進得了那一頁就代表意圖很明確,打什麼就記什麼。
+
+**手改 `settings.json` 要小心格式。** toolkit 的載入是一個沒有逐項 `try/catch` 的迴圈
+(`Settings.Update`),某一項解析失敗,例外會一路拋到 `LoadSettings` 的 `catch`,
+**排在它後面的設定項連碰都碰不到**,靜靜地退回預設值 —— 沒有任何錯誤訊息。
+最容易踩的是「記下後先看一眼」:`ToggleSetting` 存的是**字串** `"true"` / `"false"`
+(Adaptive Cards 的 `Input.Toggle` 回傳的就是字串),寫成 JSON 的 `true` 就會炸。
+所以它在 `Settings.Add` 裡刻意排最後,寫錯只影響它自己。
 
 設定存在 `%LOCALAPPDATA%\Packages\Notelet_<套件雜湊>\LocalState\settings.json`
 (`Utilities.BaseSettingsPath` 會走 MSIX 的路徑重導向),跟其他擴展的做法一致 —— 一人一份,
@@ -557,11 +605,11 @@ src/
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
-    IDetailsWidthStore / ICaptureSeparatorStore
+    IDetailsWidthStore / ICaptureSeparatorStore / ICapturePreviewStore
                       「不重建、由現有頁面自己響應」的那幾個設定的窄介面
     RecycleBinFileDeleter  SHFileOperationW,把筆記送進資源回收筒
     FolderPicker      IFileDialog + FOS_PICKFOLDERS,設定頁的「瀏覽…」
-    Pages/            快速記下、清單、預覽、編輯、新增、刪除全部、設定
+    Pages/            快速記下、記下後的預覽、清單、預覽、編輯、新增、刪除全部、設定
 tests/
   Notelet.Core.Tests/  xUnit
 tools/

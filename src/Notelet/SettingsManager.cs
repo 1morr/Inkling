@@ -13,7 +13,8 @@ namespace Notelet;
 /// 跟其他擴展的做法一致。CmdPal 自己那份設定(啟用與否、alias、快速鍵、fallback 的顯示規則)
 /// 則存在 CmdPal 的套件底下,由 CmdPal 管理,擴展碰不到。
 /// </summary>
-internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWidthStore, ICaptureSeparatorStore
+internal sealed partial class SettingsManager
+    : JsonSettingsManager, IDetailsWidthStore, ICaptureSeparatorStore, ICapturePreviewStore
 {
     private const string SettingsNamespace = "Notelet";
 
@@ -39,6 +40,17 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
             + "半形全形算同一個:設定填「;;」、打字打「；；」照樣切得開。",
         QuickCapture.DefaultSeparator);
 
+    private readonly ToggleSetting _capturePreview = new(
+        Namespaced(nameof(ShowCapturePreview)),
+        "記下後先看一眼",
+
+        // 這段字會原樣進 Adaptive Cards 的 TextBlock,只認得粗體 / 斜體 / 清單 / 連結
+        // 那幾種 markdown —— 引用一律用「」,理由見分隔符那一項。
+        "開著的話,Enter 記下之後會停在筆記的預覽頁,再按一次 Enter 才收起 Command Palette;"
+            + "Ctrl+Enter 則是記完直接收起。關著就是兩者對調 —— 兩條路永遠都在,這裡只決定哪一條掛在 Enter 上。"
+            + "預設關閉:多按一個 Enter 是每次記下都要付的成本,而切出來的標題與內文在按下 Enter 前就看得到了。",
+        false);
+
     private readonly ChoiceSetSetting _detailsWidth = new(
         Namespaced(nameof(DetailsWidth)),
         "詳細面板寬度",
@@ -53,13 +65,28 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     {
         FilePath = SettingsJsonPath();
 
+        // **這個順序就是載入順序,而載入是「一項爆掉、後面全部不載入」。**
+        //
+        // toolkit 的 Settings.Update 是一個沒有逐項 try/catch 的 foreach,例外一路拋到
+        // JsonSettingsManager.LoadSettings 的 catch —— 排在後面的設定項連碰都碰不到,
+        // 靜靜地退回預設值(實際踩過:把這個開關手動寫成 JSON 的 true,
+        // 結果詳細面板寬度從 large 變回 small,而且沒有任何錯誤訊息)。
+        //
+        // 所以 _capturePreview 刻意排最後:它是唯一的布林項,而 ToggleSetting 存的是
+        // **字串** "true" / "false"(見它的 ToState;Adaptive Cards 的 Input.Toggle
+        // 回傳的就是字串)。人手去改 settings.json 時最容易在這一項寫成 JSON 的 true ——
+        // 排最後,寫錯就只影響它自己。
+        //
+        // 我們自己畫設定卡片,所以這個順序不影響畫面上的欄位順序(那個在 NoteletSettingsForm)。
         Settings.Add(_notesDirectory);
         Settings.Add(_captureSeparator);
         Settings.Add(_detailsWidth);
+        Settings.Add(_capturePreview);
 
         LoadSettings();
         DiagnosticLog.Write(
-            $"SettingsManager: 載入 {FilePath} 分隔符='{CaptureSeparator}' 寬度={_detailsWidth.Value}");
+            $"SettingsManager: 載入 {FilePath} 分隔符='{CaptureSeparator}' "
+                + $"記下後預覽={ShowCapturePreview} 寬度={_detailsWidth.Value}");
     }
 
     /// <inheritdoc />
@@ -67,6 +94,9 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
 
     /// <inheritdoc />
     public event EventHandler? CaptureSeparatorChanged;
+
+    /// <inheritdoc />
+    public event EventHandler? CapturePreviewChanged;
 
     /// <summary>
     /// 設定頁送出表單之後發出(不管值有沒有真的變)。
@@ -86,6 +116,9 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     public TextSetting CaptureSeparatorSetting => _captureSeparator;
 
     /// <inheritdoc cref="NotesDirectorySetting" />
+    public ToggleSetting CapturePreviewSetting => _capturePreview;
+
+    /// <inheritdoc cref="NotesDirectorySetting" />
     public ChoiceSetSetting DetailsWidthSetting => _detailsWidth;
 
     /// <summary>
@@ -93,8 +126,13 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     /// </summary>
     /// <param name="notesDirectory">使用者填的路徑;空白代表回到預設資料夾。</param>
     /// <param name="captureSeparator">快速記下的分隔符;空白代表回到預設值。</param>
+    /// <param name="showCapturePreview">記下之後要不要停在預覽頁。</param>
     /// <param name="detailsWidth">下拉選單的值;不認得就當作沒改。</param>
-    public void Apply(string notesDirectory, string captureSeparator, string detailsWidth)
+    public void Apply(
+        string notesDirectory,
+        string captureSeparator,
+        bool showCapturePreview,
+        string detailsWidth)
     {
         var directory = string.IsNullOrWhiteSpace(notesDirectory)
             ? NoteletOptions.DefaultNotesDirectory()
@@ -105,11 +143,14 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         var separator = QuickCapture.NormalizeSeparator(captureSeparator);
         var separatorChanged = !string.Equals(CaptureSeparator, separator, StringComparison.Ordinal);
 
+        var previewChanged = ShowCapturePreview != showCapturePreview;
+
         var widthChanged = _detailsWidth.Choices.Any(choice => choice.Value == detailsWidth)
             && !string.Equals(_detailsWidth.Value, detailsWidth, StringComparison.Ordinal);
 
         _notesDirectory.Value = directory;
         _captureSeparator.Value = separator;
+        _capturePreview.Value = showCapturePreview;
 
         if (widthChanged)
         {
@@ -117,17 +158,24 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
         }
 
         Save("Apply");
-        DiagnosticLog.Write($"Apply: 資料夾='{directory}' 分隔符='{separator}' 寬度={_detailsWidth.Value}");
+        DiagnosticLog.Write(
+            $"Apply: 資料夾='{directory}' 分隔符='{separator}' "
+                + $"記下後預覽={showCapturePreview} 寬度={_detailsWidth.Value}");
 
         // 資料夾變了就得換掉整組 repository,那是 provider 的事 —— 它自己比對舊值。
         Applied?.Invoke(this, EventArgs.Empty);
 
-        // 剩下這兩個都是「頁面自己響應」的路 —— 見 IDetailsWidthStore 上的說明。
+        // 剩下這幾個都是「頁面自己響應」的路 —— 見 IDetailsWidthStore 上的說明。
         // 排在 Applied 後面沒有關係:資料夾真的變了的話,provider 已經把舊頁面
         // 連同它的訂閱一起釋放,新頁面本來就是拿新值建的。
         if (separatorChanged)
         {
             CaptureSeparatorChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (previewChanged)
+        {
+            CapturePreviewChanged?.Invoke(this, EventArgs.Empty);
         }
 
         if (widthChanged)
@@ -165,6 +213,9 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     /// 直接拿編輯器去改那個檔案。讓讀取端永遠拿到可用的值,比在載入時修一次可靠。
     /// </remarks>
     public string CaptureSeparator => QuickCapture.NormalizeSeparator(_captureSeparator.Value);
+
+    /// <inheritdoc />
+    public bool ShowCapturePreview => _capturePreview.Value;
 
     /// <summary>
     /// 詳細窗格的寬度。清單頁按 Ctrl+D 走的是這條。

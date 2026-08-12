@@ -53,8 +53,9 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 新建的頁面它不會去拿(實測 log:`BuildState` 之後一次 `GetItems` 都沒有,直到 Reload)。
 硬重建反而會把還在被使用的 repository 給 Dispose 掉。這類設定要讓**現有頁面自己響應**:
 `SettingsManager` 為每一項開一個窄介面 + 一個事件,由頁面自己訂閱 ——
-`IDetailsWidthStore.DetailsWidthChanged`(清單頁)與
-`ICaptureSeparatorStore.CaptureSeparatorChanged`(快速記下頁)就是這個形狀。
+`IDetailsWidthStore.DetailsWidthChanged`(清單頁)、
+`ICaptureSeparatorStore.CaptureSeparatorChanged` 與
+`ICapturePreviewStore.CapturePreviewChanged`(快速記下頁)就是這個形狀。
 頁面上快取項目的地方,快取鍵也要帶上那個設定值,否則事件收到了、拿到的還是舊結果。
 
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
@@ -114,7 +115,20 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    套件那張空白佔位圖)—— 也因此**沒有工作列按鈕當退路**,拉前景壞掉就等於對話框消失。
    另外 CmdPal 主視窗一失焦就自己隱藏(沒有開關),所以對話框選完的結果要**當場存**,
    不能指望使用者回到表單再按儲存。
-8. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
+8. **想讓使用者「做完之後留在畫面上看」,就一個 toast 都不能發。** toast 是另一個會搶焦點的
+   視窗,而主視窗一失焦就自我隱藏(第 7 條那個機制)—— 快速記下之後「CmdPal 整個消失」的
+   成因是 toast,不是 `GoHome()`,後者的語意明明白白是「回主頁但保持開著」。
+   而**導頁也不能靠回傳值**:`CommandResult.GoToPage` 是空殼,SDK 有型別但
+   `ShellViewModel.UnsafeHandleCommandResult` 的 switch 裡沒有那個 case(安裝版沒有,
+   `main` 也沒有)。唯一還通的路是讓那一列的命令**本身就是一個 `IPage`** ——
+   CmdPal 對頁面的處理是導覽而不是 `Invoke`,副作用因此得寫在 `GetContent()` 裡
+   (`CapturedNotePage` 就是這個形狀)。三件事跟著來:`GetContent` **會被呼叫很多次**,
+   副作用要自己上一次性旗標;CmdPal 讀 `Commands` 的時機**比 `GetContent` 早**
+   (`InitializeProperties` 先 `BuildCommandViewModels` 後 `FetchContent`),要在存檔後
+   才建得出來的命令只能換掉整個陣列、靠 `PropChanged` 讓它重讀;而清單項本身
+   **不會**觸發 `GetContent`(`CommandViewModel.InitializeProperties` 只讀 Id / Name / Icon),
+   所以「打字打到一半就存檔」不會發生。細節見 README〈記下之後要不要先看一眼〉。
+9. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
    trimming 只在 `dotnet publish` 生效,所以 trimming 相關的問題只有 Release 部署才驗得到。
    `[GeneratedComInterface]`(shell 的 COM 介面)需要 `AllowUnsafeBlocks`,
    而且**方法的宣告順序就是 vtable 順序** —— 排錯不會有編譯錯誤,只會呼叫到別的函式。

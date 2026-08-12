@@ -37,6 +37,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
     private readonly INoteRepository _repository;
     private readonly ICaptureSeparatorStore _separatorStore;
+    private readonly ICapturePreviewStore _previewStore;
 
     /// <summary>
     /// 還沒打字時那塊提示。留著參照是為了在分隔符改掉之後就地更新它的副標 ——
@@ -49,13 +50,18 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private IListItem[]? _items;
     private string? _itemsQuery;
     private string? _itemsSeparator;
+    private bool _itemsPreview;
     private int _itemsVersion = -1;
     private bool _disposed;
 
-    public QuickCapturePage(INoteRepository repository, ICaptureSeparatorStore separatorStore)
+    public QuickCapturePage(
+        INoteRepository repository,
+        ICaptureSeparatorStore separatorStore,
+        ICapturePreviewStore previewStore)
     {
         _repository = repository;
         _separatorStore = separatorStore;
+        _previewStore = previewStore;
 
         var separator = separatorStore.CaptureSeparator;
 
@@ -81,6 +87,9 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         // 設定頁改了分隔符,要更新的是使用者當下開著的這一個頁面實例 ——
         // 見 ICaptureSeparatorStore.CaptureSeparatorChanged 上的說明。
         _separatorStore.CaptureSeparatorChanged += OnCaptureSeparatorChanged;
+
+        // 「記下後先看一眼」同理:它決定的是每一列上 Enter 與 Ctrl+Enter 各掛哪一條命令。
+        _previewStore.CapturePreviewChanged += OnCapturePreviewChanged;
     }
 
     /// <summary>
@@ -111,26 +120,30 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         // 使用者會以為存檔沒生效,然後再記一次。
         //
         // 分隔符也在鍵裡面:同一句話在換掉分隔符之後切出來的標題與內文完全不同,
-        // 少了它會拿到用舊分隔符切出來的那一列。
+        // 少了它會拿到用舊分隔符切出來的那一列。「記下後先看一眼」同理 ——
+        // 它換的是每一列上 Enter 掛哪一條命令,快取沒帶到就等於設定改了卻沒生效。
         var version = _repository.Version;
         var separator = _separatorStore.CaptureSeparator;
+        var preview = _previewStore.ShowCapturePreview;
 
         if (_items is not null
             && _itemsVersion == version
             && string.Equals(_itemsQuery, _query, StringComparison.Ordinal)
-            && string.Equals(_itemsSeparator, separator, StringComparison.Ordinal))
+            && string.Equals(_itemsSeparator, separator, StringComparison.Ordinal)
+            && _itemsPreview == preview)
         {
             return _items;
         }
 
-        _items = BuildItems(_query, separator);
+        _items = BuildItems(_query, separator, preview);
         _itemsQuery = _query;
         _itemsSeparator = separator;
+        _itemsPreview = preview;
         _itemsVersion = version;
         return _items;
     }
 
-    private IListItem[] BuildItems(string query, string separator)
+    private IListItem[] BuildItems(string query, string separator, bool preview)
     {
         // 沒有前綴判斷:能走到這一頁,使用者已經用 alias 表達過意圖了。
         var draft = QuickCapture.Split(query, separator);
@@ -141,9 +154,9 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
             return [];
         }
 
-        var items = new List<IListItem>(MaxSimilarNotes + 2) { CreateCaptureItem(draft) };
+        var items = new List<IListItem>(MaxSimilarNotes + 2) { CreateCaptureItem(draft, preview) };
 
-        if (CreateClipboardItem(draft) is { } fromClipboard)
+        if (CreateClipboardItem(draft, preview) is { } fromClipboard)
         {
             items.Add(fromClipboard);
         }
@@ -161,19 +174,42 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         return [.. items];
     }
 
-    private ListItem CreateCaptureItem(QuickCaptureDraft draft)
-    {
-        // 每次重建一個新的命令實例,Draft 在建構時就固定下來 —— 不共用可變狀態,
-        // 就少一個「按下 Enter 時 Draft 已經被下一次輸入改掉」的競態。
-        // (按 Enter 與更新查詢是兩次不同的跨進程呼叫,不保證在同一個執行緒。)
-        var command = new QuickCaptureCommand(_repository) { Draft = draft };
+    private ListItem CreateCaptureItem(QuickCaptureDraft draft, bool preview) => CreateCaptureItem(
+        draft,
+        preview,
+        draft.Body.Length == 0 ? "存成新筆記" : $"內文:{draft.Body}",
+        Icons.Add);
 
-        return new ListItem(command)
+    /// <summary>
+    /// 一列「記下」。存檔的路有兩條,兩條**永遠都在**,設定只決定哪一條掛在 Enter 上 ——
+    /// 另一條就落到 Ctrl+Enter(CmdPal 把 <see cref="ListItem.MoreCommands"/> 的第一個項目
+    /// 當成次要命令,見 <c>NoteListPage.CreateItem</c>)。所以改設定不會讓任何操作消失。
+    ///
+    /// 兩條路都各自建新的命令實例,Draft 在建構時就固定下來 —— 不共用可變狀態,
+    /// 就少一個「按下 Enter 時 Draft 已經被下一次輸入改掉」的競態。
+    /// (按 Enter 與更新查詢是兩次不同的跨進程呼叫,不保證在同一個執行緒。)
+    /// </summary>
+    private ListItem CreateCaptureItem(QuickCaptureDraft draft, bool preview, string subtitle, IconInfo icon)
+    {
+        ICommand save = new QuickCaptureCommand(_repository) { Draft = draft };
+        ICommand savePreview = new CapturedNotePage(_repository, draft);
+
+        return new ListItem(preview ? savePreview : save)
         {
             Title = $"記下:{draft.Title}",
-            Subtitle = draft.Body.Length == 0 ? "存成新筆記" : $"內文:{draft.Body}",
-            Icon = Icons.Add,
+            Subtitle = subtitle,
+            Icon = icon,
             Section = CaptureSection,
+            MoreCommands = [
+                new CommandContextItem(preview ? save : savePreview)
+                {
+                    Title = preview ? "記下,直接收起" : "記下,先看一眼",
+                    Subtitle = preview
+                        ? "存好就關掉 Command Palette,不停留"
+                        : "存好之後停在筆記上,再按一次 Enter 才收起",
+                    Icon = preview ? Icons.Add : Icons.Preview,
+                },
+            ],
         };
     }
 
@@ -187,7 +223,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     /// 但剪貼簿本身是完整的 —— 繞過搜尋框直接讀它就行:標題還是用打的,
     /// 內文取原文,換行、縮排、程式碼區塊通通留著。
     /// </summary>
-    private ListItem? CreateClipboardItem(QuickCaptureDraft draft)
+    private ListItem? CreateClipboardItem(QuickCaptureDraft draft, bool preview)
     {
         var clipboard = TryGetClipboardText();
 
@@ -200,18 +236,11 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         var text = clipboard.ReplaceLineEndings().TrimEnd();
         var lineCount = text.Split(Environment.NewLine).Length;
 
-        var command = new QuickCaptureCommand(_repository)
-        {
-            Draft = draft with { Body = text },
-        };
-
-        return new ListItem(command)
-        {
-            Title = $"記下:{draft.Title}",
-            Subtitle = $"內文取自剪貼簿({lineCount} 行) —— 搜尋框只吃得下第一行",
-            Icon = Icons.Paste,
-            Section = CaptureSection,
-        };
+        return CreateCaptureItem(
+            draft with { Body = text },
+            preview,
+            $"內文取自剪貼簿({lineCount} 行) —— 搜尋框只吃得下第一行",
+            Icons.Paste);
     }
 
     /// <summary>
@@ -262,6 +291,17 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         DiagnosticLog.Write($"QuickCapturePage.OnCaptureSeparatorChanged: 分隔符='{separator}'");
     }
 
+    /// <summary>
+    /// 設定頁改了「記下後先看一眼」。項目那邊靠快取鍵自己會重建(見 <see cref="GetItems"/>),
+    /// 這裡只負責催 CmdPal 立刻來拿 —— 使用者剛按完儲存,不該還要退出去再進來一次。
+    /// </summary>
+    private void OnCapturePreviewChanged(object? sender, EventArgs e)
+    {
+        RaiseItemsChanged();
+        DiagnosticLog.Write(
+            $"QuickCapturePage.OnCapturePreviewChanged: 記下後預覽={_previewStore.ShowCapturePreview}");
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -272,5 +312,6 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         _disposed = true;
         _repository.Changed -= OnRepositoryChanged;
         _separatorStore.CaptureSeparatorChanged -= OnCaptureSeparatorChanged;
+        _previewStore.CapturePreviewChanged -= OnCapturePreviewChanged;
     }
 }

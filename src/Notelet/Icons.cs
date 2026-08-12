@@ -65,5 +65,8 @@ internal static class Icons
     /// <summary>Settings — 設定頁。跟 CmdPal 自己的設定圖示同一個碼位。</summary>
     public static IconInfo Settings => Glyph(0xE713);
 
+    /// <summary>Accept — 看完了,收起 Command Palette。</summary>
+    public static IconInfo Done => Glyph(0xE8FB);
+
     private static IconInfo Glyph(int codepoint) => new(char.ConvertFromUtf32(codepoint));
 }

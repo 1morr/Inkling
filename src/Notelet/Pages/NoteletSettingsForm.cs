@@ -23,7 +23,20 @@ internal sealed partial class NoteletSettingsForm : FormContent
 {
     private const string DirectoryField = "directory";
     private const string SeparatorField = "separator";
+    private const string PreviewField = "preview";
     private const string WidthField = "width";
+
+    /// <summary>
+    /// <c>Input.Toggle</c> 的開 / 關值。
+    ///
+    /// 明著寫出來而不是靠 Adaptive Cards 的預設:那個控件回傳的是 <c>valueOn</c> /
+    /// <c>valueOff</c> **字串**,不是 JSON 的 <c>true</c> / <c>false</c>,
+    /// 送出那一頭的比對得跟這裡對得上。
+    /// </summary>
+    private const string ToggleOn = "true";
+
+    /// <inheritdoc cref="ToggleOn" />
+    private const string ToggleOff = "false";
 
     /// <summary>Adaptive Cards 的樣板佔位符,值由 <see cref="FormContent.DataJson"/> 填。</summary>
     private const string DirectoryBinding = "${" + DirectoryField + "}";
@@ -80,12 +93,16 @@ internal sealed partial class NoteletSettingsForm : FormContent
         var separator = form[SeparatorField]?.ToString() ?? string.Empty;
         var width = form[WidthField]?.ToString() ?? string.Empty;
 
+        // Input.Toggle 回來的是 valueOn / valueOff 那兩個字串,不是 JSON 的 true/false。
+        var preview = string.Equals(
+            form[PreviewField]?.ToString(), ToggleOn, StringComparison.OrdinalIgnoreCase);
+
         if (ActionOf(data) == BrowseAction)
         {
-            return Browse(directory, separator, width);
+            return Browse(directory, separator, preview, width);
         }
 
-        _settings.Apply(directory, separator, width);
+        _settings.Apply(directory, separator, preview, width);
         new ToastStatusMessage("設定已儲存").Show();
 
         return CommandResult.GoHome();
@@ -109,7 +126,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
         }
     }
 
-    private CommandResult Browse(string directory, string separator, string width)
+    private CommandResult Browse(string directory, string separator, bool preview, string width)
     {
         var opened = FolderPicker.TryShow(
             "選擇筆記資料夾",
@@ -120,9 +137,9 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 // 就會把自己藏起來(MainWindow 的 Deactivated → HideWindow,沒有開關可以關掉),
                 // 這張表單跟著一起消失 —— 那時候還壓在表單裡的值,使用者既看不到也按不到。
                 //
-                // 分隔符與寬度一起套用,因為那就是使用者按下「瀏覽…」當下卡片上顯示的值 ——
+                // 其他欄位一起套用,因為那就是使用者按下「瀏覽…」當下卡片上顯示的值 ——
                 // 表單既然會消失,壓在上面的改動就只有這一次機會存下來。
-                _settings.Apply(picked, separator, width);
+                _settings.Apply(picked, separator, preview, width);
                 new ToastStatusMessage($"筆記資料夾:{picked}").Show();
 
                 _refreshPage();
@@ -145,7 +162,11 @@ internal sealed partial class NoteletSettingsForm : FormContent
     /// 下拉選單也包在 <c>ColumnSet</c> 裡,但目的相反:限寬。Adaptive Cards 的
     /// <c>Input.ChoiceSet</c> 沒有寬度屬性,不包的話「寬(1:1)」四個字會撐滿整頁 ——
     /// 設定視窗開大的時候特別難看。分隔符那一格同理,它只放得下兩三個字元,
-    /// 一個佔滿整頁的輸入框會讓人以為該填一長串。分隔線把三個設定項切開。
+    /// 一個佔滿整頁的輸入框會讓人以為該填一長串。分隔線把四個設定項切開。
+    ///
+    /// 「記下後先看一眼」那個 <c>Input.Toggle</c> 不必包 <c>ColumnSet</c>:核取方塊的寬度
+    /// 本來就只有方塊加標題那麼寬,撐不開版面。它的欄位名寫在 <c>title</c> 而不是
+    /// <c>label</c> —— 那個控件的字本來就長在方塊旁邊,再加一個 label 會變成同一句話印兩次。
     ///
     /// 說明文字擺在欄位**下面**當註腳,而不是像 toolkit 那樣頂在標籤的位置。
     /// 卡片層級只留「儲存」一顆:在單行輸入框裡按 Enter 時,CmdPal 送出的是
@@ -156,6 +177,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
     {
         var directory = settings.NotesDirectorySetting;
         var separator = settings.CaptureSeparatorSetting;
+        var preview = settings.CapturePreviewSetting;
         var width = settings.DetailsWidthSetting;
 
         var choices = string.Join(
@@ -241,6 +263,24 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 {
                     "type": "TextBlock",
                     "text": {{Json(separator.Description)}},
+                    "wrap": true,
+                    "isSubtle": true,
+                    "size": "small",
+                    "spacing": "small"
+                },
+                {
+                    "type": "Input.Toggle",
+                    "id": "{{PreviewField}}",
+                    "title": {{Json(preview.Label)}},
+                    "value": "{{(preview.Value ? ToggleOn : ToggleOff)}}",
+                    "valueOn": "{{ToggleOn}}",
+                    "valueOff": "{{ToggleOff}}",
+                    "separator": true,
+                    "spacing": "large"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": {{Json(preview.Description)}},
                     "wrap": true,
                     "isSubtle": true,
                     "size": "small",

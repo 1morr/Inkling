@@ -69,7 +69,9 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
       (indirect alias 存的鍵是「alias + 空白」,所以是打完空白那一刻觸發)
 - [ ] 頁面剛進去、還沒打字時,顯示的是「打字就記下」的提示,**沒有**「記下:」那一列
 - [ ] 打 `測試想法一`,第一列出現 **記下:測試想法一**,分在「記下」那一節底下
-- [ ] 按 Enter,跳出「已記下」的 toast,**而且自動回到主頁**(不會留在快速記下頁)
+- [ ] 按 Enter,跳出「已記下」的 toast,**而且不會留在快速記下頁**
+      (toast 視窗會搶焦點,CmdPal 主視窗一失焦就把自己藏起來,所以看起來是整個收掉。
+      要改成「存完停在筆記上」見 2c)
 - [ ] `%OneDrive%\Notelet` 底下出現 `<日期>-<時間>-測試想法一.md`
 - [ ] 打開該檔案,front matter 的 `id` / `title` / `created` / `updated` / `tags` 都在,內文是空的
 - [ ] **不吵人檢查**:主搜尋框打一般查詢(`notepad`、`note about x`、`chrome`),
@@ -143,6 +145,48 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
       (曾經有 bug:命令沒有設 `Id`,CmdPal 就拿 `ProviderId + DisplayTitle + Title + Subtitle`
       算一個雜湊當 Id。標題變一個字,使用者設過的 alias / 快速鍵 / 釘選就全部對不上。
       修法是寫死 `Id`,見 `src/Notelet/CommandIds.cs`)
+
+### 2c. 記下後先看一眼(設定 → 記下後先看一眼)
+
+兩條路永遠都在,設定只決定哪一條掛在 Enter 上。詳細理由見 README
+〈記下之後要不要先看一眼〉。
+
+設定**關閉**時(預設):
+
+- [ ] 快速記下頁打一個標題,`Ctrl+K` 打開選單 —— 除了「記下」,還有一項
+      **記下,先看一眼**
+- [ ] 按 `Ctrl+Enter`(不是 Enter):存檔之後**停在一頁 Markdown 上**,
+      看得到剛記下的標題與內文,**沒有** toast,Command Palette **沒有消失**
+- [ ] 在那一頁按 Enter → 整個 Command Palette 收起來(不是回到主搜尋框)
+- [ ] Enter 走的還是原本的路:toast「已記下」+ Command Palette 消失
+
+設定**開啟**之後(從 CmdPal 設定 → Extensions → Notelet 勾起來存檔):
+
+- [ ] **先把快速記下頁開著**再去改設定,回到那個**還開著的**頁面(不要 Reload、不要重進):
+      打字之後按 Enter,走的已經是預覽那條路 —— 項目快取的鍵有帶這個設定值,
+      少了它會看到「設定改了、Enter 行為沒變」
+- [ ] `Ctrl+K` 選單裡那一項變成 **記下,直接收起**,按 `Ctrl+Enter` 走的是 toast 那條路
+- [ ] 預覽頁上 `Ctrl+E` 進編輯表單,改完存檔回到預覽頁,**內容跟著更新**
+      (CmdPal 不會因為導覽回來就重新取內容,靠的是表單回呼)
+- [ ] 預覽頁的選單裡「在預設編輯器開啟」與「複製內文」都在,而且指的是剛記下的那則
+      (這幾個命令是存檔**之後**才補上去的,靠 `PropChanged` 讓 CmdPal 重讀 ——
+      沒生效的話這一頁會只剩「完成」一顆)
+- [ ] 「內文取自剪貼簿」那一列也吃這個設定:剪貼簿放多行文字,Enter 進預覽頁,
+      看到的是**完整的多行內文**
+- [ ] **只存一次**:預覽頁上按 `Ctrl+E` 進編輯再退回來、或讓頁面重新整理,
+      資料夾裡**只有一個**檔案(存檔那一段有只跑一次的旗標,少了它會存成好幾則)
+- [ ] 存檔失敗的路(可選,把筆記資料夾設成一個不存在的磁碟機代號如 `Z:\Notelet`):
+      Enter 之後那一頁顯示 **存檔失敗** 與原因,底下還留著剛打的標題與內文,
+      按 Enter 是**回上一步**(回快速記下頁,搜尋框裡的字還在),不是收起 Command Palette
+
+設定卡片本身:
+
+- [ ] 設定頁上那一項是一個**核取方塊**,旁邊的字是「記下後先看一眼」,底下有一段淡色說明
+      (Adaptive Cards 的 `Input.Toggle`;渲染不出來的話這一項會整個不見)
+- [ ] 勾起來按儲存,再打開設定頁 —— **還是勾著的**
+- [ ] 勾著的狀態下只改資料夾按儲存 → 這個開關**沒有被還原**
+      (卡片的值是建構時烤進 `DataJson` 的,`OnSettingsApplied` 一進來就 `Refresh()`
+      正是為了這件事,見 README〈設定頁有兩個入口〉)
 
 ## 3. 瀏覽與搜索(需求 2)
 
