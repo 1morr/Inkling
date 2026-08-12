@@ -24,13 +24,13 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     private readonly TextSetting _notesDirectory = new(
         Namespaced(nameof(NotesDirectory)),
         "筆記資料夾",
-        "存放 Markdown 檔的資料夾。放在 OneDrive 之類的雲端硬碟底下,多端同步就完全交給它處理,Notelet 本身不做同步。",
+        "放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Notelet 自己不做同步。",
         NoteletOptions.DefaultNotesDirectory());
 
     private readonly ChoiceSetSetting _detailsWidth = new(
         Namespaced(nameof(DetailsWidth)),
         "詳細面板寬度",
-        "清單頁右邊那塊佔多寬。清單頁按 Ctrl+D 可以直接循環,選好的檔位會存回這裡。",
+        "清單頁右邊那塊佔多寬。清單頁按 Ctrl+D 可以直接循環,選好的檔位存回這裡。",
         [
             new ChoiceSetSetting.Choice("窄(清單:詳情 = 3:1)", NarrowWidth),
             new ChoiceSetSetting.Choice("中(2:1)", MediumWidth),

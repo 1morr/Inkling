@@ -206,10 +206,9 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
       設定頁的下拉選單仍然跟著變
       (壞掉時的症狀:每按一次 Ctrl+D,背景的設定視窗就跳到前面來。
       `ContentFormControl` 載入後會自動聚焦,而我們每次都得叫它重讀表單 = 重建 + Loaded。
-      靠表單底下那行註腳讓 `OnlyControlOnPage` 變成 false 才擋掉 ——
-      **那行字是承重牆,不要當成多餘的文案刪掉**,見 README)
-- [ ] 設定頁的表單底下看得到那行註腳,排版正常
-      (內容不要跟欄位自己的說明重複 —— 那些印在欄位底下)
+      靠表單後面那塊空白內容讓 `OnlyControlOnPage` 變成 false 才擋掉 ——
+      **那塊空白是承重牆,不要當成忘了刪的東西清掉**,見 README)
+- [ ] 設定頁上看不到多餘的空白區塊,說明文字全部貼在自己的欄位底下
 - [ ] 對照組:`Notelet:新增筆記` 的表單**游標仍然自動落在標題框**(它只有一塊內容,不受影響)
 
 ## 6. Markdown 預覽(需求 3)

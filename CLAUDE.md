@@ -83,9 +83,10 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    所以我們自己實作了 `ICommandSettings`(見 `NoteletCommandSettings`),把
    `NoteletSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
    **不能跟著 `ProviderState` 重建**:CmdPal 在 provider 剛連上時就把 `Settings` 讀走了。
-   設定頁表單底下那行註腳也**不能刪** —— `ContentFormControl` 只在自己是頁面上唯一的
-   控件時才自動聚焦,多那一塊內容才擋得住「每按一次 Ctrl+D,背景的設定視窗就跳到前面」
-   (內容與位置可以改,但別重複欄位自己的說明)。表單本身也不是 toolkit 的 `Settings.ToContent()`
+   設定頁表單後面那塊**空的** `MarkdownContent` 也不能刪 —— `ContentFormControl` 只在
+   自己是頁面上唯一的控件時才自動聚焦,湊滿兩塊內容才擋得住「每按一次 Ctrl+D,
+   背景的設定視窗就跳到前面」。說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
+   而且區塊之間有 32px 收不掉的間距),那一塊就純粹是湊數的。表單本身也不是 toolkit 的 `Settings.ToContent()`
    而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
    `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。
    存檔因此走 `SettingsManager.Apply`(toolkit 的 `RaiseSettingsChanged()` 是 internal)。

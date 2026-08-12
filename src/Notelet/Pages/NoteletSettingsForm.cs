@@ -26,6 +26,17 @@ internal sealed partial class NoteletSettingsForm : FormContent
     /// <summary>Adaptive Cards 的樣板佔位符,值由 <see cref="FormContent.DataJson"/> 填。</summary>
     private const string DirectoryBinding = "${" + DirectoryField + "}";
 
+    /// <summary>
+    /// 整頁共通的一句提醒。
+    ///
+    /// 放在卡片**裡面**,而不是頁面上另外一塊 markdown:CmdPal 的內容區塊之間有大約 32px
+    /// 收不掉的間距(<c>ItemsRepeater</c> 的 <c>StackLayout Spacing=8</c> 加上每塊自己的
+    /// <c>Margin/Padding</c>),而且 markdown 那條路沒有淡色可用 —— 它的
+    /// <c>MarkdownThemes</c> 只設定了字級與 inline code 的樣式。
+    /// 進到卡片裡才有 <c>isSubtle</c> + <c>size: small</c>,也才貼得住底下的欄位。
+    /// </summary>
+    private const string Hint = "換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。";
+
     /// <summary>按鈕靠 <c>Action.Submit</c> 的 data 表明自己是誰 —— 兩顆按鈕走的是同一個 SubmitForm。</summary>
     private const string ActionKey = "action";
     private const string BrowseAction = "browse";
@@ -147,7 +158,15 @@ internal sealed partial class NoteletSettingsForm : FormContent
             "version": "1.6",
             "body": [
                 {
+                    "type": "TextBlock",
+                    "text": {{Json(Hint)}},
+                    "wrap": true,
+                    "isSubtle": true,
+                    "size": "small"
+                },
+                {
                     "type": "ColumnSet",
+                    "spacing": "medium",
                     "columns": [
                         {
                             "type": "Column",
