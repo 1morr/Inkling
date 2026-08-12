@@ -299,7 +299,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                                     "type": "Input.ChoiceSet",
                                     "id": "{{WidthField}}",
                                     "label": {{Json(width.Label)}},
-                                    "value": {{Json(width.Value ?? string.Empty)}},
+                                    "value": {{Json(settings.DetailsWidthValue)}},
                                     "choices": [{{choices}}]
                                 }
                             ]

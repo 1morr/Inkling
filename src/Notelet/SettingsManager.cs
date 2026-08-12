@@ -44,10 +44,10 @@ internal sealed partial class SettingsManager
         Namespaced(nameof(ShowCapturePreview)),
         "記下後先看一眼",
 
-        // 說明只留「按下去會發生什麼」。取捨的理由(為什麼預設關、為什麼沒有第二條路)
+        // 說明只留「按下去會發生什麼」。取捨的理由(為什麼預設開、為什麼沒有第二條路)
         // 屬於 README,不是設定頁 —— 那段字每次打開設定都要看一次。
         "記下之後停在筆記上,再按一次 Enter 才收起 Command Palette。",
-        false);
+        true);
 
     private readonly ChoiceSetSetting _detailsWidth = new(
         Namespaced(nameof(DetailsWidth)),
@@ -57,7 +57,13 @@ internal sealed partial class SettingsManager
             new ChoiceSetSetting.Choice("窄(清單:詳情 = 3:1)", NarrowWidth),
             new ChoiceSetSetting.Choice("中(2:1)", MediumWidth),
             new ChoiceSetSetting.Choice("寬(1:1)", WideWidth),
-        ]);
+        ])
+    {
+        // 預設檔位只能在這裡補:`ChoiceSetSetting` 的兩個建構子都**不收** defaultValue
+        // (`TextSetting` / `ToggleSetting` 都有),不設就是 null。settings.json 裡缺這個鍵時
+        // `Update` 不會去碰它(實測過 toolkit 0.11.260520004),值因此留在這裡設的。
+        Value = WideWidth,
+    };
 
     public SettingsManager()
     {
@@ -223,23 +229,23 @@ internal sealed partial class SettingsManager
     /// 只發 <see cref="DetailsWidthChanged"/> —— 設定頁靠它把下拉選單更新成新值,
     /// 否則按完 Ctrl+D 再打開設定頁,看到的還是舊的那一檔。
     /// </summary>
+    /// <remarks>
+    /// 認不得的值(手改壞的 settings.json、將來被拿掉的檔位)一律當成預設的「寬」,
+    /// 跟這個設定項的預設值同一個答案 —— 讀取端永遠拿得到可用的值,跟
+    /// <see cref="CaptureSeparator"/> 同一個原則。
+    /// </remarks>
     public ContentSize DetailsWidth
     {
         get => _detailsWidth.Value switch
         {
+            NarrowWidth => ContentSize.Small,
             MediumWidth => ContentSize.Medium,
-            WideWidth => ContentSize.Large,
-            _ => ContentSize.Small,
+            _ => ContentSize.Large,
         };
 
         set
         {
-            _detailsWidth.Value = value switch
-            {
-                ContentSize.Medium => MediumWidth,
-                ContentSize.Large => WideWidth,
-                _ => NarrowWidth,
-            };
+            _detailsWidth.Value = ToChoiceValue(value);
 
             Save("DetailsWidth");
 
@@ -247,6 +253,13 @@ internal sealed partial class SettingsManager
             DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
         }
     }
+
+    /// <summary>
+    /// <see cref="DetailsWidth"/> 對應的下拉選單值 —— 設定頁畫卡片時用這個,不要直接讀
+    /// <c>DetailsWidthSetting.Value</c>:那個值認不得時卡片會顯示成空白,
+    /// 而實際生效的是「寬」,看起來就像設定壞了。
+    /// </summary>
+    public string DetailsWidthValue => ToChoiceValue(DetailsWidth);
 
     public NoteletOptions ToOptions()
     {
@@ -257,6 +270,13 @@ internal sealed partial class SettingsManager
 
         return new NoteletOptions { NotesDirectory = directory };
     }
+
+    private static string ToChoiceValue(ContentSize size) => size switch
+    {
+        ContentSize.Small => NarrowWidth,
+        ContentSize.Medium => MediumWidth,
+        _ => WideWidth,
+    };
 
     private static string Namespaced(string propertyName) => $"{SettingsNamespace}.{propertyName}";
 
