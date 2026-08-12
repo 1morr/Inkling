@@ -95,11 +95,11 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    不會因為導覽進去就重新 `GetContent()`。漏掉的話那張卡片永遠停在啟動時的值,
    **而且下一次送出會把那個過期值當成使用者輸入寫回設定** —— 只改資料夾按儲存,
    就足以把別的設定默默還原。加新設定項時特別容易忘,忘了不會報錯。
-   設定頁表單後面那塊**空的** `MarkdownContent` 也不能刪 —— `ContentFormControl` 只在
-   自己是頁面上唯一的控件時才自動聚焦,而兩個入口共用同一個頁面實例,所以從清單頁存檔
-   會讓背景那個設定視窗跟著重建;湊滿兩塊內容才擋得住「一按儲存,背景的設定視窗就跳到
-   前面」。說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
-   而且區塊之間有 32px 收不掉的間距),那一塊就純粹是湊數的。表單本身也不是 toolkit 的 `Settings.ToContent()`
+   設定頁表單後面曾經掛著一塊**空的** `MarkdownContent`,用來擋「背景的設定視窗跳到前面」——
+   **已經移除**:那招依賴的 `OnlyControlOnPage` 判斷在安裝版裡根本不存在(見〈已知落差〉),
+   而且會觸發的情境隨 `Ctrl+D` 一起沒了,拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
+   說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
+   而且區塊之間有 32px 收不掉的間距)。表單本身也不是 toolkit 的 `Settings.ToContent()`
    而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
    `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。
    存檔因此走 `SettingsManager.Apply`(toolkit 的 `RaiseSettingsChanged()` 是 internal)。
@@ -175,9 +175,17 @@ Get-ChildItem $d -Recurse -Include *.dll,*.exe | Where-Object {
 
 (別用 `Select-String -Encoding Byte`,PowerShell 7 已經移除那個參數,整條會靜靜地失敗。)
 
-**已知落差**:`MainListRanker` / `ClassifyTier` / `FallbackFloor` 在 `main` 有、安裝版**沒有**。
-README 曾經照 `main` 寫過一段 fallback 排序的說明,對安裝版來說整段是錯的 —— 這就是為什麼
-每個從原始碼得到的結論都要 byte-scan 對照一次再寫進文檔。
+**已知落差**(都是 `main` 有、安裝版**沒有**,而且都曾經被當成事實寫進文檔):
+
+- `MainListRanker` / `ClassifyTier` / `FallbackFloor` —— README 曾經照 `main` 寫過一段
+  fallback 排序的說明,對安裝版來說整段是錯的。
+- `ContentFormControl` 自動聚焦的 `OnlyControlOnPage` 判斷 —— 同一條路上的
+  `ContentFormControl` / `OnFrameworkElementLoaded` / `FindFirstFocusableElement` 都掃得到,
+  只有這個判斷沒有(`OnlyControl` / `SoleControl` / `SingleControl` 各種變體也都沒有)。
+  設定頁因此曾經多掛一塊空的 `MarkdownContent` 去「湊滿兩塊內容」,而那招在安裝版上
+  八成從來沒生效過,現在已經移除,見 README〈表單後面那塊空白已經拿掉了〉。
+
+這就是為什麼每個從原始碼得到的結論都要 byte-scan 對照一次再寫進文檔。
 
 兩份設定檔:
 

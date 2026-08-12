@@ -43,17 +43,6 @@ internal sealed partial class NoteletSettingsForm : FormContent
     /// <inheritdoc cref="DirectoryBinding" />
     private const string SeparatorBinding = "${" + SeparatorField + "}";
 
-    /// <summary>
-    /// 整頁共通的一句提醒。
-    ///
-    /// 放在卡片**裡面**,而不是頁面上另外一塊 markdown:CmdPal 的內容區塊之間有大約 32px
-    /// 收不掉的間距(<c>ItemsRepeater</c> 的 <c>StackLayout Spacing=8</c> 加上每塊自己的
-    /// <c>Margin/Padding</c>),而且 markdown 那條路沒有淡色可用 —— 它的
-    /// <c>MarkdownThemes</c> 只設定了字級與 inline code 的樣式。
-    /// 進到卡片裡才有 <c>isSubtle</c> + <c>size: small</c>,也才貼得住底下的欄位。
-    /// </summary>
-    private const string Hint = "換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。";
-
     /// <summary>按鈕靠 <c>Action.Submit</c> 的 data 表明自己是誰 —— 兩顆按鈕走的是同一個 SubmitForm。</summary>
     private const string ActionKey = "action";
     private const string BrowseAction = "browse";
@@ -165,7 +154,12 @@ internal sealed partial class NoteletSettingsForm : FormContent
     /// 本來就只有方塊加標題那麼寬,撐不開版面。它的欄位名寫在 <c>title</c> 而不是
     /// <c>label</c> —— 那個控件的字本來就長在方塊旁邊,再加一個 label 會變成同一句話印兩次。
     ///
-    /// 說明文字擺在欄位**下面**當註腳,而不是像 toolkit 那樣頂在標籤的位置。
+    /// 說明文字擺在欄位**下面**當註腳,而不是像 toolkit 那樣頂在標籤的位置,
+    /// 而且**每個欄位下面各一塊,沒有例外** —— 卡片最上面曾經另外有一行「整頁共通的提醒」,
+    /// 但那句話講的只是筆記資料夾,結果那個欄位變成唯一上下都有說明的。
+    /// 已經併進 <c>NotesDirectorySetting</c> 的說明裡,要加類似的話也照這條走,
+    /// 不要在卡片頂上再開一塊。
+    ///
     /// 卡片層級只留「儲存」一顆:在單行輸入框裡按 Enter 時,CmdPal 送出的是
     /// <c>card.Actions</c> 的第一個(<c>ContentFormControl.OnFormKeyDown</c>)——
     /// 打完路徑按 Enter 應該是存檔,不是跳出對話框。
@@ -183,15 +177,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
             "version": "1.6",
             "body": [
                 {
-                    "type": "TextBlock",
-                    "text": {{Json(Hint)}},
-                    "wrap": true,
-                    "isSubtle": true,
-                    "size": "small"
-                },
-                {
                     "type": "ColumnSet",
-                    "spacing": "medium",
                     "columns": [
                         {
                             "type": "Column",

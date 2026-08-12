@@ -471,12 +471,14 @@ toolkit 的 `Settings.RaiseSettingsChanged()` 是 `internal`,本來就叫不動�
 這條路實測過:把 `ForegroundLockTimeout`(這台機器是預設的 200000ms)重新武裝之後
 —— 也就是模擬「使用者剛剛才點過東西」—— 對話框仍然被拉到了前景。
 
-#### 表單後面那塊空白是承重牆
+#### 表單後面那塊空白已經拿掉了(而且它八成從來沒生效過)
 
-設定頁的表單後面掛著一塊**空的** `MarkdownContent`。看起來像忘了刪的東西,
-**但刪了焦點就會亂跳**。
+設定頁的表單後面曾經掛著一塊**空的** `MarkdownContent`,用途是擋「背景的設定視窗被拉到
+前面來」。`ContentFormControl` 載入後會自動聚焦第一個輸入欄位,而我們每次送出表單都得叫
+CmdPal 重讀(上一節)—— 重讀等於控件重建、再觸發一次 `Loaded`。當時的理由是 CmdPal 只在
+「頁面上唯一的控件」時才聚焦,湊滿兩塊內容就不會聚焦,也就不會搶焦點。
 
-`ContentFormControl` 載入後會自動聚焦第一個輸入欄位,但只在自己是頁面上唯一的控件時:
+那段理由是照 CmdPal `main` 的原始碼寫的:
 
 ```csharp
 element.Loaded -= OnFrameworkElementLoaded;
@@ -484,30 +486,39 @@ element.Loaded -= OnFrameworkElementLoaded;
 if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不聚焦
 ```
 
-`OnlyControlOnPage` 是 `ContentPageViewModel` 按內容數量算的(`newContent.Count == 1`)。
-而我們每次送出表單都得叫 CmdPal 重讀(上一節)—— 重讀等於控件重建、再觸發一次 `Loaded`。
-兩個入口共用同一個頁面實例,所以從清單頁那個入口存檔時,背景那個設定視窗會跟著重建,
-那一下就把焦點從主視窗搶了過去。
+**但 `OnlyControlOnPage` 在安裝版裡不存在。** byte-scan 過
+`Microsoft.CmdPal.UI.exe`(0.11.11762.0):同一條路上的 `ContentFormControl`、
+`OnFrameworkElementLoaded`、`FindFirstFocusableElement`、`ContentPageViewModel` 全都掃得到,
+只有 `OnlyControlOnPage` 沒有,`OnlyControl` / `SoleControl` / `SingleControl` 各種變體也都沒有。
+也就是說安裝版的自動聚焦沒有那道判斷,湊第二塊內容擋不掉任何東西 ——
+這塊空白在使用者實際跑的版本上八成從來沒起過作用。
 
-湊滿兩塊內容,`OnlyControlOnPage` 就是 false,重建也不搶焦點。代價是打開設定頁時
-游標不會自動落在第一個欄位。編輯與新增那兩個表單不受影響,它們仍然只有一塊內容。
+**這是第二次踩到同一個坑**:照 `main` 的原始碼寫進文檔,而安裝版根本沒有那段程式
+(第一次是 fallback 排序,見〈查證 CmdPal 的行為〉)。從原始碼得到的結論一定要 byte-scan
+對照安裝版再寫。
 
-**為什麼那一塊是空的**,而不是拿來寫句說明:內容區塊之間有大約 32px 收不掉的間距 ——
-`ContentPage.xaml` 的 `ItemsRepeater` 用 `StackLayout Spacing="8"`,每塊內容自己又有
-`Margin="0,4,4,4"` 與 `Padding="12,8,8,8"`。說明擺前面是一段跟表單斷開的旁白,
-擺後面更像掉在半空(兩種都做過)。而且 markdown 那條路**沒有淡色可用**,
-CmdPal 的 `MarkdownThemes` 只設定了字級與 inline code。
+會觸發的情境本身也沒了。當初每按一次 `Ctrl+D`(那時面板寬度可調)就重讀一次表單,人卻在
+主視窗翻筆記,背景視窗因此一直跳。現在 `Refresh()` 只有兩個呼叫點,都源自使用者在設定
+表單上的操作(按儲存、或按「瀏覽…」選完資料夾)——人本來就在設定頁上。唯一還構得成
+問題的組合是「CmdPal 設定視窗停在 Notelet 那一頁,同時從主搜尋框進設定頁按儲存」,
+兩邊共用同一個頁面實例,背景那個會跟著重建。
 
-所以說明文字全部進卡片:卡片裡的 `TextBlock` 有 `isSubtle` 跟 `size: small`,
-那才是提示該有的樣子,而且貼得住它說明的那個欄位。空白那一塊排在最後,
-那 32px 就落在儲存按鈕底下,看不出來。
+拿掉之後換回來的是**打開設定頁時游標會自動落在第一個欄位**,不必先點一下或按 Tab ——
+那是每次都付得到的好處,而上面那個組合很少見。萬一它真的又開始搶焦點,原因就在這裡;
+補救方式是讓 `GetContent()` 多回傳一塊內容,但**先確認安裝版到底有沒有那道判斷**。
 
-內容要是**空字串**,不是空白字元 —— 一個空白也是一行文字,會再多撐出約 20px。
-剩下的 32px 是 CmdPal 的版面寫死的,拿不掉。
+**說明文字現在是每個欄位下面各一塊,沒有例外。** 卡片最上面曾經還有獨立的一行提醒
+(「換資料夾不會搬動已經寫好的筆記」),那是這塊 markdown 搬進卡片時留下的位置 ——
+但那句話講的只有筆記資料夾一個欄位,結果它變成唯一上下都有說明的欄位。已經併進
+`NotesDirectorySetting` 的說明裡。要加類似的話就加在對應設定項的說明上,
+不要在卡片頂上再開一塊。
 
-這一塊完全依賴「CmdPal 不過濾空內容」(`ViewModelFromContent` 只看型別)。
-哪天它加了一道 `IsNullOrEmpty`,這塊會**無聲**消失、焦點又開始亂跳 ——
-手動驗證清單裡「焦點不會被搶」那一項就是為了接住這種回歸。
+順帶一提,說明文字為什麼全部寫在卡片裡而不是另外一塊 markdown:內容區塊之間有大約 32px
+收不掉的間距 —— `ContentPage.xaml` 的 `ItemsRepeater` 用 `StackLayout Spacing="8"`,
+每塊內容自己又有 `Margin="0,4,4,4"` 與 `Padding="12,8,8,8"`。說明擺前面是一段跟表單斷開的
+旁白,擺後面更像掉在半空(兩種都做過)。而且 markdown 那條路**沒有淡色可用**,
+CmdPal 的 `MarkdownThemes` 只設定了字級與 inline code;卡片裡的 `TextBlock` 才有
+`isSubtle` 跟 `size: small`,也才貼得住它說明的那個欄位。
 
 ### 刪除全部為什麼是一頁
 

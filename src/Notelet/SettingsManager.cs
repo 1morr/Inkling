@@ -20,7 +20,12 @@ internal sealed partial class SettingsManager
     private readonly TextSetting _notesDirectory = new(
         Namespaced(nameof(NotesDirectory)),
         "筆記資料夾",
-        "放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Notelet 自己不做同步。",
+
+        // 第二句原本是卡片最上面獨立的一行提醒(更早之前還是頁面上另一塊 markdown)。
+        // 那個位置是歷史遺留 —— 它講的只是這一個欄位,卻讓筆記資料夾變成唯一上下都有
+        // 說明的欄位。併進來,卡片才回到「每個欄位下面各一塊註腳」這一條規矩。
+        "放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Notelet 自己不做同步。"
+            + "換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。",
         NoteletOptions.DefaultNotesDirectory());
 
     private readonly TextSetting _captureSeparator = new(
