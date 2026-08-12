@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
@@ -148,7 +147,9 @@ internal sealed partial class NoteFormContent : FormContent
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NoteNotFoundException)
         {
             // 存檔失敗絕對不能無聲無息 —— 使用者會以為東西存起來了然後把視窗關掉。
-            Debug.WriteLine($"[Notelet] 存檔失敗:{ex}");
+            // 走 DiagnosticLog 而不是 Debug.WriteLine:後者在 Release 被整個編掉,
+            // 而日常安裝的就是 Release,那樣等於這條路完全查不到。
+            DiagnosticLog.Write($"NoteFormContent 存檔失敗:{ex}");
             new ToastStatusMessage($"存檔失敗:{ex.Message}").Show();
             return CommandResult.KeepOpen();
         }

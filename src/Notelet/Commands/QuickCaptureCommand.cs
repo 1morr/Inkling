@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
 
@@ -52,7 +51,11 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
         {
             // 磁碟滿了、資料夾被移走、OneDrive 鎖住檔案 —— 這些都不該讓擴展整個掛掉,
             // 但也絕對不能無聲失敗,不然使用者會以為想法記下來了。
-            Debug.WriteLine($"[Notelet] 快速新增失敗:{ex}");
+            //
+            // 用 DiagnosticLog 而不是 Debug.WriteLine:後者掛著 [Conditional("DEBUG")],
+            // Release 會整個編掉,而日常安裝的就是 Release —— 也就是說最需要留下痕跡的
+            // 那條路,在正式版反而什麼都查不到。
+            DiagnosticLog.Write($"QuickCapture 失敗:{ex}");
             return CommandResult.ShowToast($"存檔失敗:{ex.Message}");
         }
     }

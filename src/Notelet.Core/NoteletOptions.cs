@@ -32,6 +32,4 @@ public sealed class NoteletOptions
 
         return Path.Combine(root, "Notelet");
     }
-
-    public static NoteletOptions Default() => new() { NotesDirectory = DefaultNotesDirectory() };
 }

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
 
@@ -44,7 +43,6 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
         {
             // 檔案被別的程式鎖住、資料夾權限不對、或是別台機器已經先刪掉了 ——
             // 都不該讓擴展掛掉,但更不能假裝刪掉了。
-            Debug.WriteLine($"[Notelet] 刪除失敗:{ex}");
             DiagnosticLog.Write($"DeleteNote 失敗:{ex}");
 
             return CommandResult.ShowToast($"刪除失敗:{ex.Message}");

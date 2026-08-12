@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
 
@@ -75,7 +74,6 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Debug.WriteLine($"[Notelet] 刪除全部失敗:{ex}");
             DiagnosticLog.Write($"DeleteAllNotes 失敗:{ex}");
 
             return CommandResult.ShowToast($"刪除失敗:{ex.Message}");
