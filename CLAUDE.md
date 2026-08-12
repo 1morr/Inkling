@@ -90,6 +90,11 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    所以我們自己實作了 `ICommandSettings`(見 `NoteletCommandSettings`),把
    `NoteletSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
    **不能跟著 `ProviderState` 重建**:CmdPal 在 provider 剛連上時就把 `Settings` 讀走了。
+   **表單送出後一定要 `NoteletSettingsPage.Refresh()`**(`OnSettingsApplied` 一進來就做,
+   排在「資料夾沒變就 return」前面):卡片的值是建構時烤進 `DataJson` 的,而這個入口
+   不會因為導覽進去就重新 `GetContent()`。漏掉的話那張卡片永遠停在啟動時的值,
+   **而且下一次送出會把那個過期值當成使用者輸入寫回設定** —— 只改資料夾按儲存,
+   就足以把別的設定默默還原。加新設定項時特別容易忘,忘了不會報錯。
    設定頁表單後面那塊**空的** `MarkdownContent` 也不能刪 —— `ContentFormControl` 只在
    自己是頁面上唯一的控件時才自動聚焦,湊滿兩塊內容才擋得住「每按一次 Ctrl+D,
    背景的設定視窗就跳到前面」。說明文字一律寫在卡片裡(那裡才有 `isSubtle`,

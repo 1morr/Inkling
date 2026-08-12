@@ -348,6 +348,24 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 那個頁面因此**不能跟著 `ProviderState` 重建** —— CmdPal 在 provider 剛連上時就把
 `Settings` 讀走了,換了實例它不知道,只會繼續用手上那個。
 
+#### 送出表單之後也要 `Refresh()`,而且是每一次
+
+卡片是**建構時**就把值烤進 `DataJson` 的(`FormContent` 沒有別的傳值管道),而上面那條
+「只初始化一次」的路代表 CmdPal 不會因為導覽進頁面就重新 `GetContent()`。
+所以只要漏掉一次 `Refresh()`,那張卡片就永遠停在 provider 剛連上時的值。
+
+實際踩到過:分隔符改成 `##`、檔案也存了、快速記下也確實照 `##` 切,可是設定頁**每次打開
+都顯示 `;;`**。當時只有 `DetailsWidthChanged` 接到 `Refresh()`,新加的設定沒接上。
+
+**比顯示錯更糟的是它會把值吃回去。** 卡片上壓著的過期值,在下一次送出時會被當成使用者
+的輸入寫回設定 —— 只改資料夾按一次儲存,就足以把 `##` 默默還原成 `;;`。
+
+所以 `OnSettingsApplied` 一進來就 `Refresh()`,排在「資料夾沒變就 return」的前面,
+不分欄位、不比對新舊。`DetailsWidthChanged` 那條線要留著:`Ctrl+D` 是從設定頁外面改值,
+根本不會走到 `Applied`。兩邊都命中時會多重讀一次,無害。
+
+**加新設定項時記得這條** —— 忘了不會有任何錯誤訊息,只會安靜地顯示舊值。
+
 #### 表單也是自己的
 
 頁面的內容不是 toolkit 的 `Settings.ToContent()`,而是自己寫的一張 Adaptive Card

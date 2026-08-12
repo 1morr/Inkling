@@ -114,6 +114,20 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     /// </summary>
     private void OnSettingsApplied(object? sender, EventArgs e)
     {
+        // **送出表單之後一律叫設定頁重讀,而且要排在下面那個 early return 前面。**
+        //
+        // 設定頁的卡片是建構時就把值烤進 DataJson 的,而「設定 → Extensions → Notelet」
+        // 那個入口 CmdPal 只初始化一次 —— 導覽進去不會重新呼叫 GetContent()
+        // (見 NoteletSettingsPage 上的說明)。少了這一句,存完檔之後那張卡片就一直停在
+        // 舊值:實際踩到的是分隔符改成 ## 存好了、設定頁卻永遠顯示 ;;。
+        //
+        // 而且比顯示錯更糟 —— 卡片上壓著的過期值會在下一次送出時**被當成使用者的輸入寫回去**,
+        // 只改資料夾按儲存就足以把分隔符默默還原。所以這裡不分欄位、不比對新舊,一律重讀。
+        //
+        // 寬度那條線(DetailsWidthChanged → Refresh)要留著:Ctrl+D 是從設定頁外面改值,
+        // 根本不會走到這裡。兩邊都命中時會多重讀一次,無害。
+        _settingsPage.Refresh();
+
         var directory = _settingsManager.ToOptions().NotesDirectory;
         ProviderState previous;
 
