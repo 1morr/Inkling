@@ -350,15 +350,26 @@ toolkit 的 `Settings.RaiseSettingsChanged()` 是 `internal`,本來就叫不動�
   自己藏起來(`MainWindow` 的 `Deactivated` → `HideWindow`,沒有開關可以關掉),
   表單跟著一起消失 —— 那時候還壓在表單裡的值,使用者既看不到也按不到。
 
+- **對話框掛在一個隱藏的 tool window 底下。** 沒有 owner 的頂層視窗會拿到自己的工作列按鈕,
+  而這個進程在工作列上的身分是 MSIX 套件的圖示 —— 目前那還是 Visual Studio 模板留下的
+  空白方框,使用者只會看到一個看不懂的東西。掛上 owner(內建的 `STATIC` 類別 +
+  `WS_EX_TOOLWINDOW`,從不顯示)就不再是「無主視窗」,工作列不給它按鈕。
+  owner 的大小刻意跟當下的前景視窗一樣:對話框以 owner 為中心擺位,給 0×0 會貼到螢幕左上角。
+  **不能拿 CmdPal 的視窗當 owner** —— `IFileDialog` 會 `EnableWindow(owner, FALSE)`,
+  而那個視窗馬上就要自己藏起來。
+
 還有一個 Windows 本身的限制:只有前景進程開的視窗搶得到焦點,而我們這個 COM server
-從頭到尾沒收過使用者的輸入。不管的話對話框會開在 CmdPal 後面,使用者只看到工作列閃一下。
-`FolderPicker` 因此會去找「屬於自己、而且看得見」的那個頂層視窗(平常一個都沒有),
-再 `SetForegroundWindow` 把它拉到前面;拉不動就退回 `BringWindowToTop` /
-`SwitchToThisWindow`,最差的情況是使用者自己從工作列點開它。
+從頭到尾沒收過使用者的輸入。不管的話對話框會開在 CmdPal 後面,而且現在它連工作列按鈕
+都沒有,等於整個消失。`FolderPicker` 因此會去找「屬於自己、而且看得見」的那個頂層視窗
+(平常一個都沒有),再 `SetForegroundWindow` 把它拉到前面;拉不動就退回 `BringWindowToTop` /
+`SwitchToThisWindow`。
 
-#### 表單前面那行說明是承重牆
+這條路實測過:把 `ForegroundLockTimeout`(這台機器是預設的 200000ms)重新武裝之後
+—— 也就是模擬「使用者剛剛才點過東西」—— 對話框仍然被拉到了前景。
 
-設定頁的表單上方有一行說明。**它不能刪**,刪了焦點就會亂跳。
+#### 表單底下那行註腳是承重牆
+
+設定頁的表單底下有一行註腳。**它不能刪**,刪了焦點就會亂跳。
 
 `ContentFormControl` 載入後會自動聚焦第一個輸入欄位,但只在自己是頁面上唯一的控件時:
 
@@ -376,7 +387,8 @@ if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不
 游標不會自動落在第一個欄位。編輯與新增那兩個表單不受影響,它們仍然只有一塊內容。
 
 那行字寫什麼可以改,但別去重複各個設定項自己的說明 —— 那些就印在欄位底下,
-同一句話在一頁裡出現兩次比沒有還糟。
+同一句話在一頁裡出現兩次比沒有還糟。位置也刻意放在表單**後面**:markdown 那一塊是用
+頁面的字級渲染的,比卡片裡的字大一號,擺在最上面等於用一段旁白當標題。
 
 ### 刪除全部為什麼是一頁
 

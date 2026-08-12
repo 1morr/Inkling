@@ -122,6 +122,10 @@ internal sealed partial class NoteletSettingsForm : FormContent
     /// 「瀏覽…」跟輸入框放在同一個 <c>ColumnSet</c> 裡,按鈕那一欄靠底對齊 ——
     /// 輸入框頭上還有一行 <c>label</c>,不對齊的話按鈕會浮在框的上緣。
     ///
+    /// 下拉選單也包在 <c>ColumnSet</c> 裡,但目的相反:限寬。Adaptive Cards 的
+    /// <c>Input.ChoiceSet</c> 沒有寬度屬性,不包的話「寬(1:1)」四個字會撐滿整頁 ——
+    /// 設定視窗開大的時候特別難看。分隔線把兩個設定項切開。
+    ///
     /// 說明文字擺在欄位**下面**當註腳,而不是像 toolkit 那樣頂在標籤的位置。
     /// 卡片層級只留「儲存」一顆:在單行輸入框裡按 Enter 時,CmdPal 送出的是
     /// <c>card.Actions</c> 的第一個(<c>ContentFormControl.OnFormKeyDown</c>)——
@@ -185,12 +189,24 @@ internal sealed partial class NoteletSettingsForm : FormContent
                     "spacing": "small"
                 },
                 {
-                    "type": "Input.ChoiceSet",
-                    "id": "{{WidthField}}",
-                    "label": {{Json(width.Label)}},
-                    "value": {{Json(width.Value ?? string.Empty)}},
-                    "spacing": "medium",
-                    "choices": [{{choices}}]
+                    "type": "ColumnSet",
+                    "separator": true,
+                    "spacing": "large",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "260px",
+                            "items": [
+                                {
+                                    "type": "Input.ChoiceSet",
+                                    "id": "{{WidthField}}",
+                                    "label": {{Json(width.Label)}},
+                                    "value": {{Json(width.Value ?? string.Empty)}},
+                                    "choices": [{{choices}}]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 {
                     "type": "TextBlock",

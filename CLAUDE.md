@@ -83,9 +83,9 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    所以我們自己實作了 `ICommandSettings`(見 `NoteletCommandSettings`),把
    `NoteletSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
    **不能跟著 `ProviderState` 重建**:CmdPal 在 provider 剛連上時就把 `Settings` 讀走了。
-   設定頁表單上方那行說明也**不能刪** —— `ContentFormControl` 只在自己是頁面上唯一的
+   設定頁表單底下那行註腳也**不能刪** —— `ContentFormControl` 只在自己是頁面上唯一的
    控件時才自動聚焦,多那一塊內容才擋得住「每按一次 Ctrl+D,背景的設定視窗就跳到前面」
-   (內容可以改,但別重複欄位自己的說明)。表單本身也不是 toolkit 的 `Settings.ToContent()`
+   (內容與位置可以改,但別重複欄位自己的說明)。表單本身也不是 toolkit 的 `Settings.ToContent()`
    而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
    `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。
    存檔因此走 `SettingsManager.Apply`(toolkit 的 `RaiseSettingsChanged()` 是 internal)。
@@ -97,7 +97,9 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 7. **擴展進程沒有視窗,也不是前景進程。** 要開系統對話框(目前只有設定頁的「瀏覽…」,
    見 `FolderPicker`)得自己開一條 STA 執行緒,而且開出來的視窗**搶不到焦點** ——
    Windows 只讓前景進程這麼做。`FolderPicker` 用「找自己的可見頂層視窗 → SetForegroundWindow」
-   兜過去。另外 CmdPal 主視窗一失焦就自己隱藏(沒有開關),所以對話框選完的結果要**當場存**,
+   兜過去,而且對話框掛在一個隱藏的 tool window 底下(否則工作列會多一個按鈕,圖示是
+   套件那張空白佔位圖)—— 也因此**沒有工作列按鈕當退路**,拉前景壞掉就等於對話框消失。
+   另外 CmdPal 主視窗一失焦就自己隱藏(沒有開關),所以對話框選完的結果要**當場存**,
    不能指望使用者回到表單再按儲存。
 8. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
    trimming 只在 `dotnet publish` 生效,所以 trimming 相關的問題只有 Release 部署才驗得到。

@@ -20,7 +20,7 @@ namespace Notelet.Pages;
 internal sealed partial class NoteletSettingsPage : ContentPage
 {
     /// <summary>
-    /// 表單前面那段說明。
+    /// 表單底下那行註腳。
     ///
     /// **它的存在不只是為了說明 —— 拿掉它焦點就會被搶走。**
     /// CmdPal 的 <c>ContentFormControl</c> 在載入後會自動聚焦第一個可輸入的欄位,
@@ -35,11 +35,12 @@ internal sealed partial class NoteletSettingsPage : ContentPage
     /// 代價:打開設定頁時游標不會自動落在第一個欄位,要點一下或按 Tab。
     /// 對「偶爾來改一次」的設定頁來說,這比背景視窗亂跳好得多。
     ///
-    /// 內容本身避開每個設定項自己的說明(那些就在欄位底下),不然同一句話會出現兩次 ——
-    /// 頁首這一行講的是整頁共通的事。
+    /// 擺在表單**後面**:markdown 那一塊是用頁面的字級渲染的,比卡片裡的字大一號,
+    /// 放在最上面等於用一段旁白當標題,設定項反而被擠到下面去。當註腳就順眼多了。
+    /// 內容也避開每個設定項自己的說明(那些就印在欄位底下),不然同一句話會出現兩次。
     /// </summary>
-    private readonly MarkdownContent _intro = new(
-        "改好之後按最下面的「儲存」。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。");
+    private readonly MarkdownContent _footnote = new(
+        "換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。");
 
     private readonly SettingsManager _settings;
 
@@ -57,8 +58,8 @@ internal sealed partial class NoteletSettingsPage : ContentPage
         DiagnosticLog.Write("SettingsPage.GetContent: 重新產生表單");
 
         // 每次都給新的表單物件:值是建構時就烤進卡片的,重用等於永遠顯示第一次的值。
-        // 順序有意義:說明在前,而且它必須留著 —— 見 _intro 上的說明。
-        return [_intro, new NoteletSettingsForm(_settings, Refresh)];
+        // 註腳看起來可有可無,但它必須留著 —— 見 _footnote 上的說明。
+        return [new NoteletSettingsForm(_settings, Refresh), _footnote];
     }
 
     /// <summary>值被頁面以外的地方改掉了(目前只有清單頁的 Ctrl+D),叫 CmdPal 重拿表單。</summary>
