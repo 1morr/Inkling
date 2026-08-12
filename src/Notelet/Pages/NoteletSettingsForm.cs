@@ -148,7 +148,12 @@ internal sealed partial class NoteletSettingsForm : FormContent
     ///
     /// 分隔符那一格也包在 <c>ColumnSet</c> 裡,但目的相反:限寬。它只放得下兩三個字元,
     /// 一個佔滿整頁的輸入框會讓人以為該填一長串,設定視窗開大的時候特別難看。
-    /// 分隔線把三個設定項切開。
+    /// 分隔線把三個設定項切開,間距用 <c>default</c>(8px)。CmdPal 沒有自帶 hostConfig,
+    /// 走的就是 Adaptive Cards 的預設階梯(none 0 / small 3 / default 8 / medium 20 /
+    /// large 30),而 <c>large</c>、<c>medium</c> 撐出來的空白在這張只有三項的卡片上都太散 ——
+    /// 每個欄位下面本來就有一塊說明文字,那本身已經是視覺上的呼吸空間。
+    /// 線本身不能拿掉:少了線的話上一項的說明會直接黏著下一項的標籤,
+    /// 看不出哪句話屬於哪個欄位,而間距一收更是如此。
     ///
     /// 「記下後先看一眼」那個 <c>Input.Toggle</c> 不必包 <c>ColumnSet</c>:核取方塊的寬度
     /// 本來就只有方塊加標題那麼寬,撐不開版面。它的欄位名寫在 <c>title</c> 而不是
@@ -221,7 +226,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 {
                     "type": "ColumnSet",
                     "separator": true,
-                    "spacing": "large",
+                    "spacing": "default",
                     "columns": [
                         {
                             "type": "Column",
@@ -254,7 +259,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                     "valueOn": "{{ToggleOn}}",
                     "valueOff": "{{ToggleOff}}",
                     "separator": true,
-                    "spacing": "large"
+                    "spacing": "default"
                 },
                 {
                     "type": "TextBlock",
