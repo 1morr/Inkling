@@ -53,6 +53,35 @@ internal sealed partial class NoteFormContent : FormContent
         }
         """;
 
+    /// <summary>
+    /// 編輯時卡片底部那行淡色提示。
+    ///
+    /// **游標的位置我們控制不了。** CmdPal 進表單頁後只做
+    /// <c>focusableElement?.Focus(FocusState.Programmatic)</c>
+    /// (<c>ContentFormControl.OnFrameworkElementLoaded</c>),而 Adaptive Cards 的
+    /// <c>Input.Text</c> 沒有任何 caret / selection 屬性 —— 擴展手上只有 TemplateJson 與
+    /// DataJson,碰不到底下那個 WinUI <c>TextBox</c>,而它被程式化聚焦時游標固定在 0。
+    /// 想要「一進來就在內文最後」只能改 PowerToys 本身,或是在表單上另外加一個空的
+    /// 「追加」框(空框的開頭就等於結尾)—— 後者評估過,不值得為此讓每次編輯都多一塊。
+    ///
+    /// 所以改成把 <c>Ctrl+End</c> 講出來。只在編輯時顯示:新增時內文本來就是空的,
+    /// 游標在開頭還是結尾沒有差別,多一行字只是噪音。
+    ///
+    /// 是 <c>TextBlock</c> 而不是可聚焦的控件,所以擺在哪都不會把焦點從內文框搶走
+    /// (<c>FindFirstFocusableElement</c> 只認 <c>Control</c>)—— 但還是排在最後,
+    /// 免得它把兩個輸入框推開。
+    /// </summary>
+    private const string CaretHint = """
+        {
+            "type": "TextBlock",
+            "text": "游標落在內文開頭。按 Ctrl+End 跳到最後接著寫。",
+            "wrap": true,
+            "isSubtle": true,
+            "size": "small",
+            "spacing": "medium"
+        }
+        """;
+
     private readonly INoteRepository _repository;
     private readonly string? _noteId;
     private readonly Action? _onSaved;
@@ -134,6 +163,9 @@ internal sealed partial class NoteFormContent : FormContent
     ///
     /// 所以編輯時內文在上、標題在下:進來就是要改內容,而標題頁首已經寫著了。
     /// 新增時反過來,先想標題。
+    ///
+    /// 能決定的也就到這裡為止 —— 游標落在那一格的**哪個位置**沒有任何辦法指定,
+    /// 見 <see cref="CaretHint"/>。
     /// </summary>
     private static string BuildTemplate(bool bodyFirst) => $$"""
         {
@@ -141,7 +173,7 @@ internal sealed partial class NoteFormContent : FormContent
             "type": "AdaptiveCard",
             "version": "1.6",
             "body": [
-                {{(bodyFirst ? $"{BodyField},{TitleField}" : $"{TitleField},{BodyField}")}}
+                {{(bodyFirst ? $"{BodyField},{TitleField},{CaretHint}" : $"{TitleField},{BodyField}")}}
             ],
             "actions": [
                 {

@@ -80,7 +80,11 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    alias 觸發時送 `ClearSearchMessage`,所以 **alias 命令拿不到觸發當下那句話**,
    但進到自己的 `DynamicListPage` 之後打的字完全掌控 —— 那正是這個做法能成立的原因。
 4. **Adaptive Cards 表單能調的極少**:欄位順序決定游標落在哪(沒有 autofocus / tabIndex)、
+   **游標在那一格裡的位置完全指定不了**(CmdPal 只做 `Focus(FocusState.Programmatic)`,
+   `Input.Text` 沒有 caret / selection 屬性,WinUI `TextBox` 因此固定停在索引 0 ——
+   編輯頁「游標放到內文最後」查過,做不到,現在是在卡片底部提示按 `Ctrl+End`)、
    多行輸入框的高度完全不可控(只能靠預填內容撐開)、沒有 `Ctrl+S`(表單值只活在 CmdPal 進程裡)。
+   `TextBlock` 不是 `Control`,加幾塊說明文字不會把焦點從輸入框搶走。
 5. **設定頁有兩個入口**(清單頁 `Ctrl+K` → 設定,以及 CmdPal 設定 → Extensions → Notelet)。
    後者 CmdPal **只初始化一次**,而且它拿的是 `ICommandSettings.SettingsPage` ——
    所以我們自己實作了 `ICommandSettings`(見 `NoteletCommandSettings`),把

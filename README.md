@@ -207,12 +207,23 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 
 ### 編輯表單
 
-表單是 Adaptive Cards,能調的東西比想像中少。下面三件事都是繞出來的:
+表單是 Adaptive Cards,能調的東西比想像中少。下面四件事都是繞出來的:
 
 - **游標落在哪一格,由欄位順序決定。** CmdPal 進表單頁後會聚焦卡片裡第一個可聚焦的控件
   (`ContentFormControl.FindFirstFocusableElement`),而 Adaptive Cards 既沒有 autofocus
   也沒有 tabIndex。所以**編輯**時內文排在標題前面 —— 進來就是要改內容,標題頁首已經寫著了;
   **新增**時維持標題在前,因為是先想標題。
+- **落在那一格的哪個位置,則完全指定不了 —— 一律是開頭。** 這條查過了,不要再試:
+  CmdPal 只做 `focusableElement?.Focus(FocusState.Programmatic)`
+  (`ContentFormControl.OnFrameworkElementLoaded`),而 Adaptive Cards 的 `Input.Text`
+  沒有任何 caret / selection 屬性。擴展手上只有 `TemplateJson` 與 `DataJson`,
+  碰不到底下那個 WinUI `TextBox`,而它被程式化聚焦時游標固定在索引 0。
+  想要「一進來就在內文最後」只有兩條路:改 PowerToys 本身,或在表單上另外加一個空的
+  「追加」框(空框的開頭就等於結尾,存檔時接到內文尾端)。後者評估過 ——
+  不值得為了偶爾的追記,讓每次編輯都多一塊多行輸入框。現在的做法是把 `Ctrl+End` 講出來:
+  編輯表單底部有一行淡色提示,新增時不顯示(內文本來就是空的,沒有差別)。
+  那行字是 `TextBlock` 不是 `Control`,`FindFirstFocusableElement` 不會選中它,
+  所以擺進去不影響焦點還是落在內文框。
 - **新增時內文框預填 5 行空白。** 渲染器對多行輸入只設 `AcceptsReturn` 與 `TextWrapping`,
   完全不碰高度,所以空的內文框就是一行高,看起來像只能寫一行。卡片沒有「幾行高」這種屬性,
   唯一撐得開它的就是內容本身。代價是 placeholder 不再顯示(框裡有東西了),而空行有機會
