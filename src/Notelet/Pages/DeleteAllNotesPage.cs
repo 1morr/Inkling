@@ -32,17 +32,15 @@ internal sealed partial class DeleteAllNotesPage : ListPage, IDisposable
 
     private readonly INoteRepository _repository;
     private readonly NoteletOptions _options;
-    private readonly IDetailsWidthStore _widthStore;
 
     private IListItem[]? _items;
     private int _itemsVersion = -1;
     private bool _disposed;
 
-    public DeleteAllNotesPage(INoteRepository repository, NoteletOptions options, IDetailsWidthStore widthStore)
+    public DeleteAllNotesPage(INoteRepository repository, NoteletOptions options)
     {
         _repository = repository;
         _options = options;
-        _widthStore = widthStore;
 
         Id = CommandIds.DeleteAll;
         Icon = Icons.Delete;
@@ -208,7 +206,9 @@ internal sealed partial class DeleteAllNotesPage : ListPage, IDisposable
         {
             Title = note.Title,
             Body = note.Body.Length == 0 ? "_(沒有內文)_" : NotePreview.PreserveLineBreaks(note.Body),
-            Size = _widthStore.DetailsWidth,
+
+            // 跟清單頁一樣固定最寬,理由見那邊的 BuildDetails —— 不明著寫就是最窄那一檔。
+            Size = ContentSize.Large,
         },
     };
 
@@ -224,9 +224,7 @@ internal sealed partial class DeleteAllNotesPage : ListPage, IDisposable
             + "\n\n刪掉的檔案會進資源回收筒。網路磁碟或沒有回收筒的裝置上則是直接消失,"
             + "那是 Windows 的行為,不是我們能選的。",
 
-        // 寬度讀一次就定了,不像清單頁那樣跟著 Ctrl+D 更新 —— 這一頁沒有那個快速鍵,
-        // 唯一能在它開著時改寬度的地方是設定頁,而那不是會發生的事。
-        Size = _widthStore.DetailsWidth,
+        Size = ContentSize.Large,
     };
 
     private void OnRepositoryChanged(object? sender, EventArgs e)

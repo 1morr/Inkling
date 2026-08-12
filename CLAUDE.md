@@ -53,9 +53,8 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 新建的頁面它不會去拿(實測 log:`BuildState` 之後一次 `GetItems` 都沒有,直到 Reload)。
 硬重建反而會把還在被使用的 repository 給 Dispose 掉。這類設定要讓**現有頁面自己響應**:
 `SettingsManager` 為每一項開一個窄介面 + 一個事件,由頁面自己訂閱 ——
-`IDetailsWidthStore.DetailsWidthChanged`(清單頁)、
 `ICaptureSeparatorStore.CaptureSeparatorChanged` 與
-`ICapturePreviewStore.CapturePreviewChanged`(快速記下頁)就是這個形狀。
+`ICapturePreviewStore.CapturePreviewChanged`(兩個都在快速記下頁)就是這個形狀。
 頁面上快取項目的地方,快取鍵也要帶上那個設定值,否則事件收到了、拿到的還是舊結果。
 
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
@@ -97,8 +96,9 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    **而且下一次送出會把那個過期值當成使用者輸入寫回設定** —— 只改資料夾按儲存,
    就足以把別的設定默默還原。加新設定項時特別容易忘,忘了不會報錯。
    設定頁表單後面那塊**空的** `MarkdownContent` 也不能刪 —— `ContentFormControl` 只在
-   自己是頁面上唯一的控件時才自動聚焦,湊滿兩塊內容才擋得住「每按一次 Ctrl+D,
-   背景的設定視窗就跳到前面」。說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
+   自己是頁面上唯一的控件時才自動聚焦,而兩個入口共用同一個頁面實例,所以從清單頁存檔
+   會讓背景那個設定視窗跟著重建;湊滿兩塊內容才擋得住「一按儲存,背景的設定視窗就跳到
+   前面」。說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
    而且區塊之間有 32px 收不掉的間距),那一塊就純粹是湊數的。表單本身也不是 toolkit 的 `Settings.ToContent()`
    而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
    `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。

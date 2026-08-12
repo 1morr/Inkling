@@ -24,7 +24,6 @@ internal sealed partial class NoteletSettingsForm : FormContent
     private const string DirectoryField = "directory";
     private const string SeparatorField = "separator";
     private const string PreviewField = "preview";
-    private const string WidthField = "width";
 
     /// <summary>
     /// <c>Input.Toggle</c> 的開 / 關值。
@@ -91,7 +90,6 @@ internal sealed partial class NoteletSettingsForm : FormContent
 
         var directory = form[DirectoryField]?.ToString() ?? string.Empty;
         var separator = form[SeparatorField]?.ToString() ?? string.Empty;
-        var width = form[WidthField]?.ToString() ?? string.Empty;
 
         // Input.Toggle 回來的是 valueOn / valueOff 那兩個字串,不是 JSON 的 true/false。
         var preview = string.Equals(
@@ -99,10 +97,10 @@ internal sealed partial class NoteletSettingsForm : FormContent
 
         if (ActionOf(data) == BrowseAction)
         {
-            return Browse(directory, separator, preview, width);
+            return Browse(directory, separator, preview);
         }
 
-        _settings.Apply(directory, separator, preview, width);
+        _settings.Apply(directory, separator, preview);
         new ToastStatusMessage("設定已儲存").Show();
 
         return CommandResult.GoHome();
@@ -126,7 +124,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
         }
     }
 
-    private CommandResult Browse(string directory, string separator, bool preview, string width)
+    private CommandResult Browse(string directory, string separator, bool preview)
     {
         var opened = FolderPicker.TryShow(
             "選擇筆記資料夾",
@@ -139,7 +137,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 //
                 // 其他欄位一起套用,因為那就是使用者按下「瀏覽…」當下卡片上顯示的值 ——
                 // 表單既然會消失,壓在上面的改動就只有這一次機會存下來。
-                _settings.Apply(picked, separator, preview, width);
+                _settings.Apply(picked, separator, preview);
                 new ToastStatusMessage($"筆記資料夾:{picked}").Show();
 
                 _refreshPage();
@@ -159,10 +157,9 @@ internal sealed partial class NoteletSettingsForm : FormContent
     /// 「瀏覽…」跟輸入框放在同一個 <c>ColumnSet</c> 裡,按鈕那一欄靠底對齊 ——
     /// 輸入框頭上還有一行 <c>label</c>,不對齊的話按鈕會浮在框的上緣。
     ///
-    /// 下拉選單也包在 <c>ColumnSet</c> 裡,但目的相反:限寬。Adaptive Cards 的
-    /// <c>Input.ChoiceSet</c> 沒有寬度屬性,不包的話「寬(1:1)」四個字會撐滿整頁 ——
-    /// 設定視窗開大的時候特別難看。分隔符那一格同理,它只放得下兩三個字元,
-    /// 一個佔滿整頁的輸入框會讓人以為該填一長串。分隔線把四個設定項切開。
+    /// 分隔符那一格也包在 <c>ColumnSet</c> 裡,但目的相反:限寬。它只放得下兩三個字元,
+    /// 一個佔滿整頁的輸入框會讓人以為該填一長串,設定視窗開大的時候特別難看。
+    /// 分隔線把三個設定項切開。
     ///
     /// 「記下後先看一眼」那個 <c>Input.Toggle</c> 不必包 <c>ColumnSet</c>:核取方塊的寬度
     /// 本來就只有方塊加標題那麼寬,撐不開版面。它的欄位名寫在 <c>title</c> 而不是
@@ -178,11 +175,6 @@ internal sealed partial class NoteletSettingsForm : FormContent
         var directory = settings.NotesDirectorySetting;
         var separator = settings.CaptureSeparatorSetting;
         var preview = settings.CapturePreviewSetting;
-        var width = settings.DetailsWidthSetting;
-
-        var choices = string.Join(
-            ",",
-            width.Choices.Select(choice => $$"""{"title": {{Json(choice.Title)}}, "value": {{Json(choice.Value)}}}"""));
 
         return $$"""
         {
@@ -281,34 +273,6 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 {
                     "type": "TextBlock",
                     "text": {{Json(preview.Description)}},
-                    "wrap": true,
-                    "isSubtle": true,
-                    "size": "small",
-                    "spacing": "small"
-                },
-                {
-                    "type": "ColumnSet",
-                    "separator": true,
-                    "spacing": "large",
-                    "columns": [
-                        {
-                            "type": "Column",
-                            "width": "260px",
-                            "items": [
-                                {
-                                    "type": "Input.ChoiceSet",
-                                    "id": "{{WidthField}}",
-                                    "label": {{Json(width.Label)}},
-                                    "value": {{Json(settings.DetailsWidthValue)}},
-                                    "choices": [{{choices}}]
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "type": "TextBlock",
-                    "text": {{Json(width.Description)}},
                     "wrap": true,
                     "isSubtle": true,
                     "size": "small",

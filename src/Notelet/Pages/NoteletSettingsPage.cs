@@ -11,8 +11,9 @@ namespace Notelet.Pages;
 /// —— <c>Settings.RaiseSettingsChanged()</c> 是 internal,唯一的呼叫者是使用者在設定頁
 /// 按下 Save 時走的 <c>SettingsForm.SubmitForm</c>。
 ///
-/// 結果就是:清單頁按 Ctrl+D 改了寬度,設定檔也存了,可是設定頁再打開時顯示的還是舊值 ——
-/// CmdPal 不會因為導覽進頁面就重新呼叫 <c>GetContent()</c>,得有人叫它重拿。
+/// 結果就是:表單送出了、設定檔也存了,可是「設定 → Extensions → Notelet」那個入口
+/// 顯示的還是舊值 —— CmdPal 不會因為導覽進頁面就重新呼叫 <c>GetContent()</c>,
+/// 得有人叫它重拿。
 ///
 /// 所以這裡自己套一層外殼,把「什麼時候該重拿」的控制權拿回來。
 /// 表單也是自己的(<see cref="NoteletSettingsForm"/>),理由見那邊。
@@ -27,8 +28,10 @@ internal sealed partial class NoteletSettingsPage : ContentPage
     /// <c>OnlyControlOnPage</c> 判斷,而那個旗標就是 <c>ContentPageViewModel</c>
     /// 依內容數量算出來的:<c>newContent.Count == 1</c>)。
     ///
-    /// 我們每按一次 Ctrl+D 就得叫 CmdPal 重讀表單,而重讀等於整個控件重建、
-    /// 再觸發一次 Loaded。設定視窗要是開在背景,那一下就會把焦點從主視窗搶過去。
+    /// 而我們每次送出表單都得叫 CmdPal 重讀(見 <see cref="Refresh"/>),重讀等於整個控件
+    /// 重建、再觸發一次 Loaded。設定頁有兩個入口而它們共用同一個實例,所以從清單頁那個
+    /// 入口存檔時,背景那個「設定 → Extensions → Notelet」視窗會跟著重建 ——
+    /// 那一下就把焦點從主視窗搶過去。
     /// 湊滿兩塊內容,<c>OnlyControlOnPage</c> 就是 false,重建也不會搶焦點。
     ///
     /// 代價:打開設定頁時游標不會自動落在第一個欄位,要點一下或按 Tab。
@@ -71,7 +74,10 @@ internal sealed partial class NoteletSettingsPage : ContentPage
         return [new NoteletSettingsForm(_settings, Refresh), _focusGuard];
     }
 
-    /// <summary>值被頁面以外的地方改掉了(目前只有清單頁的 Ctrl+D),叫 CmdPal 重拿表單。</summary>
+    /// <summary>
+    /// 值變了(送出表單,或是在表單裡按「瀏覽…」選完資料夾),叫 CmdPal 重拿表單 ——
+    /// 卡片的值是建構時就烤進 <c>DataJson</c> 的,不重拿它永遠停在舊值。
+    /// </summary>
     public void Refresh()
     {
         DiagnosticLog.Write("SettingsPage.Refresh: 發出 ItemsChanged");

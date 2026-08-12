@@ -59,9 +59,6 @@ internal static class Icons
     /// <summary>Code — 詳細窗格切換成原始文字。</summary>
     public static IconInfo Source => Glyph(0xE943);
 
-    /// <summary>DockRight — 詳細窗格的寬度。</summary>
-    public static IconInfo DetailsWidth => Glyph(0xE90D);
-
     /// <summary>Settings — 設定頁。跟 CmdPal 自己的設定圖示同一個碼位。</summary>
     public static IconInfo Settings => Glyph(0xE713);
 

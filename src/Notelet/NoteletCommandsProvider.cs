@@ -16,7 +16,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     ///
     /// 不能跟著 <see cref="ProviderState"/> 重建:CmdPal 在 provider 剛連上時就把
     /// <see cref="CommandProvider.Settings"/> 讀走存成自己的 viewmodel,之後不再過問。
-    /// 換了實例它也不知道,只會繼續用手上那個 —— 而 Ctrl+D 要通知的正是它。
+    /// 換了實例它也不知道,只會繼續用手上那個 —— 而送出表單之後要叫去重讀的正是它。
     /// 這一頁本來也不依賴 repository,跟著資料夾重建沒有意義。
     /// </summary>
     private readonly NoteletSettingsPage _settingsPage;
@@ -33,9 +33,6 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
 
         // 包一層自己的 ICommandSettings,理由見 NoteletCommandSettings。
         Settings = new NoteletCommandSettings(_settingsPage);
-
-        // 清單頁按 Ctrl+D 改寬度時,設定頁的下拉選單要跟著變。
-        _settingsManager.DetailsWidthChanged += (_, _) => _settingsPage.Refresh();
 
         _state = BuildState();
 
@@ -60,9 +57,9 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
         // 刪除走資源回收筒,不是直接抹掉 —— 筆記是手打的東西,誤刪要拿得回來。
         var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
-        var listPage = new NoteListPage(repository, options, _settingsManager);
+        var listPage = new NoteListPage(repository, options);
         var capturePage = new QuickCapturePage(repository, _settingsManager, _settingsManager);
-        var deletePage = new DeleteAllNotesPage(repository, options, _settingsManager);
+        var deletePage = new DeleteAllNotesPage(repository, options);
 
         ICommandItem[] commands = [
             new CommandItem(listPage)
@@ -106,11 +103,12 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     /// 設定頁送出了表單。
     ///
     /// **只有資料夾變了才整組重建** —— 那時 repository 非換不可,它還盯著舊資料夾。
-    /// 其他設定(寬度)刻意不重建,因為重建對它們根本沒用:CmdPal 手上握著的是使用者
-    /// 當下開著的那個頁面實例,新建的頁面它不會去拿(實測 log:<c>BuildState</c> 之後
-    /// 一次 <c>GetItems</c> 都沒有,直到 Reload)。硬重建反而更糟 —— 會把還在被使用的
-    /// repository 給 Dispose 掉,連 FileSystemWatcher 一起收走。
-    /// 寬度改走 <see cref="IDetailsWidthStore.DetailsWidthChanged"/>,由頁面自己更新。
+    /// 其他設定(分隔符、記下後先看一眼)刻意不重建,因為重建對它們根本沒用:CmdPal
+    /// 手上握著的是使用者當下開著的那個頁面實例,新建的頁面它不會去拿(實測 log:
+    /// <c>BuildState</c> 之後一次 <c>GetItems</c> 都沒有,直到 Reload)。硬重建反而更糟 ——
+    /// 會把還在被使用的 repository 給 Dispose 掉,連 FileSystemWatcher 一起收走。
+    /// 那兩項改走 <see cref="ICaptureSeparatorStore.CaptureSeparatorChanged"/> 與
+    /// <see cref="ICapturePreviewStore.CapturePreviewChanged"/>,由頁面自己更新。
     /// </summary>
     private void OnSettingsApplied(object? sender, EventArgs e)
     {
@@ -123,9 +121,6 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         //
         // 而且比顯示錯更糟 —— 卡片上壓著的過期值會在下一次送出時**被當成使用者的輸入寫回去**,
         // 只改資料夾按儲存就足以把分隔符默默還原。所以這裡不分欄位、不比對新舊,一律重讀。
-        //
-        // 寬度那條線(DetailsWidthChanged → Refresh)要留著:Ctrl+D 是從設定頁外面改值,
-        // 根本不會走到這裡。兩邊都命中時會多重讀一次,無害。
         _settingsPage.Refresh();
 
         var directory = _settingsManager.ToOptions().NotesDirectory;

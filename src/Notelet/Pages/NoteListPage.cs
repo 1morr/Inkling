@@ -16,7 +16,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 {
     private readonly INoteRepository _repository;
     private readonly NoteletOptions _options;
-    private readonly IDetailsWidthStore _widthStore;
 
     /// <summary>
     /// 詳細窗格的「渲染 / 原始文字」切換鈕。
@@ -26,9 +25,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 會回落到命令的名字,而且它有訂閱命令的屬性變更。
     /// </summary>
     private readonly AnonymousCommand _toggleSource;
-
-    /// <summary>詳細窗格的寬度切換鈕,跟 <see cref="_toggleSource"/> 一樣全部項目共用一個實例。</summary>
-    private readonly AnonymousCommand _cycleDetailsWidth;
 
     private string _query = string.Empty;
     private IListItem[]? _items;
@@ -44,29 +40,17 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private (Note Note, ListItem Item)[] _shown = [];
 
     private bool _showSource;
-    private ContentSize _detailsSize;
     private bool _disposed;
 
-    public NoteListPage(INoteRepository repository, NoteletOptions options, IDetailsWidthStore widthStore)
+    public NoteListPage(INoteRepository repository, NoteletOptions options)
     {
         _repository = repository;
         _options = options;
-        _widthStore = widthStore;
-
-        // 寬度是存在設定裡的,重開之後照使用者上次選的來。
-        _detailsSize = widthStore.DetailsWidth;
 
         _toggleSource = new AnonymousCommand(ToggleSource)
         {
             Name = ToggleSourceName,
             Icon = Icons.Source,
-            Result = CommandResult.KeepOpen(),
-        };
-
-        _cycleDetailsWidth = new AnonymousCommand(CycleDetailsWidth)
-        {
-            Name = CycleDetailsWidthName,
-            Icon = Icons.DetailsWidth,
             Result = CommandResult.KeepOpen(),
         };
 
@@ -86,10 +70,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         // 別台機器經 OneDrive 同步下來、或使用者拿別的編輯器改了檔案時自動更新。
         _repository.Changed += OnRepositoryChanged;
-
-        // 設定頁改寬度時,更新的必須是「使用者當下開著的這一個」頁面實例 ——
-        // 見 IDetailsWidthStore.DetailsWidthChanged 上的說明。
-        _widthStore.DetailsWidthChanged += OnDetailsWidthChanged;
     }
 
     public override void UpdateSearchText(string oldSearch, string newSearch)
@@ -127,21 +107,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
     /// <summary>選單上顯示的字,講的是「按下去之後會看到什麼」。</summary>
     private string ToggleSourceName => _showSource ? "顯示渲染後的預覽" : "顯示原始文字";
-
-    /// <summary>
-    /// 同樣是「按下去會變成什麼」。
-    ///
-    /// 只有三檔是 CmdPal 給的上限:寬度來自 <c>IDetails.Size</c>,而它只認
-    /// Small / Medium / Large,對應清單與詳情的比例 3:1 / 2:1 / 1:1
-    /// (CmdPal 的 <c>DetailsSizeToGridLengthConverter</c>)。沒有無段調整 ——
-    /// 它整個介面裡連一個 GridSplitter 都沒有。
-    /// </summary>
-    private string CycleDetailsWidthName => _detailsSize switch
-    {
-        ContentSize.Small => "詳細面板加寬(中)",
-        ContentSize.Medium => "詳細面板加寬(寬)",
-        _ => "詳細面板縮回最窄",
-    };
 
     private IListItem[] BuildItems(string query)
     {
@@ -199,13 +164,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
                 RequestedShortcut = KeyChordHelpers.FromModifiers(
                     ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.U, scanCode: 0),
             },
-            new CommandContextItem(_cycleDetailsWidth)
-            {
-                // 同樣不設 Title,讓選單上的字跟著 _cycleDetailsWidth.Name 走。
-                Subtitle = "在窄 / 中 / 寬三檔之間循環",
-                RequestedShortcut = KeyChordHelpers.FromModifiers(
-                    ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.D, scanCode: 0),
-            },
             new CommandContextItem(new OpenUrlCommand(note.FilePath))
             {
                 Title = "在預設編輯器開啟",
@@ -250,7 +208,17 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     {
         Title = note.Title,
         Body = BuildDetailsBody(note),
-        Size = _detailsSize,
+
+        // 寬度固定最寬(清單:詳情 = 1:1),沒有設定項也沒有快速鍵。清單那一邊只有標題與
+        // 時間,寬一點也不多給什麼資訊;右邊是筆記本文,窄一檔就多折斷幾十行,看原始文字時
+        // 特別有感。曾經做過一個三檔循環的 Ctrl+D 加一個設定項,代價是設定頁與清單頁之間
+        // 一整條雙向同步線,而實際上永遠停在最寬 —— 移除的理由見 README〈詳細面板寬度固定在最寬〉。
+        //
+        // **一定要明著寫**:ContentSize 的 0 是 Small,`new Details()` 不設就是最窄那一檔
+        // (實測過)。CmdPal 也只認 Small / Medium / Large,對應 3:1 / 2:1 / 1:1
+        // (它的 DetailsSizeToGridLengthConverter),沒有無段調整 —— 整個介面裡連一個
+        // GridSplitter 都沒有,所以「寬」就是能給的上限。
+        Size = ContentSize.Large,
     };
 
     private string BuildDetailsBody(Note note)
@@ -276,30 +244,13 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         DiagnosticLog.Write($"ToggleSource: showSource={_showSource}");
     }
 
-    /// <summary>詳細窗格在三檔寬度之間循環,順便存回設定 —— 重開之後還是這個寬度。</summary>
-    private void CycleDetailsWidth()
-    {
-        _detailsSize = _detailsSize switch
-        {
-            ContentSize.Small => ContentSize.Medium,
-            ContentSize.Medium => ContentSize.Large,
-            _ => ContentSize.Small,
-        };
-
-        _cycleDetailsWidth.Name = CycleDetailsWidthName;
-        _widthStore.DetailsWidth = _detailsSize;
-
-        RefreshDetails();
-        DiagnosticLog.Write($"CycleDetailsWidth: size={_detailsSize}");
-    }
-
     /// <summary>
     /// 把每一則已顯示筆記的 <see cref="ListItem.Details"/> 整個換掉,讓 CmdPal 重讀。
     ///
     /// 這裡不呼叫 <c>RaiseItemsChanged</c>:那會讓 CmdPal 重新拿一次清單,
     /// 而它是用 <c>IListItem</c> 的物件識別去快取 viewmodel 的 —— 想讓它重讀詳細內容
-    /// 就得換掉整批項目物件,而整份清單被翻新一次,選中項就有機會跑掉。按下這些鍵的當下
-    /// 正在看某一則筆記,跳走的話這些功能就沒有意義了。
+    /// 就得換掉整批項目物件,而整份清單被翻新一次,選中項就有機會跑掉。按下 Ctrl+U 的當下
+    /// 正在看某一則筆記,跳走的話這個功能就沒有意義了。
     ///
     /// 為什麼是換掉整個 Details 而不是就地改它的屬性(那樣更省):
     /// 因為那條路在跨進程時是斷的。CmdPal 的 <c>DetailsViewModel</c> 是全專案唯一
@@ -307,10 +258,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 因為 SDK 的 <c>IDetails</c> 沒有宣告成可觀察介面。那個 QI 跨不過 out-of-process
     /// 邊界,而 <c>BaseObservable.OnPropertyChanged</c> 又把例外整個吞掉,
     /// 結果就是改了值、通知石沉大海、畫面要重進頁面才會更新(實測過)。
-    ///
-    /// <c>Size</c> 更是連就地改的選項都沒有:它不走 PropChanged,而是
-    /// <c>DetailsViewModel.InitializeProperties</c> 經由 <c>IExtendedAttributesProvider</c>
-    /// 讀一次就定了,只有換上新的 Details 才會重讀。
     ///
     /// <c>ICommandItem</c> 則是在 IDL 裡就繼承 <c>INotifyPropChanged</c>,
     /// <c>CommandItemViewModel</c> 對它是無條件訂閱,所以走這條一定收得到。
@@ -334,29 +281,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         RaiseItemsChanged();
     }
 
-    /// <summary>
-    /// 設定頁改了寬度。走的路跟 Ctrl+D 完全一樣:換掉每一則的 Details 讓 CmdPal 重讀,
-    /// 不動整份清單 —— 理由見 <see cref="RefreshDetails"/>。
-    /// </summary>
-    private void OnDetailsWidthChanged(object? sender, EventArgs e)
-    {
-        var width = _widthStore.DetailsWidth;
-
-        if (width == _detailsSize)
-        {
-            return;
-        }
-
-        _detailsSize = width;
-
-        // 選單上那行字講的是「按下去會變成什麼」,寬度從別的地方被改掉了它也得跟上,
-        // 否則 Ctrl+D 的提示會跟實際狀態差一格。
-        _cycleDetailsWidth.Name = CycleDetailsWidthName;
-
-        RefreshDetails();
-        DiagnosticLog.Write($"OnDetailsWidthChanged: size={_detailsSize}");
-    }
-
     public void Dispose()
     {
         if (_disposed)
@@ -366,6 +290,5 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         _disposed = true;
         _repository.Changed -= OnRepositoryChanged;
-        _widthStore.DetailsWidthChanged -= OnDetailsWidthChanged;
     }
 }

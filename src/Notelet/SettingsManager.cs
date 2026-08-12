@@ -1,4 +1,3 @@
-using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
 
@@ -14,13 +13,9 @@ namespace Notelet;
 /// 則存在 CmdPal 的套件底下,由 CmdPal 管理,擴展碰不到。
 /// </summary>
 internal sealed partial class SettingsManager
-    : JsonSettingsManager, IDetailsWidthStore, ICaptureSeparatorStore, ICapturePreviewStore
+    : JsonSettingsManager, ICaptureSeparatorStore, ICapturePreviewStore
 {
     private const string SettingsNamespace = "Notelet";
-
-    private const string NarrowWidth = "small";
-    private const string MediumWidth = "medium";
-    private const string WideWidth = "large";
 
     private readonly TextSetting _notesDirectory = new(
         Namespaced(nameof(NotesDirectory)),
@@ -49,22 +44,6 @@ internal sealed partial class SettingsManager
         "記下之後停在筆記上,再按一次 Enter 才收起 Command Palette。",
         true);
 
-    private readonly ChoiceSetSetting _detailsWidth = new(
-        Namespaced(nameof(DetailsWidth)),
-        "詳細面板寬度",
-        "清單頁右邊那塊佔多寬。清單頁按 Ctrl+D 可以直接循環,選好的檔位存回這裡。",
-        [
-            new ChoiceSetSetting.Choice("窄(清單:詳情 = 3:1)", NarrowWidth),
-            new ChoiceSetSetting.Choice("中(2:1)", MediumWidth),
-            new ChoiceSetSetting.Choice("寬(1:1)", WideWidth),
-        ])
-    {
-        // 預設檔位只能在這裡補:`ChoiceSetSetting` 的兩個建構子都**不收** defaultValue
-        // (`TextSetting` / `ToggleSetting` 都有),不設就是 null。settings.json 裡缺這個鍵時
-        // `Update` 不會去碰它(實測過 toolkit 0.11.260520004),值因此留在這裡設的。
-        Value = WideWidth,
-    };
-
     public SettingsManager()
     {
         FilePath = SettingsJsonPath();
@@ -73,8 +52,8 @@ internal sealed partial class SettingsManager
         //
         // toolkit 的 Settings.Update 是一個沒有逐項 try/catch 的 foreach,例外一路拋到
         // JsonSettingsManager.LoadSettings 的 catch —— 排在後面的設定項連碰都碰不到,
-        // 靜靜地退回預設值(實際踩過:把這個開關手動寫成 JSON 的 true,
-        // 結果詳細面板寬度從 large 變回 small,而且沒有任何錯誤訊息)。
+        // 靜靜地退回預設值(實際踩過:把這個開關手動寫成 JSON 的 true,結果排在它後面的
+        // 那一項就這樣退回預設,而且沒有任何錯誤訊息)。
         //
         // 所以 _capturePreview 刻意排最後:它是唯一的布林項,而 ToggleSetting 存的是
         // **字串** "true" / "false"(見它的 ToState;Adaptive Cards 的 Input.Toggle
@@ -84,17 +63,13 @@ internal sealed partial class SettingsManager
         // 我們自己畫設定卡片,所以這個順序不影響畫面上的欄位順序(那個在 NoteletSettingsForm)。
         Settings.Add(_notesDirectory);
         Settings.Add(_captureSeparator);
-        Settings.Add(_detailsWidth);
         Settings.Add(_capturePreview);
 
         LoadSettings();
         DiagnosticLog.Write(
             $"SettingsManager: 載入 {FilePath} 分隔符='{CaptureSeparator}' "
-                + $"記下後預覽={ShowCapturePreview} 寬度={_detailsWidth.Value}");
+                + $"記下後預覽={ShowCapturePreview}");
     }
-
-    /// <inheritdoc />
-    public event EventHandler? DetailsWidthChanged;
 
     /// <inheritdoc />
     public event EventHandler? CaptureSeparatorChanged;
@@ -112,7 +87,7 @@ internal sealed partial class SettingsManager
     public event EventHandler? Applied;
 
     /// <summary>
-    /// 設定頁的表單照這兩個定義畫 —— 標籤、說明、選項只有這一份。
+    /// 設定頁的表單照這幾個定義畫 —— 標籤與說明只有這一份。
     /// </summary>
     public TextSetting NotesDirectorySetting => _notesDirectory;
 
@@ -122,21 +97,16 @@ internal sealed partial class SettingsManager
     /// <inheritdoc cref="NotesDirectorySetting" />
     public ToggleSetting CapturePreviewSetting => _capturePreview;
 
-    /// <inheritdoc cref="NotesDirectorySetting" />
-    public ChoiceSetSetting DetailsWidthSetting => _detailsWidth;
-
     /// <summary>
     /// 表單送出(按「儲存」,或選完資料夾)之後的唯一入口:寫值、存檔、通知。
     /// </summary>
     /// <param name="notesDirectory">使用者填的路徑;空白代表回到預設資料夾。</param>
     /// <param name="captureSeparator">快速記下的分隔符;空白代表回到預設值。</param>
     /// <param name="showCapturePreview">記下之後要不要停在預覽頁。</param>
-    /// <param name="detailsWidth">下拉選單的值;不認得就當作沒改。</param>
     public void Apply(
         string notesDirectory,
         string captureSeparator,
-        bool showCapturePreview,
-        string detailsWidth)
+        bool showCapturePreview)
     {
         var directory = string.IsNullOrWhiteSpace(notesDirectory)
             ? NoteletOptions.DefaultNotesDirectory()
@@ -149,27 +119,18 @@ internal sealed partial class SettingsManager
 
         var previewChanged = ShowCapturePreview != showCapturePreview;
 
-        var widthChanged = _detailsWidth.Choices.Any(choice => choice.Value == detailsWidth)
-            && !string.Equals(_detailsWidth.Value, detailsWidth, StringComparison.Ordinal);
-
         _notesDirectory.Value = directory;
         _captureSeparator.Value = separator;
         _capturePreview.Value = showCapturePreview;
 
-        if (widthChanged)
-        {
-            _detailsWidth.Value = detailsWidth;
-        }
-
         Save("Apply");
         DiagnosticLog.Write(
-            $"Apply: 資料夾='{directory}' 分隔符='{separator}' "
-                + $"記下後預覽={showCapturePreview} 寬度={_detailsWidth.Value}");
+            $"Apply: 資料夾='{directory}' 分隔符='{separator}' 記下後預覽={showCapturePreview}");
 
         // 資料夾變了就得換掉整組 repository,那是 provider 的事 —— 它自己比對舊值。
         Applied?.Invoke(this, EventArgs.Empty);
 
-        // 剩下這幾個都是「頁面自己響應」的路 —— 見 IDetailsWidthStore 上的說明。
+        // 剩下這兩個都是「頁面自己響應」的路 —— 見 ICaptureSeparatorStore 上的說明。
         // 排在 Applied 後面沒有關係:資料夾真的變了的話,provider 已經把舊頁面
         // 連同它的訂閱一起釋放,新頁面本來就是拿新值建的。
         if (separatorChanged)
@@ -180,11 +141,6 @@ internal sealed partial class SettingsManager
         if (previewChanged)
         {
             CapturePreviewChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        if (widthChanged)
-        {
-            DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -221,46 +177,6 @@ internal sealed partial class SettingsManager
     /// <inheritdoc />
     public bool ShowCapturePreview => _capturePreview.Value;
 
-    /// <summary>
-    /// 詳細窗格的寬度。清單頁按 Ctrl+D 走的是這條。
-    ///
-    /// 這裡刻意**不**發 <see cref="Applied"/>:那個事件的意思是「使用者在設定頁送出了表單」,
-    /// 發它等於謊報,而且會讓 provider 白跑一次資料夾比對。
-    /// 只發 <see cref="DetailsWidthChanged"/> —— 設定頁靠它把下拉選單更新成新值,
-    /// 否則按完 Ctrl+D 再打開設定頁,看到的還是舊的那一檔。
-    /// </summary>
-    /// <remarks>
-    /// 認不得的值(手改壞的 settings.json、將來被拿掉的檔位)一律當成預設的「寬」,
-    /// 跟這個設定項的預設值同一個答案 —— 讀取端永遠拿得到可用的值,跟
-    /// <see cref="CaptureSeparator"/> 同一個原則。
-    /// </remarks>
-    public ContentSize DetailsWidth
-    {
-        get => _detailsWidth.Value switch
-        {
-            NarrowWidth => ContentSize.Small,
-            MediumWidth => ContentSize.Medium,
-            _ => ContentSize.Large,
-        };
-
-        set
-        {
-            _detailsWidth.Value = ToChoiceValue(value);
-
-            Save("DetailsWidth");
-
-            DiagnosticLog.Write($"DetailsWidth setter: 改成 {_detailsWidth.Value},發出 DetailsWidthChanged");
-            DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
-    /// <summary>
-    /// <see cref="DetailsWidth"/> 對應的下拉選單值 —— 設定頁畫卡片時用這個,不要直接讀
-    /// <c>DetailsWidthSetting.Value</c>:那個值認不得時卡片會顯示成空白,
-    /// 而實際生效的是「寬」,看起來就像設定壞了。
-    /// </summary>
-    public string DetailsWidthValue => ToChoiceValue(DetailsWidth);
-
     public NoteletOptions ToOptions()
     {
         // 使用者可能把資料夾欄位清空。與其讓擴展壞掉,不如退回預設值。
@@ -270,13 +186,6 @@ internal sealed partial class SettingsManager
 
         return new NoteletOptions { NotesDirectory = directory };
     }
-
-    private static string ToChoiceValue(ContentSize size) => size switch
-    {
-        ContentSize.Small => NarrowWidth,
-        ContentSize.Medium => MediumWidth,
-        _ => WideWidth,
-    };
 
     private static string Namespaced(string propertyName) => $"{SettingsNamespace}.{propertyName}";
 

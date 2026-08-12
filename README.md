@@ -22,7 +22,6 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
 | 原始文字 | 清單頁按 `Ctrl+U`,詳細窗格在渲染與原始 Markdown 之間切換 |
-| 面板寬度 | 清單頁按 `Ctrl+D`,詳細窗格在窄 / 中 / 寬三檔之間循環(預設寬) |
 | 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」跳出去改 |
 | 刪除 | 清單頁按 `Ctrl+Del`,確認後**移到資源回收筒**(不是永久刪除) |
 | 清空 | `Notelet:刪除所有筆記` 先開一頁**列出會刪掉哪些檔案**,不是 Notelet 建立的排在最前面,確認後才動手 |
@@ -189,25 +188,29 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 對它是無條件訂閱。所以要通知 CmdPal「這一項變了」,走 `ListItem` 的屬性一定收得到,
 走 `Details` 的屬性則不一定。
 
-### 詳細面板寬度(`Ctrl+D`)
+### 詳細面板寬度固定在最寬
 
-清單頁按 `Ctrl+D`,詳細窗格在**窄 → 中 → 寬**三檔之間循環,對應清單與詳情的比例
-3:1 → 2:1 → 1:1。看原始文字時特別有感,窄窗格會把幾乎每一行都折斷。
+詳細窗格固定是**寬**(清單:詳情 = 1:1),沒有設定項,也沒有快速鍵。清單那一邊只有
+標題與時間,寬一點也不多給什麼資訊;右邊是筆記本文,窄一檔就多折斷幾十行,看原始文字
+時特別有感。
 
-**預設是最寬的 1:1。** 清單那一邊只有標題與時間,寬一點也不多給什麼資訊;右邊是筆記
-本文,窄一檔就多折斷幾十行。要一次掃過很多標題的人再按 `Ctrl+D` 收窄。
+**能給的就只有這麼寬。** 寬度來自 `IDetails.Size`,而 CmdPal 只認
+`Small / Medium / Large`,對應 3:1 / 2:1 / 1:1(`DetailsSizeToGridLengthConverter`);
+自由拖曳它自己也沒做 —— 整個介面裡連一個 `GridSplitter` 都沒有。
 
-**只有三檔,而且拖不動。** 寬度來自 `IDetails.Size`,CmdPal 只認 `Small / Medium / Large`
-(`DetailsSizeToGridLengthConverter`);自由拖曳這件事它自己也沒做 —— 整個介面裡連一個
-`GridSplitter` 都沒有。
+**`Size` 一定要明著寫成 `ContentSize.Large`。** 那個列舉的 0 是 `Small`,`new Details()`
+不設就是**最窄**那一檔(實測過)。而且它連事後補救的機會都沒有:`Size` 不走屬性變更通知,
+是 `DetailsViewModel.InitializeProperties` 經由 `IExtendedAttributesProvider.GetProperties()`
+讀一次就定了,只有換上新的 `Details` 物件才會重讀。
 
-`Size` 比 `Body` 更沒得商量:它根本不走屬性變更通知,而是 `DetailsViewModel.InitializeProperties`
-經由 `IExtendedAttributesProvider.GetProperties()` 讀一次就定了。所以切換寬度跟切換原始文字
-走同一條路 —— 換上新的 `Details` 物件,別無他法。
+**這裡曾經是可調的,後來整個拿掉。** 原本有一個三檔循環的 `Ctrl+D`,選好的檔位存回
+`settings.json`,設定頁還有一個對應的下拉選單 —— 兩邊改的是同一個值,所以得雙向同步:
+一個 `IDetailsWidthStore` 窄介面、一個 `DetailsWidthChanged` 事件、provider 那條
+「寬度變了就叫設定頁重讀」的訂閱,加上手動驗證清單裡整整一節的回歸測試。實際使用永遠
+停在最寬,那些程式碼只是在維護一個沒有人用的檔位,於是連同設定項一起移除。
 
-選好的檔位會存回擴展設定,重開之後照舊。存的時候刻意只寫檔、不發 `SettingsChanged`:
-那個事件會讓整個 provider 重建(換掉 repository 與清單頁),而按 `Ctrl+D` 的當下人正看著
-某一則筆記,清單被翻新一次選中項就跑掉了。設定頁裡也有同一個選項,兩邊改的是同一個值。
+舊 `settings.json` 裡的 `Notelet.DetailsWidth` 鍵留著不管:`Settings.Update` 只認得
+自己註冊過的鍵,多一個孤兒鍵不會有任何影響,不值得為它寫一次遷移。
 
 ### 編輯表單
 
@@ -306,9 +309,18 @@ alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 
 **換掉分隔符之後,舊的那一組就只是普通文字**,不留備援 —— 否則使用者永遠沒辦法把分號
 寫進標題,換設定就失去意義。改了之後**當下開著的快速記下頁就會跟上**(提示文字、
-切出來的標題與內文都是),不必 Reload:那一頁訂閱 `ICaptureSeparatorStore.CaptureSeparatorChanged`,
-理由跟 `Ctrl+D` 那條路一樣,見〈詳細面板寬度〉。頂層那一列的副標刻意寫「分隔符」而不是
-「分號」—— 命令陣列只在資料夾變了才重建,它跟不上。
+切出來的標題與內文都是),不必 Reload:那一頁訂閱
+`ICaptureSeparatorStore.CaptureSeparatorChanged`。
+
+**為什麼要有這條事件線,而不是讓 provider 整組重建就好** —— 因為重建對它根本沒用。
+CmdPal 手上握著的是使用者當下開著的那個頁面實例,新建的頁面它不會去拿:實測 log 裡
+`BuildState` 跑完之後一次 `GetItems` 都沒有,直到 Reload,而舊實例的項目快取(查詢字串
+與 `Version` 都沒變)就這樣把舊值一路留著。硬重建反而更糟,會把還在被使用的 repository
+連同 `FileSystemWatcher` 一起 `Dispose` 掉。所以**資料夾以外的設定一律讓現有頁面自己響應**,
+「記下後先看一眼」走的是同一個形狀(`ICapturePreviewStore.CapturePreviewChanged`)。
+頁面上快取項目的地方,快取鍵也要帶上那個設定值,否則事件收到了、拿到的還是舊結果。
+
+頂層那一列的副標刻意寫「分隔符」而不是「分號」—— 命令陣列只在資料夾變了才重建,它跟不上。
 
 ### 記下之後要不要先看一眼
 
@@ -347,7 +359,7 @@ Id / Name / Icon,不碰 `GetContent`。內容是使用者真的按下 Enter、Cm
 id)才建得出來,而 CmdPal 讀 `Commands` 的時機比 `GetContent` **早**
 (`InitializeProperties` 裡先 `BuildCommandViewModels`,後 `FetchContent`)。所以建構時只掛
 「完成」一顆,存檔成功後換掉整個 `Commands` 陣列,靠 `PropChanged` 讓 CmdPal 重讀 ——
-`IContentPage` 走的是無條件訂閱那條路,不是 `IDetails` 那種斷掉的(見〈詳細面板寬度〉)。
+`IContentPage` 走的是無條件訂閱那條路,不是 `IDetails` 那種斷掉的(見〈原始文字模式〉)。
 
 「完成」回傳的是 `Dismiss()` 而不是 `GoHome()`:使用者記完這則想法就要回去做原本的事,
 留一個主搜尋框在畫面上只是多一次 Esc。存檔失敗時它會改成 `GoBack()` —— 剛打的那句話
@@ -386,7 +398,7 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 而**擴展發不出那個事件**:`RaiseSettingsChanged()` 是 `internal`,唯一的呼叫者是
 使用者按下 Save 時走的 `SettingsForm.SubmitForm`。
 
-結果就是:清單頁按 `Ctrl+D` 改了寬度、檔案也存了,那一頁卻停在啟動時的值。
+結果就是:表單送出、檔案也存了,那一頁卻停在啟動時的值。
 
 修法是**自己實作 `ICommandSettings`**(整個介面只有 `SettingsPage` 一個成員),
 把 `NoteletSettingsPage` 交出去,發 `ItemsChanged` 的權力就回到我們手上。
@@ -402,14 +414,14 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 所以只要漏掉一次 `Refresh()`,那張卡片就永遠停在 provider 剛連上時的值。
 
 實際踩到過:分隔符改成 `##`、檔案也存了、快速記下也確實照 `##` 切,可是設定頁**每次打開
-都顯示 `;;`**。當時只有 `DetailsWidthChanged` 接到 `Refresh()`,新加的設定沒接上。
+都顯示 `;;`**。當時 `Refresh()` 只掛在另一個設定的事件線上,新加的分隔符沒接上。
 
 **比顯示錯更糟的是它會把值吃回去。** 卡片上壓著的過期值,在下一次送出時會被當成使用者
 的輸入寫回設定 —— 只改資料夾按一次儲存,就足以把 `##` 默默還原成 `;;`。
 
 所以 `OnSettingsApplied` 一進來就 `Refresh()`,排在「資料夾沒變就 return」的前面,
-不分欄位、不比對新舊。`DetailsWidthChanged` 那條線要留著:`Ctrl+D` 是從設定頁外面改值,
-根本不會走到 `Applied`。兩邊都命中時會多重讀一次,無害。
+不分欄位、不比對新舊。表單裡按「瀏覽…」選完資料夾那條路也會走到這裡(它自己另外還會
+呼叫一次 `Refresh()`,多重讀一次無害)。
 
 **加新設定項時記得這條** —— 忘了不會有任何錯誤訊息,只會安靜地顯示舊值。
 
@@ -425,7 +437,8 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 3. **送出之後它固定 `GoHome`**,而按「瀏覽…」時得留在原地。
 
 代價是存檔那條路要自己接:值交給 `SettingsManager.Apply`,由它存檔並發出
-`Applied`(provider 拿去比對資料夾)與 `DetailsWidthChanged`(清單頁跟著變寬度)。
+`Applied`(provider 拿去比對資料夾,順便叫設定頁重讀)、`CaptureSeparatorChanged` 與
+`CapturePreviewChanged`(快速記下頁跟著變)。
 toolkit 的 `Settings.RaiseSettingsChanged()` 是 `internal`,本來就叫不動。
 標籤、說明、選項仍然只有 `SettingsManager` 那一份,表單只負責畫。
 
@@ -472,8 +485,9 @@ if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不
 ```
 
 `OnlyControlOnPage` 是 `ContentPageViewModel` 按內容數量算的(`newContent.Count == 1`)。
-而我們每按一次 `Ctrl+D` 就得叫 CmdPal 重讀表單 —— 重讀等於控件重建、再觸發一次 `Loaded`。
-設定視窗開在背景時,那一下就把焦點從主視窗搶了過去。
+而我們每次送出表單都得叫 CmdPal 重讀(上一節)—— 重讀等於控件重建、再觸發一次 `Loaded`。
+兩個入口共用同一個頁面實例,所以從清單頁那個入口存檔時,背景那個設定視窗會跟著重建,
+那一下就把焦點從主視窗搶了過去。
 
 湊滿兩塊內容,`OnlyControlOnPage` 就是 false,重建也不搶焦點。代價是打開設定頁時
 游標不會自動落在第一個欄位。編輯與新增那兩個表單不受影響,它們仍然只有一塊內容。
@@ -578,10 +592,10 @@ settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的�
 | 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置。旁邊的「瀏覽…」會開系統的選資料夾對話框,選好就直接存 |
 | 快速記下的分隔符 | `;;` | 前面是標題、後面是內文。長度不限,半形全形算同一個,清空就回到 `;;`。改完當下開著的快速記下頁就會跟上,不必 Reload。挑選的理由與 `,,` 的建議見〈標題與內文用分隔符切開〉 |
 | 記下後先看一眼 | 開啟 | Enter 記下並停在筆記上,再按一次才收起;關掉就是記完直接收起。同一時間只有一條路,見〈記下之後要不要先看一眼〉 |
-| 詳細面板寬度 | 寬(1:1) | 清單頁按 `Ctrl+D` 也能循環,兩邊改的是同一個值 |
 
-只有四項。快速記下沒有前綴設定 —— 它的入口(alias、全域快速鍵)由 CmdPal 那邊管,
-不在這份設定裡;進得了那一頁就代表意圖很明確,打什麼就記什麼。
+只有三項。快速記下沒有前綴設定 —— 它的入口(alias、全域快速鍵)由 CmdPal 那邊管,
+不在這份設定裡;進得了那一頁就代表意圖很明確,打什麼就記什麼。詳細面板寬度曾經是第四項,
+拿掉的理由見〈詳細面板寬度固定在最寬〉。
 
 **手改 `settings.json` 要小心格式。** toolkit 的載入是一個沒有逐項 `try/catch` 的迴圈
 (`Settings.Update`),某一項解析失敗,例外會一路拋到 `LoadSettings` 的 `catch`,
@@ -640,8 +654,8 @@ src/
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
-    IDetailsWidthStore / ICaptureSeparatorStore / ICapturePreviewStore
-                      「不重建、由現有頁面自己響應」的那幾個設定的窄介面
+    ICaptureSeparatorStore / ICapturePreviewStore
+                      「不重建、由現有頁面自己響應」的那兩個設定的窄介面
     RecycleBinFileDeleter  SHFileOperationW,把筆記送進資源回收筒
     FolderPicker      IFileDialog + FOS_PICKFOLDERS,設定頁的「瀏覽…」
     Pages/            快速記下、記下後的預覽、清單、預覽、編輯、新增、刪除全部、設定

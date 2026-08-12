@@ -15,7 +15,9 @@ namespace Notelet;
 /// <c>Settings.SettingsChanged</c>,而那個事件**擴展發不出來**
 /// (<c>RaiseSettingsChanged()</c> 是 internal,唯一的呼叫者是使用者按下 Save)。
 ///
-/// 於是清單頁按 Ctrl+D 改了寬度、檔也存了,那一頁卻毫不知情。
+/// 於是設定送出去了、檔也存了,那一頁卻毫不知情,卡片一直停在啟動時的值 ——
+/// 而下一次從那裡按 Save,那個過期值會被當成使用者的輸入寫回設定
+/// (完整的坑見 <see cref="NoteletCommandsProvider"/> 的 <c>OnSettingsApplied</c>)。
 /// 換成自己的 <see cref="Pages.NoteletSettingsPage"/> 就拿回了發 <c>ItemsChanged</c> 的權力。
 /// </summary>
 internal sealed partial class NoteletCommandSettings : ICommandSettings
