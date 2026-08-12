@@ -17,6 +17,12 @@
 
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!--
+      [GeneratedComInterface] 的來源產生器產出的封送程式碼是 unsafe 的(vtable 全是 void*)。
+      只有 FolderPicker 那組 shell 介面用得到,我們自己寫的程式碼裡沒有 unsafe。
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

@@ -322,9 +322,43 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 那個頁面因此**不能跟著 `ProviderState` 重建** —— CmdPal 在 provider 剛連上時就把
 `Settings` 讀走了,換了實例它不知道,只會繼續用手上那個。
 
+#### 表單也是自己的
+
+頁面的內容不是 toolkit 的 `Settings.ToContent()`,而是自己寫的一張 Adaptive Card
+(`NoteletSettingsForm`)。三個理由:
+
+1. **toolkit 的卡片放不下「瀏覽…」按鈕。** 設定項只能一格一格排下去。
+2. **欄位名根本不會顯示。** 它把 `Label` 塞進卡片的 `title`,而 `Input.Text` 沒有那個屬性;
+   真正會顯示的 `label` 它拿去放 `Description`。結果每個欄位頭上頂著一整句說明,
+   看不到「筆記資料夾」這種短名字。
+3. **送出之後它固定 `GoHome`**,而按「瀏覽…」時得留在原地。
+
+代價是存檔那條路要自己接:值交給 `SettingsManager.Apply`,由它存檔並發出
+`Applied`(provider 拿去比對資料夾)與 `DetailsWidthChanged`(清單頁跟著變寬度)。
+toolkit 的 `Settings.RaiseSettingsChanged()` 是 `internal`,本來就叫不動。
+標籤、說明、選項仍然只有 `SettingsManager` 那一份,表單只負責畫。
+
+#### 資料夾旁邊的「瀏覽…」
+
+按下去開的是系統的選資料夾對話框(`IFileDialog` + `FOS_PICKFOLDERS`,見 `FolderPicker`)。
+擴展是個**沒有視窗**的 out-of-process COM server,所以有兩件事跟一般 app 不一樣:
+
+- **對話框跑在自己的 STA 執行緒上。** `Show` 會擋到使用者關掉對話框為止,而呼叫端那條
+  執行緒是 CmdPal 的(`ContentFormViewModel.HandleSubmit` 裡的 `Task.Run`),
+  不能讓它在那邊等。`SubmitForm` 因此立刻回 `KeepOpen`,選好之後才用回呼把路徑送回來。
+- **選好就直接存,不等使用者再按一次「儲存」。** 對話框一拿到焦點,CmdPal 主視窗就會把
+  自己藏起來(`MainWindow` 的 `Deactivated` → `HideWindow`,沒有開關可以關掉),
+  表單跟著一起消失 —— 那時候還壓在表單裡的值,使用者既看不到也按不到。
+
+還有一個 Windows 本身的限制:只有前景進程開的視窗搶得到焦點,而我們這個 COM server
+從頭到尾沒收過使用者的輸入。不管的話對話框會開在 CmdPal 後面,使用者只看到工作列閃一下。
+`FolderPicker` 因此會去找「屬於自己、而且看得見」的那個頂層視窗(平常一個都沒有),
+再 `SetForegroundWindow` 把它拉到前面;拉不動就退回 `BringWindowToTop` /
+`SwitchToThisWindow`,最差的情況是使用者自己從工作列點開它。
+
 #### 表單前面那行說明是承重牆
 
-設定頁的表單上方有一行「清單頁按 `Ctrl+D` 也能循環…」。**它不能刪**,刪了焦點就會亂跳。
+設定頁的表單上方有一行說明。**它不能刪**,刪了焦點就會亂跳。
 
 `ContentFormControl` 載入後會自動聚焦第一個輸入欄位,但只在自己是頁面上唯一的控件時:
 
@@ -340,6 +374,9 @@ if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不
 
 多一塊內容,`OnlyControlOnPage` 就是 false,重建也不搶焦點。代價是打開設定頁時
 游標不會自動落在第一個欄位。編輯與新增那兩個表單不受影響,它們仍然只有一塊內容。
+
+那行字寫什麼可以改,但別去重複各個設定項自己的說明 —— 那些就印在欄位底下,
+同一句話在一頁裡出現兩次比沒有還糟。
 
 ### 刪除全部為什麼是一頁
 
@@ -421,7 +458,7 @@ settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的�
 
 | 設定 | 預設 | 說明 |
 |---|---|---|
-| 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置 |
+| 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置。旁邊的「瀏覽…」會開系統的選資料夾對話框,選好就直接存 |
 | 詳細面板寬度 | 窄 | 清單頁按 `Ctrl+D` 也能循環,兩邊改的是同一個值 |
 
 只有兩項。快速記下沒有前綴設定 —— 它的入口(alias、全域快速鍵)由 CmdPal 那邊管,
@@ -450,6 +487,7 @@ src/
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
     RecycleBinFileDeleter  SHFileOperationW,把筆記送進資源回收筒
+    FolderPicker      IFileDialog + FOS_PICKFOLDERS,設定頁的「瀏覽…」
     Pages/            快速記下、清單、預覽、編輯、新增、刪除全部、設定
 tests/
   Notelet.Core.Tests/  xUnit

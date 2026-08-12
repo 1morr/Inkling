@@ -29,7 +29,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         DisplayName = "Notelet";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
 
-        _settingsPage = new NoteletSettingsPage(_settingsManager.Settings);
+        _settingsPage = new NoteletSettingsPage(_settingsManager);
 
         // 包一層自己的 ICommandSettings,理由見 NoteletCommandSettings。
         Settings = new NoteletCommandSettings(_settingsPage);
@@ -40,8 +40,8 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         _state = BuildState();
 
         // 改了資料夾路徑之後,整組命令要跟著換掉 —— 舊的 repository 還盯著舊資料夾。
-        // (只有資料夾會觸發重建,理由見 OnSettingsChanged。)
-        _settingsManager.Settings.SettingsChanged += OnSettingsChanged;
+        // (只有資料夾會觸發重建,理由見 OnSettingsApplied。)
+        _settingsManager.Applied += OnSettingsApplied;
     }
 
     // CmdPal 一啟動就會呼叫這個方法,絕對不能碰磁碟 —— 只回傳事先建好的靜態命令項。
@@ -101,7 +101,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     }
 
     /// <summary>
-    /// 設定變更。
+    /// 設定頁送出了表單。
     ///
     /// **只有資料夾變了才整組重建** —— 那時 repository 非換不可,它還盯著舊資料夾。
     /// 其他設定(寬度)刻意不重建,因為重建對它們根本沒用:CmdPal 手上握著的是使用者
@@ -110,7 +110,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     /// repository 給 Dispose 掉,連 FileSystemWatcher 一起收走。
     /// 寬度改走 <see cref="IDetailsWidthStore.DetailsWidthChanged"/>,由頁面自己更新。
     /// </summary>
-    private void OnSettingsChanged(object? sender, Settings e)
+    private void OnSettingsApplied(object? sender, EventArgs e)
     {
         var directory = _settingsManager.ToOptions().NotesDirectory;
         ProviderState previous;
@@ -119,7 +119,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         {
             if (string.Equals(_state.NotesDirectory, directory, StringComparison.OrdinalIgnoreCase))
             {
-                DiagnosticLog.Write("SettingsChanged: 資料夾沒變,不重建");
+                DiagnosticLog.Write("SettingsApplied: 資料夾沒變,不重建");
                 return;
             }
 
@@ -133,7 +133,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
 
     public override void Dispose()
     {
-        _settingsManager.Settings.SettingsChanged -= OnSettingsChanged;
+        _settingsManager.Applied -= OnSettingsApplied;
         _state.Dispose();
 
         base.Dispose();
@@ -142,7 +142,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
 
     /// <summary>
     /// 一組「跟著目前資料夾走」的東西。資料夾一改就整組換掉(其他設定不會,
-    /// 見 <see cref="OnSettingsChanged"/>),舊的那組要確實釋放,
+    /// 見 <see cref="OnSettingsApplied"/>),舊的那組要確實釋放,
     /// 否則 FileSystemWatcher 與事件訂閱會一直累積。
     /// </summary>
     /// 標成 partial 是 CsWinRT 的要求:任何實作了 WinRT 投影介面(這裡是 IDisposable)

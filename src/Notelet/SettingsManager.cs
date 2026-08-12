@@ -46,22 +46,60 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
 
         LoadSettings();
         DiagnosticLog.Write($"SettingsManager: 載入 {FilePath} 寬度={_detailsWidth.Value}");
-
-        Settings.SettingsChanged += OnSettingsChanged;
     }
 
     /// <inheritdoc />
     public event EventHandler? DetailsWidthChanged;
 
-    private void OnSettingsChanged(object sender, Settings e)
+    /// <summary>
+    /// 設定頁送出表單之後發出(不管值有沒有真的變)。
+    ///
+    /// 為什麼不是 toolkit 的 <c>Settings.SettingsChanged</c>:那個事件只有 toolkit 自己的
+    /// <c>SettingsForm</c> 發得出來(<c>RaiseSettingsChanged()</c> 是 internal),而設定頁的
+    /// 表單已經換成我們自己的了 —— 理由見 <see cref="Pages.NoteletSettingsForm"/>。
+    /// </summary>
+    public event EventHandler? Applied;
+
+    /// <summary>
+    /// 設定頁的表單照這兩個定義畫 —— 標籤、說明、選項只有這一份。
+    /// </summary>
+    public TextSetting NotesDirectorySetting => _notesDirectory;
+
+    /// <inheritdoc cref="NotesDirectorySetting" />
+    public ChoiceSetSetting DetailsWidthSetting => _detailsWidth;
+
+    /// <summary>
+    /// 表單送出(按「儲存」,或選完資料夾)之後的唯一入口:寫值、存檔、通知。
+    /// </summary>
+    /// <param name="notesDirectory">使用者填的路徑;空白代表回到預設資料夾。</param>
+    /// <param name="detailsWidth">下拉選單的值;不認得就當作沒改。</param>
+    public void Apply(string notesDirectory, string detailsWidth)
     {
-        DiagnosticLog.Write($"SettingsChanged: 寬度={_detailsWidth.Value} 資料夾='{NotesDirectory}'");
+        var directory = string.IsNullOrWhiteSpace(notesDirectory)
+            ? NoteletOptions.DefaultNotesDirectory()
+            : notesDirectory.Trim();
 
-        Save("SettingsChanged");
+        var widthChanged = _detailsWidth.Choices.Any(choice => choice.Value == detailsWidth)
+            && !string.Equals(_detailsWidth.Value, detailsWidth, StringComparison.Ordinal);
 
-        // 這條只有設定頁走得到。頁面自己按 Ctrl+D 改寬度時走的是 DetailsWidth 的 setter,
-        // 那裡不發事件 —— 見 IDetailsWidthStore 上的說明。
-        DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
+        _notesDirectory.Value = directory;
+
+        if (widthChanged)
+        {
+            _detailsWidth.Value = detailsWidth;
+        }
+
+        Save("Apply");
+        DiagnosticLog.Write($"Apply: 資料夾='{directory}' 寬度={_detailsWidth.Value}");
+
+        // 資料夾變了就得換掉整組 repository,那是 provider 的事 —— 它自己比對舊值。
+        Applied?.Invoke(this, EventArgs.Empty);
+
+        // 清單頁開著的話,詳細面板要當場跟著變 —— 見 IDetailsWidthStore 上的說明。
+        if (widthChanged)
+        {
+            DetailsWidthChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     /// <summary>
@@ -90,9 +128,9 @@ internal sealed partial class SettingsManager : JsonSettingsManager, IDetailsWid
     /// <summary>
     /// 詳細窗格的寬度。清單頁按 Ctrl+D 走的是這條。
     ///
-    /// 這裡刻意**不**發 toolkit 的 <c>SettingsChanged</c>:那個事件是「使用者在設定頁
-    /// 按了 Save」的意思,發它等於謊報,而且會多跑一次整組設定的處理。
-    /// 改發 <see cref="DetailsWidthChanged"/> —— 設定頁靠它把下拉選單更新成新值,
+    /// 這裡刻意**不**發 <see cref="Applied"/>:那個事件的意思是「使用者在設定頁送出了表單」,
+    /// 發它等於謊報,而且會讓 provider 白跑一次資料夾比對。
+    /// 只發 <see cref="DetailsWidthChanged"/> —— 設定頁靠它把下拉選單更新成新值,
     /// 否則按完 Ctrl+D 再打開設定頁,看到的還是舊的那一檔。
     /// </summary>
     public ContentSize DetailsWidth

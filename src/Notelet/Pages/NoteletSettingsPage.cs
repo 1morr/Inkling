@@ -14,8 +14,8 @@ namespace Notelet.Pages;
 /// 結果就是:清單頁按 Ctrl+D 改了寬度,設定檔也存了,可是設定頁再打開時顯示的還是舊值 ——
 /// CmdPal 不會因為導覽進頁面就重新呼叫 <c>GetContent()</c>,得有人叫它重拿。
 ///
-/// 所以這裡自己套一層外殼,內容還是用公開的 <c>Settings.ToContent()</c>(表單本身
-/// 連同 Save 的處理都是 toolkit 的),只是把「什麼時候該重拿」的控制權拿回來。
+/// 所以這裡自己套一層外殼,把「什麼時候該重拿」的控制權拿回來。
+/// 表單也是自己的(<see cref="NoteletSettingsForm"/>),理由見那邊。
 /// </summary>
 internal sealed partial class NoteletSettingsPage : ContentPage
 {
@@ -34,13 +34,16 @@ internal sealed partial class NoteletSettingsPage : ContentPage
     ///
     /// 代價:打開設定頁時游標不會自動落在第一個欄位,要點一下或按 Tab。
     /// 對「偶爾來改一次」的設定頁來說,這比背景視窗亂跳好得多。
+    ///
+    /// 內容本身避開每個設定項自己的說明(那些就在欄位底下),不然同一句話會出現兩次 ——
+    /// 頁首這一行講的是整頁共通的事。
     /// </summary>
     private readonly MarkdownContent _intro = new(
-        "清單頁按 `Ctrl+D` 也能循環詳細面板的寬度,跟這裡改的是同一個值。");
+        "改好之後按最下面的「儲存」。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。");
 
-    private readonly Settings _settings;
+    private readonly SettingsManager _settings;
 
-    public NoteletSettingsPage(Settings settings)
+    public NoteletSettingsPage(SettingsManager settings)
     {
         _settings = settings;
 
@@ -53,8 +56,9 @@ internal sealed partial class NoteletSettingsPage : ContentPage
     {
         DiagnosticLog.Write("SettingsPage.GetContent: 重新產生表單");
 
+        // 每次都給新的表單物件:值是建構時就烤進卡片的,重用等於永遠顯示第一次的值。
         // 順序有意義:說明在前,而且它必須留著 —— 見 _intro 上的說明。
-        return [_intro, .. _settings.ToContent()];
+        return [_intro, new NoteletSettingsForm(_settings, Refresh)];
     }
 
     /// <summary>值被頁面以外的地方改掉了(目前只有清單頁的 Ctrl+D),叫 CmdPal 重拿表單。</summary>

@@ -1,0 +1,218 @@
+using System.Text.Json.Nodes;
+using Microsoft.CommandPalette.Extensions.Toolkit;
+
+namespace Notelet.Pages;
+
+/// <summary>
+/// 設定頁的表單。
+///
+/// 為什麼不用 toolkit 現成的 <c>Settings.ToContent()</c>:
+///
+/// 1. **它畫不出「瀏覽…」按鈕。** 設定項只能一格一格排下去,卡片上沒有地方放別的東西。
+/// 2. **欄位名根本不會顯示。** 它把 <c>Label</c> 塞進 Adaptive Cards 的 <c>title</c>,
+///    而 <c>Input.Text</c> 沒有那個屬性;真正會顯示的 <c>label</c> 它拿去放 <c>Description</c>。
+///    結果就是每個欄位頭上頂著一整句說明,看不到「筆記資料夾」這種短名字。
+/// 3. **送出之後它固定 <c>GoHome</c>**,而按「瀏覽…」時我們得留在原地。
+///
+/// 代價是存檔那條路要自己接:值交給 <see cref="SettingsManager.Apply"/>,由它存檔與通知
+/// (toolkit 的 <c>Settings.RaiseSettingsChanged()</c> 是 internal,擴展叫不動)。
+/// 標籤、說明、選項仍然只有 <see cref="SettingsManager"/> 那一份,這裡只負責畫。
+/// </summary>
+internal sealed partial class NoteletSettingsForm : FormContent
+{
+    private const string DirectoryField = "directory";
+    private const string WidthField = "width";
+
+    /// <summary>Adaptive Cards 的樣板佔位符,值由 <see cref="FormContent.DataJson"/> 填。</summary>
+    private const string DirectoryBinding = "${" + DirectoryField + "}";
+
+    /// <summary>按鈕靠 <c>Action.Submit</c> 的 data 表明自己是誰 —— 兩顆按鈕走的是同一個 SubmitForm。</summary>
+    private const string ActionKey = "action";
+    private const string BrowseAction = "browse";
+
+    private readonly SettingsManager _settings;
+    private readonly Action _refreshPage;
+
+    /// <param name="refreshPage">選完資料夾之後叫設定頁重畫,否則輸入框裡還是舊路徑。</param>
+    public NoteletSettingsForm(SettingsManager settings, Action refreshPage)
+    {
+        _settings = settings;
+        _refreshPage = refreshPage;
+
+        TemplateJson = BuildTemplate(settings);
+
+        // 路徑是使用者輸入的,一律經由 DataJson 帶進去。直接拼進 TemplateJson 的話,
+        // 資料夾名稱裡的 ${...} 會被樣板引擎當成佔位符解讀 —— 跟筆記內文同一個理由。
+        DataJson = new JsonObject
+        {
+            [DirectoryField] = settings.NotesDirectory,
+        }.ToJsonString();
+    }
+
+    public override CommandResult SubmitForm(string inputs, string data)
+    {
+        var form = JsonNode.Parse(inputs)?.AsObject();
+
+        if (form is null)
+        {
+            return CommandResult.KeepOpen();
+        }
+
+        var directory = form[DirectoryField]?.ToString() ?? string.Empty;
+        var width = form[WidthField]?.ToString() ?? string.Empty;
+
+        if (ActionOf(data) == BrowseAction)
+        {
+            return Browse(directory, width);
+        }
+
+        _settings.Apply(directory, width);
+        new ToastStatusMessage("設定已儲存").Show();
+
+        return CommandResult.GoHome();
+    }
+
+    /// <summary>Action.Submit 的 data;空字串代表這張卡片沒帶 data(理論上不會發生)。</summary>
+    private static string? ActionOf(string data)
+    {
+        if (string.IsNullOrWhiteSpace(data))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonNode.Parse(data)?[ActionKey]?.ToString();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    private CommandResult Browse(string directory, string width)
+    {
+        var opened = FolderPicker.TryShow(
+            "選擇筆記資料夾",
+            string.IsNullOrWhiteSpace(directory) ? _settings.NotesDirectory : directory.Trim(),
+            picked =>
+            {
+                // 選好就直接存,不等使用者再按一次「儲存」:對話框一拿到焦點,CmdPal 主視窗
+                // 就會把自己藏起來(MainWindow 的 Deactivated → HideWindow,沒有開關可以關掉),
+                // 這張表單跟著一起消失 —— 那時候還壓在表單裡的值,使用者既看不到也按不到。
+                //
+                // 寬度一起套用,因為它就是使用者按下「瀏覽…」當下卡片上顯示的值。
+                _settings.Apply(picked, width);
+                new ToastStatusMessage($"筆記資料夾:{picked}").Show();
+
+                _refreshPage();
+            });
+
+        if (!opened)
+        {
+            new ToastStatusMessage("已經有一個「選擇資料夾」的視窗開著了").Show();
+        }
+
+        return CommandResult.KeepOpen();
+    }
+
+    /// <summary>
+    /// 卡片的排版。
+    ///
+    /// 「瀏覽…」跟輸入框放在同一個 <c>ColumnSet</c> 裡,按鈕那一欄靠底對齊 ——
+    /// 輸入框頭上還有一行 <c>label</c>,不對齊的話按鈕會浮在框的上緣。
+    ///
+    /// 說明文字擺在欄位**下面**當註腳,而不是像 toolkit 那樣頂在標籤的位置。
+    /// 卡片層級只留「儲存」一顆:在單行輸入框裡按 Enter 時,CmdPal 送出的是
+    /// <c>card.Actions</c> 的第一個(<c>ContentFormControl.OnFormKeyDown</c>)——
+    /// 打完路徑按 Enter 應該是存檔,不是跳出對話框。
+    /// </summary>
+    private static string BuildTemplate(SettingsManager settings)
+    {
+        var directory = settings.NotesDirectorySetting;
+        var width = settings.DetailsWidthSetting;
+
+        var choices = string.Join(
+            ",",
+            width.Choices.Select(choice => $$"""{"title": {{Json(choice.Title)}}, "value": {{Json(choice.Value)}}}"""));
+
+        return $$"""
+        {
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "type": "AdaptiveCard",
+            "version": "1.6",
+            "body": [
+                {
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "width": "stretch",
+                            "items": [
+                                {
+                                    "type": "Input.Text",
+                                    "id": "{{DirectoryField}}",
+                                    "label": {{Json(directory.Label)}},
+                                    "value": "{{DirectoryBinding}}"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "Column",
+                            "width": "auto",
+                            "verticalContentAlignment": "bottom",
+                            "items": [
+                                {
+                                    "type": "ActionSet",
+                                    "actions": [
+                                        {
+                                            "type": "Action.Submit",
+                                            "title": "瀏覽…",
+                                            "data": { "{{ActionKey}}": "{{BrowseAction}}" }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "text": {{Json(directory.Description)}},
+                    "wrap": true,
+                    "isSubtle": true,
+                    "size": "small",
+                    "spacing": "small"
+                },
+                {
+                    "type": "Input.ChoiceSet",
+                    "id": "{{WidthField}}",
+                    "label": {{Json(width.Label)}},
+                    "value": {{Json(width.Value ?? string.Empty)}},
+                    "spacing": "medium",
+                    "choices": [{{choices}}]
+                },
+                {
+                    "type": "TextBlock",
+                    "text": {{Json(width.Description)}},
+                    "wrap": true,
+                    "isSubtle": true,
+                    "size": "small",
+                    "spacing": "small"
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": "儲存",
+                    "style": "positive",
+                    "data": { "{{ActionKey}}": "save" }
+                }
+            ]
+        }
+        """;
+    }
+
+    /// <summary>把字串變成帶引號的 JSON 字面值,連跳脫一起處理。</summary>
+    private static string Json(string text) => JsonValue.Create(text)!.ToJsonString();
+}

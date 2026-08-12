@@ -84,14 +84,25 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    `NoteletSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
    **不能跟著 `ProviderState` 重建**:CmdPal 在 provider 剛連上時就把 `Settings` 讀走了。
    設定頁表單上方那行說明也**不能刪** —— `ContentFormControl` 只在自己是頁面上唯一的
-   控件時才自動聚焦,多那一塊內容才擋得住「每按一次 Ctrl+D,背景的設定視窗就跳到前面」。
+   控件時才自動聚焦,多那一塊內容才擋得住「每按一次 Ctrl+D,背景的設定視窗就跳到前面」
+   (內容可以改,但別重複欄位自己的說明)。表單本身也不是 toolkit 的 `Settings.ToContent()`
+   而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
+   `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。
+   存檔因此走 `SettingsManager.Apply`(toolkit 的 `RaiseSettingsChanged()` 是 internal)。
    細節見 README〈設定頁有兩個入口〉。
 6. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload
    一次即可,不必重開 PowerToys。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
    之前開著的設定頁是綁在舊擴展實例上的死物件,按 Save 靜靜地什麼都不做** ——
    不寫檔、不重建、不報錯。查這種「改設定沒反應」之前,先把設定頁關掉重開。
-7. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
+7. **擴展進程沒有視窗,也不是前景進程。** 要開系統對話框(目前只有設定頁的「瀏覽…」,
+   見 `FolderPicker`)得自己開一條 STA 執行緒,而且開出來的視窗**搶不到焦點** ——
+   Windows 只讓前景進程這麼做。`FolderPicker` 用「找自己的可見頂層視窗 → SetForegroundWindow」
+   兜過去。另外 CmdPal 主視窗一失焦就自己隱藏(沒有開關),所以對話框選完的結果要**當場存**,
+   不能指望使用者回到表單再按儲存。
+8. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
    trimming 只在 `dotnet publish` 生效,所以 trimming 相關的問題只有 Release 部署才驗得到。
+   `[GeneratedComInterface]`(shell 的 COM 介面)需要 `AllowUnsafeBlocks`,
+   而且**方法的宣告順序就是 vtable 順序** —— 排錯不會有編譯錯誤,只會呼叫到別的函式。
 
 ## 慣例
 
