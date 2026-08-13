@@ -45,7 +45,7 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 測試因此可以用假的實作,不會真的去動使用者的資源回收筒。
 
 `NoteletCommandsProvider` 持有一個 `ProviderState`(資料夾 + repository + 清單頁 +
-快速記下頁 + 刪除全部頁 + 命令陣列)。**只有資料夾變了才整組重建**並釋放舊的 —— 那時 repository
+快速記下頁 + 刪除頁 + 命令陣列)。**只有資料夾變了才整組重建**並釋放舊的 —— 那時 repository
 非換不可。會訂閱 `repository.Changed` 的頁面都要進 `ProviderState` 並在 `Dispose` 裡退訂,
 否則改幾次資料夾之後同一個事件會有好幾個死頁面在聽。
 
@@ -97,8 +97,8 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    就足以把別的設定默默還原。加新設定項時特別容易忘,忘了不會報錯。
    設定頁表單後面曾經掛著一塊**空的** `MarkdownContent`,用來擋「背景的設定視窗跳到前面」——
    **已經移除**:那招依賴的 `OnlyControlOnPage` 判斷在安裝版裡根本不存在(見〈已知落差〉),
-   而且會觸發的情境隨舊的 `Ctrl+D`(當時是詳細面板寬度三檔循環,現在那個鍵給了刪除)
-   一起沒了,拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
+   而且會觸發的情境隨舊的 `Ctrl+D`(當時是詳細面板寬度三檔循環,後來給了刪除,
+   現在整個拿掉了)一起沒了,拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
    說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
    而且區塊之間有 32px 收不掉的間距)。表單本身也不是 toolkit 的 `Settings.ToContent()`
    而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
@@ -192,8 +192,20 @@ Get-ChildItem $d -Recurse -Include *.dll,*.exe | Where-Object {
   README 曾經照 `main` 寫成「設了它預設按鈕就變取消」,手動驗證清單還照那個寫了一條測試項。
   順帶一提**按鈕的顏色擴展碰不到**:`ConfirmationArgs` 只有四個屬性,而 CmdPal 那段把主要
   按鈕標紅的樣式是註解掉的 TODO。見 README〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。
+- `ListItemsView` 的 sticky selection —— `main` 在清單更新後會盡量把選中項留在原處
+  (`_stickySelectedItem`),留不住才退回 `GetFirstSelectableIndex()` 選第一個可選項;
+  安裝版 `_stickySelectedItem` / `firstUsefulIndex` / `ensureSelectionVisible` **一個都掃不到**。
+  也就是說**刪掉當前那一列之後焦點落在哪,在使用者手上沒有保證**,舊版大概率就是跳第一列。
+  刪除頁「刪除全部」排第一就是踩在這上面 —— 順手按 Enter 有機會落到它身上,靠確認框擋;
+  而 `Ctrl+Enter` 那條連續刪的路踩不到(那一列沒有次要命令)。
+  見 README〈「刪除全部」排第一的代價〉。
 
 這就是為什麼每個從原始碼得到的結論都要 byte-scan 對照一次再寫進文檔。
+
+**反過來也有「掃得到」的**:`ListItem.Tags` 改了畫面會即時更新這條路,安裝版是有的
+(`UpdateTags` / `VisibleTags` / `HasTags` / `TagViewModel` 都掃得到)—— 刪除頁的多選
+曾經靠它做出來過(後來整個移除,見 README〈為什麼沒有多選〉),但這條路本身是通的,
+下次需要在清單上就地改一列的狀態時可以直接用。byte-scan 不是只拿來否定,拿來確認一樣有用。
 
 兩份設定檔:
 

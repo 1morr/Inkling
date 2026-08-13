@@ -51,7 +51,7 @@ internal static class Icons
     /// <summary>
     /// Warning — 不是 Notelet 建立的檔案。
     ///
-    /// 用警告而不是另一種文件圖示:它只出現在「刪除所有筆記」那一頁,
+    /// 用警告而不是另一種文件圖示:它只出現在刪除筆記那一頁,
     /// 而在那個情境下這件事就是個警告 —— 這個檔案是別人的。
     /// </summary>
     public static IconInfo External => Glyph(0xE7BA);

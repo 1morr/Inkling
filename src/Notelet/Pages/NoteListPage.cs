@@ -169,17 +169,22 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
                 Title = "在預設編輯器開啟",
                 Icon = Icons.OpenExternal,
             },
+            // **這裡沒有快速鍵,而且是刻意的。**
+            //
+            // Delete 系列的鍵一開始就不能用:清單頁的焦點永遠在搜尋框上,而 `Delete` 是
+            // 「刪游標右邊一個字」、`Ctrl+Delete` 是「刪游標右邊一個詞」,兩個都是 Windows
+            // 文字框的標準鍵,綁走等於把它們從搜尋框拿掉(頁面層級的 RequestedShortcut
+            // 比 TextBox 先收到鍵)。這一列因此曾經走 `Ctrl+D`。
+            //
+            // 現在連 `Ctrl+D` 都拿掉了:刪除有了自己的一頁(`Notelet:刪除筆記`),
+            // 那裡才是連續清理該去的地方 —— 有多選、有「刪除全部」、看得到外來檔案。
+            // 清單頁是拿來找筆記的,把一個不可逆的動作綁在搜尋框上按得到的鍵位上,
+            // 換來的方便配不上誤觸的代價。選單項留著,`Ctrl+K` 進去還是刪得掉。
+            // 見 README〈清單頁的刪除為什麼沒有快速鍵〉。
             new CommandContextItem(CreateDeleteCommand(note))
             {
                 Title = "刪除",
                 Subtitle = "移到資源回收筒",
-                // 清單頁的焦點在搜尋框上,所以 Delete 系列的鍵都得讓給編輯文字:
-                // 光是 Delete 是「刪游標右邊一個字」,而 `Ctrl+Delete` 是「刪游標右邊一個詞」——
-                // 兩個都是 Windows 文字框的標準鍵,綁走等於把它們從搜尋框拿掉。
-                // `Ctrl+D` 在文字框裡沒有標準語意,CmdPal 自己也沒佔用(原始碼裡唯一的 D 是
-                // 圖片檢視器的平移鍵,沒有修飾鍵),所以刪除走這個鍵。
-                RequestedShortcut = KeyChordHelpers.FromModifiers(
-                    ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.D, scanCode: 0),
             },
         ],
     };

@@ -48,11 +48,12 @@ internal static class CommandIds
     public const string QuickCapturePage = "Notelet.QuickCapturePage";
 
     /// <summary>
-    /// 刪除所有筆記那一頁(頂層命令「Notelet:刪除所有筆記」)。
+    /// 刪除筆記那一頁(頂層命令「Notelet:刪除筆記」)。
     ///
-    /// 這個 Id 原本掛在一個按下去就跳確認框的命令上,現在掛在頁面上。
-    /// **刻意沿用同一個字串**:對 CmdPal 來說那只是「同一個命令換了行為」,
-    /// 使用者設過的 alias 與釘選都還對得上。
+    /// 這個 Id 一路沿用下來:它原本掛在一個按下去就跳確認框的「刪除所有筆記」命令上,
+    /// 後來換成頁面,現在那一頁還多了多選。**每一次都刻意沿用同一個字串** ——
+    /// 對 CmdPal 來說那只是「同一個命令換了行為」,使用者設過的 alias 與釘選都還對得上。
+    /// 標題可以改(Id 有設就不會去算雜湊),Id 不行。
     /// </summary>
     public const string DeleteAll = "Notelet.DeleteAll";
 }
