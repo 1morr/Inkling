@@ -147,8 +147,10 @@ internal sealed partial class DeleteAllNotesPage : ListPage, IDisposable
                 Description = description,
                 PrimaryCommand = new ConfirmedDeleteAllNotesCommand(_repository, DeleteScope.Everything),
 
-                // 這裡維持 critical:CmdPal 拿它做的事是把預設按鈕設成「取消」
-                // (見 NoteListPage 上的說明)。要清空整個資料夾就該多花那一下。
+                // 這裡維持 critical:上游拿它做的事是把預設按鈕設成「取消」,要清空整個
+                // 資料夾就該多花那一下。**0.11 安裝版還沒有那條路**(見 NoteListPage 上的
+                // 說明),所以現在按下去跟單則刪除長得一模一樣 —— 那一頁本身列出會刪掉哪些
+                // 檔案,防線在那裡,不在這個旗標。
                 IsPrimaryCommandCritical = true,
             }),
         };

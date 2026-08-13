@@ -173,10 +173,13 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             {
                 Title = "刪除",
                 Subtitle = "移到資源回收筒",
-                // 沒有修飾鍵的 Delete 綁不了:清單頁的焦點在搜尋框上,
-                // 那個鍵得留給編輯文字用。
+                // 清單頁的焦點在搜尋框上,所以 Delete 系列的鍵都得讓給編輯文字:
+                // 光是 Delete 是「刪游標右邊一個字」,而 `Ctrl+Delete` 是「刪游標右邊一個詞」——
+                // 兩個都是 Windows 文字框的標準鍵,綁走等於把它們從搜尋框拿掉。
+                // `Ctrl+D` 在文字框裡沒有標準語意,CmdPal 自己也沒佔用(原始碼裡唯一的 D 是
+                // 圖片檢視器的平移鍵,沒有修飾鍵),所以刪除走這個鍵。
                 RequestedShortcut = KeyChordHelpers.FromModifiers(
-                    ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.Delete, scanCode: 0),
+                    ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.D, scanCode: 0),
             },
         ],
     };
@@ -188,9 +191,15 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 跳一個對話框,按下主要按鈕之後才去跑 <see cref="ConfirmationArgs.PrimaryCommand"/>。
     ///
     /// <c>IsPrimaryCommandCritical</c> 這裡刻意**不設**。它聽起來只是「把按鈕標成危險」,
-    /// 但 CmdPal 拿它做的事是 <c>dialog.DefaultButton = ContentDialogButton.Close</c> ——
+    /// 但上游拿它做的事是 <c>dialog.DefaultButton = ContentDialogButton.Close</c> ——
     /// 也就是把預設按鈕設成「取消」,Enter 下去等於放棄。單則刪除有資源回收筒兜底,
     /// 不值得為此讓每次刪除都多按一次方向鍵。刪除全部那一頁上的兩個批次刪除維持 critical。
+    ///
+    /// **注意 0.11 安裝版根本沒有那條路**:整個套件掃不到 <c>set_DefaultButton</c>
+    /// (同一段程式碼的 <c>set_PrimaryButtonText</c> / <c>set_CloseButtonText</c> 都掃得到,
+    /// 所以不是掃描失準)。也就是說現在這個旗標設不設**畫面上完全一樣**,
+    /// 兩邊都是 <c>DefaultButton.None</c> + 焦點落在主要按鈕。維持現在的用法是為了
+    /// 之後 CmdPal 更新上來時語意正確。詳見 README〈確認框的預設按鈕是反過來的〉。
     /// </summary>
     private AnonymousCommand CreateDeleteCommand(Note note) => new(() => { })
     {

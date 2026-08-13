@@ -97,7 +97,8 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    就足以把別的設定默默還原。加新設定項時特別容易忘,忘了不會報錯。
    設定頁表單後面曾經掛著一塊**空的** `MarkdownContent`,用來擋「背景的設定視窗跳到前面」——
    **已經移除**:那招依賴的 `OnlyControlOnPage` 判斷在安裝版裡根本不存在(見〈已知落差〉),
-   而且會觸發的情境隨 `Ctrl+D` 一起沒了,拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
+   而且會觸發的情境隨舊的 `Ctrl+D`(當時是詳細面板寬度三檔循環,現在那個鍵給了刪除)
+   一起沒了,拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
    說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
    而且區塊之間有 32px 收不掉的間距)。表單本身也不是 toolkit 的 `Settings.ToContent()`
    而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
@@ -184,6 +185,13 @@ Get-ChildItem $d -Recurse -Include *.dll,*.exe | Where-Object {
   只有這個判斷沒有(`OnlyControl` / `SoleControl` / `SingleControl` 各種變體也都沒有)。
   設定頁因此曾經多掛一塊空的 `MarkdownContent` 去「湊滿兩塊內容」,而那招在安裝版上
   八成從來沒生效過,現在已經移除,見 README〈表單後面那塊空白已經拿掉了〉。
+- 確認框的 `ContentDialog.DefaultButton` —— `main` 在 `IsPrimaryCommandCritical` 時把它設成
+  `Close`,安裝版整個套件掃不到 `set_DefaultButton`(同一段的 `set_PrimaryButtonText` /
+  `set_CloseButtonText` / `set_XamlRoot` 都掃得到,所以不是掃描失準)。也就是說**那個旗標
+  在使用者手上完全沒有效果**,批次刪除跟單則刪除的確認框長得一模一樣,Enter 都是確認。
+  README 曾經照 `main` 寫成「設了它預設按鈕就變取消」,手動驗證清單還照那個寫了一條測試項。
+  順帶一提**按鈕的顏色擴展碰不到**:`ConfirmationArgs` 只有四個屬性,而 CmdPal 那段把主要
+  按鈕標紅的樣式是註解掉的 TODO。見 README〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。
 
 這就是為什麼每個從原始碼得到的結論都要 byte-scan 對照一次再寫進文檔。
 

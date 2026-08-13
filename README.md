@@ -23,7 +23,7 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
 | 原始文字 | 清單頁按 `Ctrl+U`,詳細窗格在渲染與原始 Markdown 之間切換 |
 | 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」跳出去改 |
-| 刪除 | 清單頁按 `Ctrl+Del`,確認後**移到資源回收筒**(不是永久刪除) |
+| 刪除 | 清單頁按 `Ctrl+D`,確認後**移到資源回收筒**(不是永久刪除) |
 | 清空 | `Notelet:刪除所有筆記` 先開一頁**列出會刪掉哪些檔案**,不是 Notelet 建立的排在最前面,確認後才動手 |
 
 封存、tag 分類、置頂還沒做。檔案格式已經預留 `tags` 欄位。
@@ -208,6 +208,7 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 一個 `IDetailsWidthStore` 窄介面、一個 `DetailsWidthChanged` 事件、provider 那條
 「寬度變了就叫設定頁重讀」的訂閱,加上手動驗證清單裡整整一節的回歸測試。實際使用永遠
 停在最寬,那些程式碼只是在維護一個沒有人用的檔位,於是連同設定項一起移除。
+空出來的 `Ctrl+D` 現在給了刪除(見〈刪除為什麼是 `Ctrl+D` 而不是 `Ctrl+Del`〉)。
 
 舊 `settings.json` 裡的 `Notelet.DetailsWidth` 鍵留著不管:`Settings.Update` 只認得
 自己註冊過的鍵,多一個孤兒鍵不會有任何影響,不值得為它寫一次遷移。
@@ -552,29 +553,61 @@ Obsidian vault、docs 目錄、或任何有 `README.md` 的專案資料夾,一�
 Windows 會直接永久刪除,而我們設的 `FOF_NOCONFIRMATION` 正好把那個警告框壓掉了。
 這件事寫在頁面的詳細窗格裡。
 
-### 確認框的預設按鈕是反過來的
+### 確認框的按鈕沒有顏色,也沒有「危險」樣式
 
-`ConfirmationArgs.IsPrimaryCommandCritical` 聽起來像「把按鈕標成危險色」,但 CmdPal 拿它做的
-唯一一件事是:
+`ConfirmationArgs` 的全部內容就是 `Title` / `Description` / `PrimaryCommand` /
+`IsPrimaryCommandCritical` 四個屬性(`dotnet run --project tools\ApiDump -- ConfirmationArgs`),
+**沒有任何樣式或顏色的開口**。那個對話框是 CmdPal 自己 `new` 的 WinUI `ContentDialog`,
+擴展只提供文字跟要跑的命令。
+
+`IsPrimaryCommandCritical` 聽起來像「把按鈕標成危險色」,但上游拿它做的唯一一件事是:
 
 ```csharp
 if (vm.IsPrimaryCommandCritical)
 {
     dialog.DefaultButton = ContentDialogButton.Close;   // ← 預設落在「取消」
+
+    // TODO: Maybe we need to style the primary button to be red?
+    // dialog.PrimaryButtonStyle = new Style(typeof(Button)) { ... }
 }
 ```
 
-(`ShellPage.xaml.cs`,那段把紅色按鈕的樣式註解掉了,所以連顏色都沒有。)
+紅色按鈕在 `ShellPage.xaml.cs` 裡是**註解掉的 TODO**,微軟自己也還沒做。所以「刪除」按鈕
+沒有紅色、也沒有強調色,這是 CmdPal 目前就長這樣,不是我們漏設什麼 —— 兩個按鈕都是預設樣式,
+開啟時焦點落在主要按鈕(截圖上那圈黑框),Enter 就是確認。
 
-也就是說**設了它,Enter 就等於放棄**。所以兩個刪除的用法剛好相反:
+**而且 0.11 安裝版連上面那個 `if` 都沒有。** 整個套件掃不到 `set_DefaultButton`,
+同一段程式碼的 `set_PrimaryButtonText` / `set_CloseButtonText` / `set_XamlRoot` 卻都掃得到,
+所以不是掃描失準(這是第三個「原始碼有、安裝版沒有」的落差,見〈查證 CmdPal 的行為〉):
+
+```powershell
+$exe = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8wekyb3d8bbwe\Microsoft.CmdPal.UI.exe"
+$u8 = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($exe))
+$u8.Contains('set_PrimaryButtonText')   # True
+$u8.Contains('DefaultButton')           # False ← 一次都沒設過
+```
+
+也就是說在使用者手上的版本裡,`IsPrimaryCommandCritical` 設不設**畫面上完全一樣**,
+`DefaultButton` 永遠是 `None`。旗標還是照語意設,等 CmdPal 更新上來就會生效:
 
 | | `IsPrimaryCommandCritical` | 為什麼 |
 |---|---|---|
 | 刪一則 | **不設** | 有資源回收筒兜底,不值得為此讓每次刪除都多按一次方向鍵 |
 | 批次刪除(兩列都是) | **設** | 一次動幾十個檔案就該多花那一下 |
 
-SDK 沒有辦法把預設按鈕指定成「確認」—— CmdPal 只有「設成取消」跟「不設」兩種,
-不設時 `ContentDialog.DefaultButton` 是 `None`。
+要注意批次刪除**現在沒有這道防線**(0.11 上 Enter 一樣是確認),真正的防線是刪除全部那一頁
+本身會先列出會刪掉哪些檔案。SDK 也沒有辦法把預設按鈕指定成「確認」—— 上游只有「設成取消」
+跟「不設」兩種。
+
+### 刪除為什麼是 `Ctrl+D` 而不是 `Ctrl+Del`
+
+清單頁的焦點永遠在搜尋框上,所以 `Delete` 系列的鍵都是搜尋框的文字編輯鍵:`Delete` 刪右邊
+一個字,`Ctrl+Delete` 刪右邊一個詞。綁走等於把它們從搜尋框拿掉 —— 頁面層級的
+`RequestedShortcut` 比 `TextBox` 先收到鍵。
+
+`Ctrl+D` 在 Windows 文字框裡沒有標準語意,CmdPal 自己也沒佔用(上游原始碼裡唯一的 `D` 是
+圖片檢視器的平移鍵,沒有修飾鍵),而且 `D` 對得上 Delete。這個鍵位曾經是詳細面板寬度的三檔
+循環,那個功能拿掉之後就空著(見〈詳細面板寬度固定在最寬〉)。
 
 ### 命令 Id 為什麼要寫死
 
