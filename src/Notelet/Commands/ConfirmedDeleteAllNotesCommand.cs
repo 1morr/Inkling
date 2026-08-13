@@ -48,29 +48,29 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
 
             if (targets.Count == 0)
             {
-                return CommandResult.ShowToast(new ToastArgs
-                {
-                    Message = "沒有筆記可以刪除",
-                    Result = CommandResult.KeepOpen(),
-                });
+                // 這條路只有在按下確認的那一瞬間別人剛好把資料夾清空了才會走到,
+                // 而頁面本身的 EmptyContent 馬上就會講同一件事,不必再發 toast。
+                return CommandResult.KeepOpen();
             }
 
             var deleted = _repository.DeleteMany(targets);
             DiagnosticLog.Write($"DeleteAllNotes: scope={_scope} 刪掉 {deleted}/{targets.Count} 則");
 
-            // 有漏網的就講清楚是幾則 —— 使用者按下刪除之後看到清單還剩東西,
-            // 要能立刻知道那不是沒生效,是那幾個檔案刪不掉。
-            var message = deleted == targets.Count
-                ? $"已把 {deleted} 則筆記移到資源回收筒"
-                : $"已刪除 {deleted} 則,{targets.Count - deleted} 則刪不掉(檔案可能被其他程式開著)";
-
-            // 留在刪除頁:repository 的 Changed 會讓它自己刷新,使用者當場看到清單真的空了
-            // (或只剩下不是 Notelet 建立的那幾則)。比直接回首頁多一份「確實刪掉了」的證據。
-            return CommandResult.ShowToast(new ToastArgs
+            // **成功時一個 toast 都不發。** 這裡曾經回一個「已把 N 則移到資源回收筒」的
+            // toast 配 KeepOpen,註釋還寫著「使用者當場看到清單真的空了」—— 但 toast 是
+            // 另一個會搶焦點的視窗,主視窗一失焦就自我隱藏,實際上使用者什麼都沒看到,
+            // 面板直接消失(同一個機制見 README〈記下之後要不要先看一眼〉)。
+            // 清單當場變成「沒有筆記可以刪除」本來就是最好的回饋。
+            if (deleted == targets.Count)
             {
-                Message = message,
-                Result = CommandResult.KeepOpen(),
-            });
+                return CommandResult.KeepOpen();
+            }
+
+            // 有漏網的就非講不可 —— 使用者按下刪除之後看到清單還剩東西,
+            // 要能立刻知道那不是沒生效,是那幾個檔案刪不掉。這是例外路徑,
+            // 面板被 toast 關掉也比默默少刪好。
+            return CommandResult.ShowToast(
+                $"已刪除 {deleted} 則,{targets.Count - deleted} 則刪不掉(檔案可能被其他程式開著)");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
