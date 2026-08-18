@@ -1,5 +1,6 @@
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Commands;
 
@@ -30,7 +31,7 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
         _repository = repository;
         _scope = scope;
 
-        Name = scope == DeleteScope.Everything ? "刪除全部" : "只刪 Notelet 建立的";
+        Name = scope == DeleteScope.Everything ? Resources.DeleteAllName : Resources.DeleteMineName;
         Icon = Icons.Delete;
     }
 
@@ -70,13 +71,13 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
             // 要能立刻知道那不是沒生效,是那幾個檔案刪不掉。這是例外路徑,
             // 面板被 toast 關掉也比默默少刪好。
             return CommandResult.ShowToast(
-                $"已刪除 {deleted} 則,{targets.Count - deleted} 則刪不掉(檔案可能被其他程式開著)");
+                Strings.Format(Resources.DeletePartialFailure, deleted, targets.Count - deleted));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             DiagnosticLog.Write($"DeleteAllNotes 失敗:{ex}");
 
-            return CommandResult.ShowToast($"刪除失敗:{ex.Message}");
+            return CommandResult.ShowToast(Strings.Format(Resources.DeleteFailed, ex.Message));
         }
     }
 }

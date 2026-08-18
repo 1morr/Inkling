@@ -2,6 +2,7 @@ using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Commands;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -31,9 +32,6 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     /// 列太多會把畫面變成搜索結果,反而模糊掉這一頁的用途 —— 真要翻筆記請走清單頁。
     /// </summary>
     private const int MaxSimilarNotes = 5;
-
-    private const string CaptureSection = "記下";
-    private const string SimilarSection = "已經記過的";
 
     private readonly INoteRepository _repository;
     private readonly ICaptureSeparatorStore _separatorStore;
@@ -67,13 +65,13 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
         Id = CommandIds.QuickCapturePage;
         Icon = Icons.Add;
-        Title = "Notelet:快速記下";
-        Name = "開啟";
+        Title = Resources.ProviderCapturePageTitle;
+        Name = Resources.CommandOpen;
         PlaceholderText = PlaceholderFor(separator);
 
         _emptyContent = new CommandItem(new NoOpCommand())
         {
-            Title = "打字就記下",
+            Title = Resources.QuickCaptureEmptyTitle,
             Subtitle = HintFor(separator),
             Icon = Icons.Add,
         };
@@ -96,11 +94,12 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     /// 提示裡的分隔符一律照使用者設的那個寫,不要寫死「分號」——
     /// 換成 <c>,,</c> 之後還教人打分號,那比沒有提示更糟。
     /// </summary>
-    private static string PlaceholderFor(string separator) => $"打字記下想法,{separator} 後面接內文…";
+    private static string PlaceholderFor(string separator) =>
+        Strings.Format(Resources.QuickCapturePlaceholder, separator);
 
     /// <inheritdoc cref="PlaceholderFor" />
     private static string HintFor(string separator) =>
-        $"「買咖啡機{separator}比較過幾台」—— {separator} 前面是標題,後面是內文";
+        Strings.Format(Resources.QuickCaptureHint, separator);
 
     public override void UpdateSearchText(string oldSearch, string newSearch)
     {
@@ -177,7 +176,9 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private ListItem CreateCaptureItem(QuickCaptureDraft draft, bool preview) => CreateCaptureItem(
         draft,
         preview,
-        draft.Body.Length == 0 ? "存成新筆記" : $"內文:{draft.Body}",
+        draft.Body.Length == 0
+            ? Resources.QuickCaptureNewNoteSubtitle
+            : Strings.Format(Resources.QuickCaptureBodySubtitle, draft.Body),
         Icons.Add);
 
     /// <summary>
@@ -199,10 +200,10 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
         return new ListItem(command)
         {
-            Title = $"記下:{draft.Title}",
+            Title = Strings.Format(Resources.QuickCaptureItemTitle, draft.Title),
             Subtitle = subtitle,
             Icon = icon,
-            Section = CaptureSection,
+            Section = Resources.CommandCapture,
         };
     }
 
@@ -232,7 +233,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         return CreateCaptureItem(
             draft with { Body = text },
             preview,
-            $"內文取自剪貼簿({lineCount} 行) —— 搜尋框只吃得下第一行",
+            Strings.Format(Resources.QuickCaptureClipboardSubtitle, lineCount),
             Icons.Paste);
     }
 
@@ -260,7 +261,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         Title = note.Title,
         Subtitle = note.Summary,
         Icon = Icons.Note,
-        Section = SimilarSection,
+        Section = Resources.QuickCaptureSectionSimilar,
     };
 
     private void OnRepositoryChanged(object? sender, EventArgs e)

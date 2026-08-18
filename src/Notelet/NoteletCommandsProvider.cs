@@ -1,8 +1,10 @@
+using System.Globalization;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Commands;
 using Notelet.Core;
 using Notelet.Pages;
+using Notelet.Properties;
 
 namespace Notelet;
 
@@ -28,6 +30,14 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         Id = CommandIds.Provider;
         DisplayName = "Notelet";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
+
+        // 介面語言沒有設定項,跟著 Windows 的顯示語言走。留一行紀錄是因為
+        // 「為什麼我的 Notelet 變英文了」查起來只有這一個入口:擴展是 CmdPal 用 COM
+        // 拉起來的獨立進程,拿到什麼語言從外面看不出來。抽一條字串出來一起印,
+        // 是為了同時證明附屬組件真的載到了 —— 語言對、字串卻是英文,代表
+        // zh-Hant\Notelet.resources.dll 沒進套件(trimming 或佈局出了問題)。
+        DiagnosticLog.Write(
+            $"UI 語言:{CultureInfo.CurrentUICulture.Name} 抽樣='{Resources.SettingsPageName}'");
 
         _settingsPage = new NoteletSettingsPage(_settingsManager);
 
@@ -65,7 +75,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
             new CommandItem(listPage)
             {
                 Title = DisplayName,
-                Subtitle = "瀏覽與搜索筆記",
+                Subtitle = Resources.ProviderListSubtitle,
 
                 // 跟 CmdPal 設定裡那一頁是同一個實例,兩邊看到的永遠一致。
                 MoreCommands = [new CommandContextItem(_settingsPage)],
@@ -75,13 +85,13 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
                 Title = capturePage.Title,
                 // 這裡刻意不寫「分號」:分隔符是可以改的設定,而這一列的副標沒有跟著它更新
                 // (頂層命令陣列只在資料夾變了才重建)。頁面裡的提示才會照使用者設的那個顯示。
-                Subtitle = "打字直接存成筆記,分隔符後面接內文",
+                Subtitle = Resources.ProviderCaptureSubtitle,
                 Icon = Icons.Capture,
             },
             new CommandItem(new NewNotePage(repository))
             {
-                Title = "Notelet:新增筆記",
-                Subtitle = "開表單寫比較長的內容",
+                Title = Resources.ProviderNewNoteTitle,
+                Subtitle = Resources.ProviderNewNoteSubtitle,
                 Icon = Icons.Add,
             },
             new CommandItem(deletePage)
@@ -91,7 +101,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
                 // 副標講的是「按下去會發生什麼」:進去只是看,不是當場刪。
                 // 舊的版本寫「整個資料夾清空」,那句話兩頭都不準 ——
                 // 清的只有 .md,而它清的又不只是 Notelet 自己建的那些。
-                Subtitle = "挑幾則刪掉,或整個清空",
+                Subtitle = Resources.ProviderDeleteSubtitle,
                 Icon = Icons.Delete,
             },
         ];

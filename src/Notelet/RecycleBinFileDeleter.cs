@@ -55,7 +55,13 @@ internal sealed partial class RecycleBinFileDeleter : IFileDeleter
             {
                 // 這個回傳碼不是 Win32 error code(shell 有自己一套),所以不能丟
                 // Win32Exception 讓它去查訊息 —— 那樣只會得到一句對不上的錯誤。
-                throw new IOException($"送資源回收筒失敗(SHFileOperation 回傳 0x{result:X})。");
+                //
+                // 訊息本身是英文而且不進資源檔:它會被包在「刪除失敗:{0}」裡顯示出來,
+                // 而那個 {0} 通常是 .NET 自己丟的例外訊息 —— 這個自製版本要跟它們長得一樣。
+                // (.NET 的例外訊息在這個套件裡固定是英文:附屬組件沒有進 MSIX 佈局,驗過。)
+                // 帶著 HRESULT 的字串本來也是給人拿去查的,不是給人讀的。
+                throw new IOException(
+                    FormattableString.Invariant($"Could not move the file to the Recycle Bin (SHFileOperation returned 0x{result:X})."));
             }
         }
         finally

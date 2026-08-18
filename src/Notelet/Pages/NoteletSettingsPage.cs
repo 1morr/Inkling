@@ -1,5 +1,6 @@
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -26,8 +27,8 @@ internal sealed partial class NoteletSettingsPage : ContentPage
     {
         _settings = settings;
 
-        Name = "設定";
-        Title = "Notelet 設定";
+        Name = Resources.SettingsPageName;
+        Title = Resources.SettingsPageTitle;
         Icon = Icons.Settings;
     }
 

@@ -1,5 +1,6 @@
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet;
 
@@ -17,36 +18,30 @@ internal sealed partial class SettingsManager
 {
     private const string SettingsNamespace = "Notelet";
 
+    // 標籤與說明都來自資源檔 —— 這幾個欄位的字是使用者每次打開設定都要讀一次的東西,
+    // 跟清單上的命令一樣要跟著 Windows 的顯示語言走。
+    //
+    // 說明那幾段會原樣進 Adaptive Cards 的 TextBlock,而它只認得粗體 / 斜體 / 清單 / 連結
+    // 那幾種 markdown —— 反引號會照字面印出來,所以資源檔裡的引用一律用引號,不要用 `。
     private readonly TextSetting _notesDirectory = new(
         Namespaced(nameof(NotesDirectory)),
-        "筆記資料夾",
-
-        // 第二句原本是卡片最上面獨立的一行提醒(更早之前還是頁面上另一塊 markdown)。
-        // 那個位置是歷史遺留 —— 它講的只是這一個欄位,卻讓筆記資料夾變成唯一上下都有
-        // 說明的欄位。併進來,卡片才回到「每個欄位下面各一塊註腳」這一條規矩。
-        "放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Notelet 自己不做同步。"
-            + "換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。",
+        Resources.SettingNotesDirectoryLabel,
+        Resources.SettingNotesDirectoryDescription,
         NoteletOptions.DefaultNotesDirectory());
 
     private readonly TextSetting _captureSeparator = new(
         Namespaced(nameof(CaptureSeparator)),
-        "快速記下的分隔符",
-
-        // 這段字會原樣進 Adaptive Cards 的 TextBlock,而它只認得粗體 / 斜體 / 清單 / 連結
-        // 那幾種 markdown —— 反引號會照字面印出來,所以引用一律用「」。
-        "快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,"
-            + "而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號;"
-            + "常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。"
-            + "半形全形算同一個:設定填「;;」、打字打「；；」照樣切得開。",
+        Resources.SettingSeparatorLabel,
+        Resources.SettingSeparatorDescription,
         QuickCapture.DefaultSeparator);
 
     private readonly ToggleSetting _capturePreview = new(
         Namespaced(nameof(ShowCapturePreview)),
-        "記下後先看一眼",
+        Resources.SettingPreviewLabel,
 
         // 說明只留「按下去會發生什麼」。取捨的理由(為什麼預設開、為什麼沒有第二條路)
         // 屬於 README,不是設定頁 —— 那段字每次打開設定都要看一次。
-        "記下之後停在筆記上,再按一次 Enter 才收起 Command Palette。",
+        Resources.SettingPreviewDescription,
         true);
 
     public SettingsManager()

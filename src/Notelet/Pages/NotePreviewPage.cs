@@ -2,6 +2,7 @@ using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Commands;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -28,7 +29,7 @@ internal sealed partial class NotePreviewPage : ContentPage
 
         Icon = Icons.Preview;
         Title = note.Title;
-        Name = "預覽";
+        Name = Resources.CommandPreview;
 
         _copyBody = new CopyNoteBodyCommand(note.Body);
 
@@ -40,7 +41,7 @@ internal sealed partial class NotePreviewPage : ContentPage
             // 會一路累積訂閱,不只是記憶體洩漏,一次改動還會打出上百個刷新。
             new CommandContextItem(new NoteEditPage(repository, note, Refresh))
             {
-                Title = "編輯",
+                Title = Resources.CommandEdit,
                 Icon = Icons.Edit,
                 RequestedShortcut = Shortcuts.Edit,
             },
@@ -49,21 +50,25 @@ internal sealed partial class NotePreviewPage : ContentPage
             // 可以接受:使用者正看著的就是剛複製走的那段內容。
             new CommandContextItem(_copyBody)
             {
-                Title = "複製內文",
-                Subtitle = "不含 front matter",
+                Title = Resources.CommandCopyBody,
+                Subtitle = Resources.CommandCopyBodySubtitle,
                 Icon = Icons.Copy,
                 RequestedShortcut = Shortcuts.CopyBody,
             },
             new CommandContextItem(new OpenUrlCommand(note.FilePath))
             {
-                Title = "在預設編輯器開啟",
+                Title = Resources.CommandOpenInEditor,
                 Icon = Icons.OpenExternal,
                 RequestedShortcut = Shortcuts.OpenExternal,
             },
-            new CommandContextItem(new ShowFileInFolderCommand(note.FilePath) { Name = "開啟檔案位置" })
+            new CommandContextItem(new ShowFileInFolderCommand(note.FilePath)
             {
-                Title = "開啟檔案位置",
-                Subtitle = "在檔案總管裡選中這個檔案",
+                // 換掉 toolkit 自己資源檔裡的名字,理由見 NoteListPage 同一處。
+                Name = Resources.CommandOpenFileLocation,
+            })
+            {
+                Title = Resources.CommandOpenFileLocation,
+                Subtitle = Resources.CommandOpenFileLocationSubtitle,
                 Icon = Icons.FileLocation,
                 RequestedShortcut = Shortcuts.OpenFileLocation,
             },

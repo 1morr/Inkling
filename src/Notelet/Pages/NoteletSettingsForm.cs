@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -90,7 +91,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
         }
 
         _settings.Apply(directory, separator, preview);
-        new ToastStatusMessage("設定已儲存").Show();
+        new ToastStatusMessage(Resources.SettingsSaved).Show();
 
         return CommandResult.GoHome();
     }
@@ -116,7 +117,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
     private CommandResult Browse(string directory, string separator, bool preview)
     {
         var opened = FolderPicker.TryShow(
-            "選擇筆記資料夾",
+            Resources.SettingsFolderPickerTitle,
             string.IsNullOrWhiteSpace(directory) ? _settings.NotesDirectory : directory.Trim(),
             picked =>
             {
@@ -127,14 +128,14 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 // 其他欄位一起套用,因為那就是使用者按下「瀏覽…」當下卡片上顯示的值 ——
                 // 表單既然會消失,壓在上面的改動就只有這一次機會存下來。
                 _settings.Apply(picked, separator, preview);
-                new ToastStatusMessage($"筆記資料夾:{picked}").Show();
+                new ToastStatusMessage(Strings.Format(Resources.SettingsFolderPicked, picked)).Show();
 
                 _refreshPage();
             });
 
         if (!opened)
         {
-            new ToastStatusMessage("已經有一個「選擇資料夾」的視窗開著了").Show();
+            new ToastStatusMessage(Resources.SettingsPickerAlreadyOpen).Show();
         }
 
         return CommandResult.KeepOpen();
@@ -191,7 +192,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                                 {
                                     "type": "Input.Text",
                                     "id": "{{DirectoryField}}",
-                                    "label": {{Json(directory.Label)}},
+                                    "label": {{CardText.Json(directory.Label)}},
                                     "value": "{{DirectoryBinding}}"
                                 }
                             ]
@@ -206,7 +207,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                                     "actions": [
                                         {
                                             "type": "Action.Submit",
-                                            "title": "瀏覽…",
+                                            "title": {{CardText.Json(Resources.SettingsBrowse)}},
                                             "data": { "{{ActionKey}}": "{{BrowseAction}}" }
                                         }
                                     ]
@@ -217,7 +218,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 },
                 {
                     "type": "TextBlock",
-                    "text": {{Json(directory.Description)}},
+                    "text": {{CardText.Json(directory.Description)}},
                     "wrap": true,
                     "isSubtle": true,
                     "size": "small",
@@ -235,9 +236,9 @@ internal sealed partial class NoteletSettingsForm : FormContent
                                 {
                                     "type": "Input.Text",
                                     "id": "{{SeparatorField}}",
-                                    "label": {{Json(separator.Label)}},
+                                    "label": {{CardText.Json(separator.Label)}},
                                     "value": "{{SeparatorBinding}}",
-                                    "placeholder": {{Json(QuickCapture.DefaultSeparator)}}
+                                    "placeholder": {{CardText.Json(QuickCapture.DefaultSeparator)}}
                                 }
                             ]
                         }
@@ -245,7 +246,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 },
                 {
                     "type": "TextBlock",
-                    "text": {{Json(separator.Description)}},
+                    "text": {{CardText.Json(separator.Description)}},
                     "wrap": true,
                     "isSubtle": true,
                     "size": "small",
@@ -254,7 +255,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 {
                     "type": "Input.Toggle",
                     "id": "{{PreviewField}}",
-                    "title": {{Json(preview.Label)}},
+                    "title": {{CardText.Json(preview.Label)}},
                     "value": "{{(preview.Value ? ToggleOn : ToggleOff)}}",
                     "valueOn": "{{ToggleOn}}",
                     "valueOff": "{{ToggleOff}}",
@@ -263,7 +264,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 },
                 {
                     "type": "TextBlock",
-                    "text": {{Json(preview.Description)}},
+                    "text": {{CardText.Json(preview.Description)}},
                     "wrap": true,
                     "isSubtle": true,
                     "size": "small",
@@ -273,7 +274,7 @@ internal sealed partial class NoteletSettingsForm : FormContent
             "actions": [
                 {
                     "type": "Action.Submit",
-                    "title": "儲存",
+                    "title": {{CardText.Json(Resources.FormSave)}},
                     "style": "positive",
                     "data": { "{{ActionKey}}": "save" }
                 }
@@ -281,7 +282,4 @@ internal sealed partial class NoteletSettingsForm : FormContent
         }
         """;
     }
-
-    /// <summary>把字串變成帶引號的 JSON 字面值,連跳脫一起處理。</summary>
-    private static string Json(string text) => JsonValue.Create(text)!.ToJsonString();
 }

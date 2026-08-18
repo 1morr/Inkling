@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -29,26 +30,32 @@ internal sealed partial class NoteFormContent : FormContent
     /// </summary>
     private const int BlankBodyLines = 5;
 
-    private const string TitleField = """
+    /// <summary>
+    /// 標題那一格。是屬性而不是常數:字串來自資源檔,而資源要到執行期才讀得到。
+    /// <c>${title}</c> 是樣板佔位符,值由 <see cref="FormContent.DataJson"/> 填 ——
+    /// 單一個大括號在 <c>$$"""</c> 裡是字面值,不會被當成內插。
+    /// </summary>
+    private static string TitleField => $$"""
         {
             "type": "Input.Text",
             "id": "title",
-            "label": "標題",
+            "label": {{CardText.Json(Resources.FormTitleLabel)}},
             "value": "${title}",
             "isRequired": true,
-            "errorMessage": "標題不能空白",
-            "placeholder": "一句話講完這個想法"
+            "errorMessage": {{CardText.Json(Resources.FormTitleRequired)}},
+            "placeholder": {{CardText.Json(Resources.FormTitlePlaceholder)}}
         }
         """;
 
-    private const string BodyField = """
+    /// <inheritdoc cref="TitleField" />
+    private static string BodyField => $$"""
         {
             "type": "Input.Text",
             "id": "body",
-            "label": "內文(Markdown)",
+            "label": {{CardText.Json(Resources.FormBodyLabel)}},
             "value": "${body}",
             "isMultiline": true,
-            "placeholder": "細節、連結、待辦…"
+            "placeholder": {{CardText.Json(Resources.FormBodyPlaceholder)}}
         }
         """;
 
@@ -70,10 +77,10 @@ internal sealed partial class NoteFormContent : FormContent
     /// (<c>FindFirstFocusableElement</c> 只認 <c>Control</c>)—— 但還是排在最後,
     /// 免得它把兩個輸入框推開。
     /// </summary>
-    private const string CaretHint = """
+    private static string CaretHint => $$"""
         {
             "type": "TextBlock",
-            "text": "游標落在內文開頭。按 Ctrl+End 跳到最後接著寫。",
+            "text": {{CardText.Json(Resources.FormCaretHint)}},
             "wrap": true,
             "isSubtle": true,
             "size": "small",
@@ -121,7 +128,7 @@ internal sealed partial class NoteFormContent : FormContent
         if (title.Length == 0)
         {
             // Adaptive Cards 的 isRequired 已經會擋一次,這裡是防呆的第二道。
-            new ToastStatusMessage("標題不能空白").Show();
+            new ToastStatusMessage(Resources.FormTitleRequired).Show();
             return CommandResult.KeepOpen();
         }
 
@@ -131,12 +138,12 @@ internal sealed partial class NoteFormContent : FormContent
             {
                 // 預填的空行不該變成筆記內容。編輯時不做這件事 —— 那些空行是使用者自己的排版。
                 _repository.Create(title, body.Trim());
-                new ToastStatusMessage($"已新增:{title}").Show();
+                new ToastStatusMessage(Strings.Format(Resources.NoteCreated, title)).Show();
             }
             else
             {
                 _repository.Update(_noteId, title, body);
-                new ToastStatusMessage($"已儲存:{title}").Show();
+                new ToastStatusMessage(Strings.Format(Resources.NoteSaved, title)).Show();
             }
 
             // 要在回上一頁之前通知,否則上一頁會顯示存檔前的內容。
@@ -150,7 +157,7 @@ internal sealed partial class NoteFormContent : FormContent
             // 走 DiagnosticLog 而不是 Debug.WriteLine:後者在 Release 被整個編掉,
             // 而日常安裝的就是 Release,那樣等於這條路完全查不到。
             DiagnosticLog.Write($"NoteFormContent 存檔失敗:{ex}");
-            new ToastStatusMessage($"存檔失敗:{ex.Message}").Show();
+            new ToastStatusMessage(Strings.Format(Resources.SaveFailed, ex.Message)).Show();
             return CommandResult.KeepOpen();
         }
     }
@@ -179,7 +186,7 @@ internal sealed partial class NoteFormContent : FormContent
             "actions": [
                 {
                     "type": "Action.Submit",
-                    "title": "儲存",
+                    "title": {{CardText.Json(Resources.FormSave)}},
                     "style": "positive"
                 }
             ]

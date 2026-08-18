@@ -1,5 +1,6 @@
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Commands;
 
@@ -20,7 +21,7 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
         _repository = repository;
         _note = note;
 
-        Name = "刪除";
+        Name = Resources.CommandDelete;
         Icon = Icons.Delete;
     }
 
@@ -47,7 +48,7 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
             // 都不該讓擴展掛掉,但更不能假裝刪掉了。
             DiagnosticLog.Write($"DeleteNote 失敗:{ex}");
 
-            return CommandResult.ShowToast($"刪除失敗:{ex.Message}");
+            return CommandResult.ShowToast(Strings.Format(Resources.DeleteFailed, ex.Message));
         }
     }
 }

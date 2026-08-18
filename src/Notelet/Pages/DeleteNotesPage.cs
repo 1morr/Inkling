@@ -2,6 +2,7 @@ using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Commands;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -33,13 +34,6 @@ namespace Notelet.Pages;
 /// </summary>
 internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 {
-    private const string ActionSection = "動作";
-    private const string ExternalSection = "不是 Notelet 建立的";
-    private const string MineSection = "Notelet 筆記";
-
-    /// <summary>沒有外來檔案時就不必分兩區,一個中性的標題就好。</summary>
-    private const string AllSection = "筆記";
-
     private readonly INoteRepository _repository;
     private readonly NoteletOptions _options;
 
@@ -54,17 +48,17 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 
         Id = CommandIds.DeleteAll;
         Icon = Icons.Delete;
-        Title = "Notelet:刪除筆記";
+        Title = Resources.ProviderDeletePageTitle;
 
         // 「開啟」而不是「刪除」:這個名字是頂層清單上那一列的動作標籤,
         // 而按下去只是進到這一頁。寫「刪除」會讓人以為 Enter 當場就動手。
-        Name = "開啟";
-        PlaceholderText = "找要刪的筆記…";
+        Name = Resources.CommandOpen;
+        PlaceholderText = Resources.DeletePagePlaceholder;
         ShowDetails = true;
 
         EmptyContent = new CommandItem(new NoOpCommand())
         {
-            Title = "沒有筆記可以刪除",
+            Title = Resources.DeletePageEmptyTitle,
             Subtitle = _options.NotesDirectory,
             Icon = Icons.Note,
         };
@@ -117,7 +111,9 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         // 外來檔案排最前面:那正是使用者最需要先看到的一批。
         // 兩邊各自維持 GetAll 的排序(最後更新的在前)。
         var ordered = notes.Where(n => n.IsExternal).Concat(notes.Where(n => !n.IsExternal));
-        var section = external > 0 ? MineSection : AllSection;
+
+        // 沒有外來檔案時就不必分兩區,用一個中性的標題。
+        var section = external > 0 ? Resources.DeleteSectionMine : Resources.DeleteSectionAll;
 
         foreach (var note in ordered.Take(_options.MaxResults))
         {
@@ -130,8 +126,8 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         {
             items.Add(new ListItem(new NoOpCommand())
             {
-                Title = $"還有 {notes.Count - _options.MaxResults} 則沒列出",
-                Subtitle = "刪除全部仍然會刪掉它們,這裡只是列不下",
+                Title = Strings.Format(Resources.DeleteMoreNotes, notes.Count - _options.MaxResults),
+                Subtitle = Resources.DeleteMoreNotesSubtitle,
                 Icon = Icons.External,
                 Section = section,
             });
@@ -152,11 +148,11 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         Title = note.Title,
         Subtitle = Path.GetRelativePath(_options.NotesDirectory, note.FilePath),
         Icon = note.IsExternal ? Icons.External : Icons.Note,
-        Section = note.IsExternal ? ExternalSection : section,
+        Section = note.IsExternal ? Resources.DeleteSectionExternal : section,
         Details = new Details
         {
             Title = note.Title,
-            Body = note.Body.Length == 0 ? "_(沒有內文)_" : NotePreview.PreserveLineBreaks(note.Body),
+            Body = note.Body.Length == 0 ? Resources.NoBody : NotePreview.PreserveLineBreaks(note.Body),
 
             // 跟清單頁一樣固定最寬,理由見那邊的 BuildDetails —— 不明著寫就是最窄那一檔。
             Size = ContentSize.Large,
@@ -166,7 +162,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
             CreateQuickDeleteItem(note),
             new CommandContextItem(new NotePreviewPage(_repository, note))
             {
-                Title = "預覽",
+                Title = Resources.CommandPreview,
                 Icon = Icons.Preview,
             },
         ],
@@ -183,14 +179,14 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// </summary>
     private AnonymousCommand CreateConfirmedDelete(Note note) => new(() => { })
     {
-        Name = "刪除",
+        Name = Resources.CommandDelete,
         Icon = Icons.Delete,
         Result = CommandResult.Confirm(new ConfirmationArgs
         {
-            Title = note.IsExternal ? "刪除這個檔案?" : "刪除這則筆記?",
-            Description = note.IsExternal
-                ? $"「{note.Title}」不是 Notelet 建立的,會被移到資源回收筒。"
-                : $"「{note.Title}」會被移到資源回收筒。",
+            Title = note.IsExternal ? Resources.DeleteExternalConfirmTitle : Resources.DeleteConfirmTitle,
+            Description = Strings.Format(
+                note.IsExternal ? Resources.DeleteExternalConfirmDescription : Resources.DeleteConfirmDescription,
+                note.Title),
             PrimaryCommand = new DeleteNoteCommand(_repository, note),
             IsPrimaryCommandCritical = note.IsExternal,
         }),
@@ -219,16 +215,19 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         {
             return new CommandContextItem(CreateConfirmedDelete(note))
             {
-                Title = "刪除",
-                Subtitle = "不是 Notelet 建立的,一律先確認",
+                Title = Resources.CommandDelete,
+                Subtitle = Resources.DeleteExternalAlwaysConfirmSubtitle,
                 IsCritical = true,
             };
         }
 
-        return new CommandContextItem(new DeleteNoteCommand(_repository, note) { Name = "直接刪除" })
+        return new CommandContextItem(new DeleteNoteCommand(_repository, note)
         {
-            Title = "直接刪除",
-            Subtitle = "不問,直接移到資源回收筒",
+            Name = Resources.DeleteQuickTitle,
+        })
+        {
+            Title = Resources.DeleteQuickTitle,
+            Subtitle = Resources.DeleteQuickSubtitle,
             IsCritical = true,
         };
     }
@@ -246,16 +245,17 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     private ListItem CreateDeleteEverythingItem(int total, int external)
     {
         var description = external > 0
-            ? $"{_options.NotesDirectory} 底下(含子資料夾)所有的 .md 都會移到資源回收筒,其中 {external} 則不是 Notelet 建立的。"
-            : $"{_options.NotesDirectory} 底下(含子資料夾)所有的 .md 都會移到資源回收筒。";
+            ? Strings.Format(
+                Resources.DeleteAllConfirmDescriptionWithExternal, _options.NotesDirectory, external)
+            : Strings.Format(Resources.DeleteAllConfirmDescription, _options.NotesDirectory);
 
         var command = new AnonymousCommand(() => { })
         {
-            Name = "刪除全部",
+            Name = Resources.DeleteAllName,
             Icon = Icons.Delete,
             Result = CommandResult.Confirm(new ConfirmationArgs
             {
-                Title = $"刪除全部 {total} 則筆記?",
+                Title = Strings.Format(Resources.DeleteAllConfirmTitle, total),
                 Description = description,
                 PrimaryCommand = new ConfirmedDeleteAllNotesCommand(_repository, DeleteScope.Everything),
 
@@ -268,14 +268,13 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 
         return new ListItem(command)
         {
-            Title = $"刪除全部 {total} 則",
-            Subtitle = $"{_options.NotesDirectory}(含子資料夾)",
+            Title = Strings.Format(Resources.DeleteAllItemTitle, total),
+            Subtitle = Strings.Format(Resources.DeleteAllItemSubtitle, _options.NotesDirectory),
             Icon = Icons.Delete,
-            Section = ActionSection,
-            Details = BuildDetails($"底下(含子資料夾)所有的 `.md`,目前 {total} 則,**全部都會刪掉**。"
+            Section = Resources.DeleteSectionAction,
+            Details = BuildDetails(Strings.Format(Resources.DeleteAllScope, total)
                 + (external > 0
-                    ? $"\n\n其中 **{external} 則不是 Notelet 建立的** —— front matter 裡沒有 Notelet 的 id,"
-                        + "是別的工具寫的、或是直接丟進這個資料夾的檔案。"
+                    ? Strings.Format(Resources.DeleteAllScopeExternalSuffix, external)
                     : string.Empty)),
         };
     }
@@ -284,12 +283,12 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     {
         var command = new AnonymousCommand(() => { })
         {
-            Name = "只刪 Notelet 建立的",
+            Name = Resources.DeleteMineName,
             Icon = Icons.Delete,
             Result = CommandResult.Confirm(new ConfirmationArgs
             {
-                Title = $"刪除 Notelet 建立的 {mine} 則筆記?",
-                Description = $"移到資源回收筒。另外 {external} 則不是 Notelet 建立的,不會動到。",
+                Title = Strings.Format(Resources.DeleteMineConfirmTitle, mine),
+                Description = Strings.Format(Resources.DeleteMineConfirmDescription, external),
                 PrimaryCommand = new ConfirmedDeleteAllNotesCommand(_repository, DeleteScope.NoteletCreatedOnly),
                 IsPrimaryCommandCritical = true,
             }),
@@ -297,15 +296,11 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 
         return new ListItem(command)
         {
-            Title = $"只刪 Notelet 建立的 {mine} 則",
-            Subtitle = $"保留 {external} 則不是 Notelet 建立的",
+            Title = Strings.Format(Resources.DeleteMineItemTitle, mine),
+            Subtitle = Strings.Format(Resources.DeleteMineItemSubtitle, external),
             Icon = Icons.Note,
-            Section = ActionSection,
-            Details = BuildDetails(
-                $"底下(含子資料夾)共 {mine + external} 則 `.md`,這個動作只刪其中"
-                + $" **Notelet 建立的 {mine} 則**。"
-                + $"\n\n另外 {external} 則 front matter 裡沒有 Notelet 的 id"
-                + "(別的工具寫的、或是直接丟進這個資料夾的),留著不動。"),
+            Section = Resources.DeleteSectionAction,
+            Details = BuildDetails(Strings.Format(Resources.DeleteMineScope, mine + external, mine, external)),
         };
     }
 
@@ -316,10 +311,8 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// </summary>
     private Details BuildDetails(string scope) => new()
     {
-        Title = "會刪掉什麼",
-        Body = $"`{_options.NotesDirectory}`\n\n{scope}"
-            + "\n\n刪掉的檔案會進資源回收筒。網路磁碟或沒有回收筒的裝置上則是直接消失,"
-            + "那是 Windows 的行為,不是我們能選的。",
+        Title = Resources.DeleteDetailsTitle,
+        Body = Strings.Format(Resources.DeleteDetailsBody, _options.NotesDirectory, scope),
 
         Size = ContentSize.Large,
     };

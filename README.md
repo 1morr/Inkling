@@ -28,6 +28,7 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**(不是永久刪除) |
 | 連續刪 | `Notelet:刪除筆記` 開一頁,`Enter` 刪除(先問一次),`Ctrl+Enter` 直接刪;不是 Notelet 建立的檔案兩條路都會問 |
 | 清空 | 同一頁的「刪除全部」,**先列出會刪掉哪些檔案**,不是 Notelet 建立的排在最前面 |
+| 介面語言 | 英文、繁體中文、簡體中文,跟著 Windows 的顯示語言走,沒有設定項 |
 
 封存、tag 分類、置頂還沒做。檔案格式已經預留 `tags` 欄位。
 
@@ -851,6 +852,53 @@ settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的�
 
 (那兩個雜湊條目可能還躺在你的 CmdPal settings.json 裡,無害 —— CmdPal 會忽略對不上的鍵。)
 
+### 介面語言跟著 Windows 走
+
+介面有英文、繁體中文、簡體中文三種,**沒有設定項** —— 看到哪一種由 Windows 的顯示語言決定。
+
+字串全部在 `src/Notelet/Properties/` 的三份 `.resx` 裡,程式碼一律經由產生出來的
+`Resources.<鍵>` 取用,語言選擇是 `ResourceManager` 照 `CultureInfo.CurrentUICulture`
+自己處理的,我們沒有寫任何偵測。中性(fallback)那一份是**英文**:系統語言不在這三種裡面時
+(法文、日文……)拿到的就是它。
+
+| 檔案 | 對應 | 誰會拿到 |
+|---|---|---|
+| `Resources.resx` | 中性,英文 | 上面兩列以外的所有語言 |
+| `Resources.zh-Hant.resx` | 繁體中文 | zh-TW / zh-HK / zh-MO |
+| `Resources.zh-Hans.resx` | 簡體中文 | zh-CN / zh-SG |
+
+`zh-Hant` 一份就夠是因為 .NET 的文化回落:`zh-TW` 的 parent 就是 `zh-Hant`。
+不必為每個地區各放一份。
+
+**這件事能成立的前提是命令 Id 已經寫死**(上一節)。CmdPal 沒設 `Id` 時是拿標題去算雜湊當
+身分的 —— 那樣的話光是換一種語言,使用者的 alias、快速鍵、釘選就會全部對不上。
+`CommandIds.cs` 在,所以標題可以自由翻譯。
+
+實測過的四件事(都在這台機器上,Windows 顯示語言 `zh-TW`):
+
+- **擴展進程拿得到使用者的顯示語言。** 它是 CmdPal 用 COM 拉起來的獨立進程,不是 CmdPal 的
+  子視窗,所以這件事不能想當然。`diagnostic.log` 印的是 `UI 語言:zh-TW 抽樣='設定'`。
+- **trimming 不會砍掉附屬組件。** Release 是 trimmed publish,`zh-Hant\Notelet.resources.dll`
+  與 `zh-Hans\Notelet.resources.dll` 都完整進到 MSIX 佈局裡(套件大小沒有可見變化)。
+- **回落是乾淨的。** 強制 `fr-FR` 拿到英文,不是空字串也不是例外。
+- **CmdPal 自己沒有語言覆寫。** PowerToys 有些模組會照設定裡的 `language` 去套
+  `ManagedCommon.Language.LoadLanguage()`,但 0.11.11762.0 的整個 CmdPal 套件 byte-scan
+  `LoadLanguage` 掃不到,`main` 的原始碼裡設 `CurrentUICulture` 的也只有單元測試。
+  所以擴展與 CmdPal 本體看到的是同一個語言,不會一半中文一半英文。
+
+**為什麼不加一個語言設定項。** 想要「Windows 是英文、但 Notelet 顯示中文」的話得自己選語言,
+而那會踩到〈設定頁有兩個入口〉那一節講的限制:CmdPal 手上握著的是使用者當下開著的頁面實例,
+換語言等於每一頁的 `Title` / `Name` / `PlaceholderText` 與每一塊快取都要自己重算,
+`ICaptureSeparatorStore` 那個形狀要再複製一遍。跟隨系統零成本,而真的需要換語言的人
+去改 Windows 的顯示語言本來就要重新登入 —— 那時候擴展進程也一起重啟了。
+
+**改語言之後沒有立刻變**是預期行為:擴展進程被 CmdPal 拉起來之後就常駐,
+Reload 或重新登入才會重讀。
+
+**改字串的規矩:三份一起改。** `Resources.resx` 是翻譯的來源,註解(`<comment>`)只寫在
+它裡面 —— 佔位符 `{0}` 是什麼意思都寫在那裡。`ResourceParityTests` 會擋住只改一份、
+佔位符數目對不上、值是空的,以及「英文那份混進中文」。
+
 ## 設定項
 
 | 設定 | 預設 | 說明 |
@@ -920,14 +968,20 @@ src/
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
+    Properties/       介面字串:英文(中性)+ 繁中 + 簡中,語言跟著 Windows 走
+    Strings           資源字串的格式化(統一帶 CultureInfo,擋 CA1305)
     Shortcuts         清單頁與預覽頁的鍵位(挑鍵的兩條規則寫在那裡)
     ICaptureSeparatorStore / ICapturePreviewStore
                       「不重建、由現有頁面自己響應」的那兩個設定的窄介面
     RecycleBinFileDeleter  SHFileOperationW,把筆記送進資源回收筒
     FolderPicker      IFileDialog + FOS_PICKFOLDERS,設定頁的「瀏覽…」
     Pages/            快速記下、記下後的預覽、清單、預覽、編輯、新增、刪除、設定
+                      CardText  進 Adaptive Cards 的字串一律經過它做 JSON 跳脫
 tests/
   Notelet.Core.Tests/  xUnit
+.claude/
+  skills/              CmdPal 官方模板附的 API 速查與工作流程(dock band、上架…),
+                       每一份都加了「本專案的例外」,見 .claude/skills/README.md
 tools/
   deploy.ps1           build → 註冊 → 驗證
   VerifyRegistration/  查 AppExtension 目錄的探針
@@ -1034,6 +1088,17 @@ Reload 或重新部署,舊的擴展進程就被換掉了,設定頁手上的物�
 
 擴展這一側的存檔失敗現在也會記進同一個檔。toolkit 的 `JsonSettingsManager.SaveSettings`
 自己把例外吞掉,只往 CmdPal 的 log 丟一行字,所以 `SettingsManager.Save` 另外記了一筆完整的例外。
+
+**介面變成英文(或不是預期的語言)** — 介面語言跟著 Windows 的顯示語言走,沒有設定項,
+見〈介面語言跟著 Windows 走〉。打開 `DiagnosticLog` 再 Reload,擴展一啟動就會印一行:
+
+```
+UI 語言:zh-TW 抽樣='設定'
+```
+
+- 語言不對 → 是 Windows 那邊的顯示語言(不是「地區格式」那個設定),或是剛改完還沒重新登入
+- 語言對、抽樣卻是英文(`Settings`)→ 附屬組件沒進套件。查
+  `src\Notelet\bin\stage-Release\zh-Hant\Notelet.resources.dll` 在不在
 
 **擴展沒出現在 CmdPal 裡** — 跑 `dotnet run --project tools\VerifyRegistration`。
 它會列出 Windows 認得的所有 CmdPal 擴展。Notelet 不在裡面就是註冊沒成功;

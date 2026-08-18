@@ -1,6 +1,7 @@
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 using Windows.System;
 
 namespace Notelet.Pages;
@@ -55,11 +56,11 @@ internal sealed partial class CapturedNotePage : ContentPage
 
         // 標題不必等存檔 —— 使用者打的就是它。
         Title = draft.Title;
-        Name = "記下並預覽";
+        Name = Resources.CapturedPageName;
 
         _done = new AnonymousCommand(() => { })
         {
-            Name = "完成",
+            Name = Resources.CommandDone,
             Icon = Icons.Done,
 
             // 收起整個 Command Palette,而不是 GoHome:使用者記完這則想法就要回去做原本的事,
@@ -83,17 +84,7 @@ internal sealed partial class CapturedNotePage : ContentPage
             // 存檔失敗。原文照樣顯示出來,讓使用者至少能把打過的字複製走,
             // 而不是連同錯誤訊息一起消失。
             return [new MarkdownContent(
-                $"""
-                # 存檔失敗
-
-                {_error}
-
-                ---
-
-                ## {_draft.Title}
-
-                {_draft.Body}
-                """)];
+                Strings.Format(Resources.CaptureFailedContent, _error, _draft.Title, _draft.Body))];
         }
 
         // 重新查一次而不是直接用存檔當下的快照:使用者可能剛從這一頁按 Ctrl+E 編輯完回來。
@@ -145,7 +136,7 @@ internal sealed partial class CapturedNotePage : ContentPage
             _error = ex.Message;
 
             // Enter 改成回快速記下頁:剛打的那句話還在搜尋框裡,可以直接重試。
-            _done.Name = "回上一步";
+            _done.Name = Resources.CommandGoBack;
             _done.Result = CommandResult.GoBack();
 
             DiagnosticLog.Write($"CapturedNotePage.Capture 失敗:{ex}");
@@ -160,19 +151,19 @@ internal sealed partial class CapturedNotePage : ContentPage
         new CommandContextItem(_done),
         new CommandContextItem(new NoteEditPage(_repository, note, Refresh))
         {
-            Title = "編輯",
+            Title = Resources.CommandEdit,
             Icon = Icons.Edit,
             RequestedShortcut = KeyChordHelpers.FromModifiers(
                 ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.E, scanCode: 0),
         },
         new CommandContextItem(new OpenUrlCommand(note.FilePath))
         {
-            Title = "在預設編輯器開啟",
+            Title = Resources.CommandOpenInEditor,
             Icon = Icons.OpenExternal,
         },
         new CommandContextItem(_copyBody)
         {
-            Title = "複製內文",
+            Title = Resources.CommandCopyBody,
             Icon = Icons.Copy,
         },
     ];

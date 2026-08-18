@@ -151,6 +151,16 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 
 ## 慣例
 
+- **介面字串不准寫在程式碼裡**,一律放 `src/Notelet/Properties/` 的三份 `.resx`
+  (`Resources.resx` 英文=中性 / `Resources.zh-Hant.resx` / `Resources.zh-Hans.resx`),
+  用產生出來的 `Resources.<鍵>` 取。**三份一起改**,註解只寫在中性那一份;
+  `ResourceParityTests` 會擋住只改一份、佔位符對不上、值是空的、英文那份混進中文。
+  key 不含底線(那是 C# 屬性名)。要帶值的用 `Strings.Format`,不要自己 `string.Format`。
+  進 Adaptive Cards 的字串一律經過 `CardText.Json` 跳脫 —— 翻譯裡一個雙引號就能讓
+  整張卡片變成不合法的 JSON。
+  語言跟著 `CultureInfo.CurrentUICulture`(= Windows 顯示語言)走,**沒有設定項**,
+  理由見 README〈介面語言跟著 Windows 走〉。**Core 不碰資源檔**:那一層連例外訊息都是英文,
+  因為它會被 UI 包進「刪除失敗:{0}」裡,而同一個位置平常裝的是 .NET 自己的英文訊息。
 - **文檔、程式碼註釋一律繁體中文**;識別符、字串常量、log、commit message 用英文。
 - 註釋寫「為什麼」,特別是繞過 CmdPal 限制的地方 —— 這個 repo 的註釋密度刻意偏高,
   因為那些取捨從程式碼本身看不出來,半年後會被當成多餘而刪掉。

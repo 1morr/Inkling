@@ -1,5 +1,6 @@
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Commands;
 
@@ -19,7 +20,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
         _repository = repository;
 
         Id = CommandIds.QuickCapture;
-        Name = "記下";
+        Name = Resources.CommandCapture;
         Icon = Icons.Add;
     }
 
@@ -43,7 +44,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 分兩次回傳做不到,Invoke 只有一次回傳的機會。
             return CommandResult.ShowToast(new ToastArgs
             {
-                Message = $"已記下:{note.Title}",
+                Message = Strings.Format(Resources.CaptureSaved, note.Title),
                 Result = CommandResult.GoHome(),
             });
         }
@@ -56,7 +57,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // Release 會整個編掉,而日常安裝的就是 Release —— 也就是說最需要留下痕跡的
             // 那條路,在正式版反而什麼都查不到。
             DiagnosticLog.Write($"QuickCapture 失敗:{ex}");
-            return CommandResult.ShowToast($"存檔失敗:{ex.Message}");
+            return CommandResult.ShowToast(Strings.Format(Resources.SaveFailed, ex.Message));
         }
     }
 }

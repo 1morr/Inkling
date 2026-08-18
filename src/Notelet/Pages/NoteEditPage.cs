@@ -1,6 +1,7 @@
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -24,14 +25,14 @@ internal sealed partial class NoteEditPage : ContentPage
         _onSaved = onSaved;
 
         Icon = Icons.Edit;
-        Title = $"編輯:{note.Title}";
-        Name = "編輯";
+        Title = Strings.Format(Resources.EditPageTitle, note.Title);
+        Name = Resources.CommandEdit;
 
         Commands = [
             new CommandContextItem(new OpenUrlCommand(note.FilePath))
             {
-                Title = "改用預設編輯器開啟",
-                Subtitle = "內文很長時比表單好用",
+                Title = Resources.EditOpenExternalTitle,
+                Subtitle = Resources.EditOpenExternalSubtitle,
                 Icon = Icons.OpenExternal,
             },
         ];
@@ -59,8 +60,8 @@ internal sealed partial class NewNotePage : ContentPage
 
         Id = CommandIds.NewNote;
         Icon = Icons.Add;
-        Title = "新增筆記";
-        Name = "新增";
+        Title = Resources.NewNotePageTitle;
+        Name = Resources.CommandNew;
     }
 
     public override IContent[] GetContent() => [new NoteFormContent(_repository, null)];

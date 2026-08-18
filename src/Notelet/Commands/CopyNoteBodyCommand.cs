@@ -1,5 +1,6 @@
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Notelet.Properties;
 
 namespace Notelet.Commands;
 
@@ -37,7 +38,7 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
     {
         _report = report;
 
-        Name = "複製內文";
+        Name = Resources.CommandCopyBody;
         Icon = Icons.Copy;
         Result = CommandResult.KeepOpen();
     }
@@ -48,14 +49,14 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
         {
             // 照實講。剪貼簿看不見,不講的話按下去就是完全沒有反應,
             // 使用者只會以為快速鍵壞了。
-            _report?.Invoke("沒有內文");
+            _report?.Invoke(Resources.CopyNoBody);
             return CommandResult.KeepOpen();
         }
 
         // base.Invoke 是同步的(ClipboardHelper 自己開一條 STA 執行緒再 Join),
         // 所以走到下一行時剪貼簿真的已經寫好了,回報不會比事實早。
         var result = base.Invoke();
-        _report?.Invoke("已複製");
+        _report?.Invoke(Resources.CopyDone);
 
         return result;
     }

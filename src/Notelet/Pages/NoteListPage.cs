@@ -2,6 +2,7 @@ using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Commands;
 using Notelet.Core;
+using Notelet.Properties;
 
 namespace Notelet.Pages;
 
@@ -72,14 +73,17 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         Id = CommandIds.List;
         Icon = Icons.Note;
         Title = "Notelet";
-        Name = "開啟";
-        PlaceholderText = "搜索標題與內文…";
+        Name = Resources.CommandOpen;
+        PlaceholderText = Resources.ListPagePlaceholder;
         ShowDetails = true;
 
         EmptyContent = new CommandItem(new NoOpCommand())
         {
-            Title = "還沒有任何筆記",
-            Subtitle = "用「Notelet:快速記下」記下第一則",
+            Title = Resources.ListPageEmptyTitle,
+
+            // 引用的是快速記下那個頂層命令的標題,所以拿同一條資源去填 ——
+            // 寫死的話翻譯改了一邊,這句話就會指向一個畫面上不存在的命令。
+            Subtitle = Strings.Format(Resources.ListPageEmptySubtitle, Resources.ProviderCapturePageTitle),
             Icon = Icons.Note,
         };
 
@@ -121,7 +125,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     }
 
     /// <summary>選單上顯示的字,講的是「按下去之後會看到什麼」。</summary>
-    private string ToggleSourceName => _showSource ? "顯示渲染後的預覽" : "顯示原始文字";
+    private string ToggleSourceName =>
+        _showSource ? Resources.ToggleSourceShowRendered : Resources.ToggleSourceShowRaw;
 
     private IListItem[] BuildItems(string query)
     {
@@ -149,8 +154,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         {
             items.Add(new ListItem(new NoOpCommand())
             {
-                Title = $"還有 {matches.Count - _options.MaxResults} 則沒顯示",
-                Subtitle = "再多打幾個字縮小範圍",
+                Title = Strings.Format(Resources.ListPageMoreResults, matches.Count - _options.MaxResults),
+                Subtitle = Resources.ListPageMoreResultsSubtitle,
                 Icon = Icons.Note,
             });
         }
@@ -178,7 +183,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     [
         new CommandContextItem(new NoteEditPage(_repository, note))
         {
-            Title = "編輯",
+            Title = Resources.CommandEdit,
             Icon = Icons.Edit,
             RequestedShortcut = Shortcuts.Edit,
         },
@@ -186,32 +191,36 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         {
             // 這裡刻意不設 Title:讓它回落到 _toggleSource.Name,
             // 切換之後選單上的字才會跟著從「顯示原始文字」變成「顯示渲染後的預覽」。
-            Subtitle = "不進預覽頁也能選取、複製原始 Markdown",
+            Subtitle = Resources.ToggleSourceSubtitle,
             RequestedShortcut = Shortcuts.ToggleSource,
         },
         // 複製完**留在清單頁**,所以不發 toast(toast 會搶焦點,主視窗一失焦就自我隱藏)。
         // 回饋改成在那一列打一個標籤,見 FlashTag。
         new CommandContextItem(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.Id, message)))
         {
-            Title = "複製內文",
-            Subtitle = "不含 front matter",
+            Title = Resources.CommandCopyBody,
+            Subtitle = Resources.CommandCopyBodySubtitle,
             Icon = Icons.Copy,
             RequestedShortcut = Shortcuts.CopyBody,
         },
         new CommandContextItem(new OpenUrlCommand(note.FilePath))
         {
-            Title = "在預設編輯器開啟",
+            Title = Resources.CommandOpenInEditor,
             Icon = Icons.OpenExternal,
             RequestedShortcut = Shortcuts.OpenExternal,
         },
 
         // 「開啟檔案位置」直接用 toolkit 現成的命令(它跑的是 `explorer.exe /select,"<路徑>"`),
-        // 自己寫一個只會多一份 Process.Start 的錯誤處理。Name 要換成中文:
-        // toolkit 給的是它自己資源檔裡的英文字串,而這一項有機會出現在底部工具列上。
-        new CommandContextItem(new ShowFileInFolderCommand(note.FilePath) { Name = "開啟檔案位置" })
+        // 自己寫一個只會多一份 Process.Start 的錯誤處理。Name 要自己換掉:
+        // toolkit 給的是它自己資源檔裡的字串,而它跟著 CmdPal 的語言走、不見得跟我們一致,
+        // 而這一項有機會出現在底部工具列上。
+        new CommandContextItem(new ShowFileInFolderCommand(note.FilePath)
         {
-            Title = "開啟檔案位置",
-            Subtitle = "在檔案總管裡選中這個檔案",
+            Name = Resources.CommandOpenFileLocation,
+        })
+        {
+            Title = Resources.CommandOpenFileLocation,
+            Subtitle = Resources.CommandOpenFileLocationSubtitle,
             Icon = Icons.FileLocation,
             RequestedShortcut = Shortcuts.OpenFileLocation,
         },
@@ -230,8 +239,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         // 都沒有對應的樣式開口,見 README〈刪除的紅色只有一個地方碰得到〉。
         new CommandContextItem(CreateDeleteCommand(note))
         {
-            Title = "刪除",
-            Subtitle = "移到資源回收筒",
+            Title = Resources.CommandDelete,
+            Subtitle = Resources.CommandDeleteSubtitle,
             RequestedShortcut = Shortcuts.Delete,
             IsCritical = true,
         },
@@ -256,12 +265,12 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// </summary>
     private AnonymousCommand CreateDeleteCommand(Note note) => new(() => { })
     {
-        Name = "刪除",
+        Name = Resources.CommandDelete,
         Icon = Icons.Delete,
         Result = CommandResult.Confirm(new ConfirmationArgs
         {
-            Title = "刪除這則筆記?",
-            Description = $"「{note.Title}」會被移到資源回收筒。",
+            Title = Resources.DeleteConfirmTitle,
+            Description = Strings.Format(Resources.DeleteConfirmDescription, note.Title),
             PrimaryCommand = new DeleteNoteCommand(_repository, note),
         }),
     };
@@ -287,7 +296,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     {
         if (note.Body.Length == 0)
         {
-            return "_(沒有內文)_";
+            return Resources.NoBody;
         }
 
         // 渲染模式的換行處理要跟預覽頁一致,否則同一則筆記在兩個地方長得不一樣。

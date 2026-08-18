@@ -547,6 +547,35 @@ var x = 1;
 - [ ] 在筆記資料夾放一個內容是亂碼、front matter 沒收尾的 `.md`,
       清單照樣列出其他筆記,不會整個掛掉
 
+## 11. 介面語言
+
+語言跟著 Windows 的顯示語言走,沒有設定項(見 README〈介面語言跟著 Windows 走〉)。
+`.resx` 動過就要跑這一段 —— 少一條 key、佔位符對不上,單元測試擋得住;
+但「翻譯是對的、位置卻塞不下」只有眼睛看得出來。
+
+先確認擴展進程拿到的是哪一種語言(需要 `diagnostic.on`,見 README〈排錯〉):
+
+```powershell
+Get-Content "$env:LOCALAPPDATA\Packages\Notelet_bf0n0751x5hse\LocalState\diagnostic.log" -Encoding utf8 |
+  Select-String "UI 語言"
+```
+
+- [ ] 印出 `UI 語言:zh-TW 抽樣='設定'`(抽樣是英文 `Settings` 代表附屬組件沒進套件)
+
+**換一種語言實測**(改 Windows 設定 → 時間與語言 → 語言與地區 → Windows 顯示語言,
+要重新登入;測完記得改回來):
+
+- [ ] 改成英文之後,頂層四個命令變成 `Notelet` / `Notelet: Quick capture` /
+      `Notelet: New note` / `Notelet: Delete notes`
+- [ ] **alias 還在、還能用** —— 這是命令 Id 寫死的回歸測試,換語言不該讓使用者的
+      alias 失效(標題變了,`Id` 沒變)
+- [ ] 快速記下頁的提示句裡,分隔符還是使用者設的那個(不是寫死的 `;;`)
+- [ ] 設定頁三個欄位的標籤與說明都是英文,而且**沒有一句被截斷或擠成兩行怪換行**
+      (英文比中文長,卡片寬度是固定的)
+- [ ] 刪除頁的「刪除全部」詳細窗格:數字、資料夾路徑都填對了,粗體與段落沒有跑掉
+- [ ] 記下一則、刪一則,toast 與確認框的字都是英文,沒有中英夾雜
+      (`ex.Message` 那段本來就是英文,那是預期的)
+
 ---
 
 ## 記錄
