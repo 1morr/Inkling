@@ -65,8 +65,9 @@ public class FileSystemNoteRepositoryTests
         var original = repository.Create("原標題", "原內文");
 
         // 模擬使用者在別的編輯器(例如 Obsidian)手動加了欄位。
+        // 錨點是 front matter 的收尾分隔線(開頭那條前面沒有換行,不會誤中)。
         var onDisk = File.ReadAllText(original.FilePath)
-            .Replace("tags: []", "tags: []\r\ncssclass: reading\r\naliases:\r\n  - 別名", StringComparison.Ordinal);
+            .Replace("\r\n---\r\n", "\r\ncssclass: reading\r\naliases:\r\n  - 別名\r\n---\r\n", StringComparison.Ordinal);
         File.WriteAllText(original.FilePath, onDisk);
         repository.Invalidate();
 

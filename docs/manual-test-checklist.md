@@ -73,7 +73,9 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
       (toast 視窗會搶焦點,CmdPal 主視窗一失焦就把自己藏起來,所以看起來是整個收掉。
       要改成「存完停在筆記上」見 2c)
 - [ ] `%OneDrive%\Notelet` 底下出現 `<日期>-<時間>-測試想法一.md`
-- [ ] 打開該檔案,front matter 的 `id` / `title` / `created` / `updated` / `tags` 都在,內文是空的
+- [ ] 打開該檔案,front matter 的 `id` / `title` / `created` / `updated` 都在,內文是空的
+- [ ] **沒有 `tags:` 那一行**(空的標籤不寫進檔案 —— 手機的雲端硬碟 App 不渲染
+      Markdown,front matter 是最先看到的東西,沒功能的欄位不佔那一行)
 - [ ] **不吵人檢查**:主搜尋框打一般查詢(`notepad`、`note about x`、`chrome`),
       清單裡**不應該**出現任何 Notelet 的記下項目,也不應該有點不動的空列
 
@@ -327,8 +329,10 @@ var x = 1;
       aliases:
         - 別名一
       ```
+- [ ] 同一則筆記的 `tags` 也手動填上值(沒有那一行就自己加 `tags: [idea, 咖啡]`)
 - [ ] 回到 Notelet 編輯這則筆記並儲存
 - [ ] 重新打開檔案,`cssclass` 與 `aliases` **仍然在**
+- [ ] `tags: [idea, 咖啡]` **也仍然在**(省略只針對空值,有值的標籤不能被吃掉)
 
 ## 7. 新增(完整表單)
 

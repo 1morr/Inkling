@@ -236,7 +236,15 @@ public static class NoteFile
         builder.Append("title: ").Append(Quote(note.Title)).Append('\n');
         builder.Append("created: ").Append(note.Created.ToString(DateFormat, CultureInfo.InvariantCulture)).Append('\n');
         builder.Append("updated: ").Append(note.Updated.ToString(DateFormat, CultureInfo.InvariantCulture)).Append('\n');
-        builder.Append("tags: [").AppendJoin(", ", note.Tags.Select(Quote)).Append("]\n");
+
+        // 空的 tags 不寫。這幾行是使用者在手機的 OneDrive / Google Drive App 裡
+        // 打開筆記時最先看到的東西(那些 App 不渲染 Markdown,front matter 就是純文字
+        // 擋在最上面),而 tags 目前還沒有任何功能 —— 一個空陣列不值得佔那一行。
+        // 有值時照樣寫,別的編輯器加的 tags 也因此原樣留著。
+        if (note.Tags.Count > 0)
+        {
+            builder.Append("tags: [").AppendJoin(", ", note.Tags.Select(Quote)).Append("]\n");
+        }
 
         // 別人加的欄位原樣寫回。
         foreach (var line in note.ExtraFrontMatter)

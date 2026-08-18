@@ -89,6 +89,43 @@ public class NoteFileTests
     }
 
     [Fact]
+    public void Serialize_OmitsEmptyTags()
+    {
+        // front matter 是使用者在手機的雲端硬碟 App 裡最先看到的東西(那些 App
+        // 不渲染 Markdown),而 tags 還沒有功能 —— 空的就別佔那一行。
+        var text = NoteFile.Serialize(SampleNote());
+
+        Assert.DoesNotContain("tags:", text, StringComparison.Ordinal);
+
+        // 少一行不能讓其他欄位跟著遺失。
+        var parsed = NoteFile.Parse(text);
+        Assert.True(parsed.HadFrontMatter);
+        Assert.Equal("20260810-143052-a7f3", parsed.Id);
+        Assert.Empty(parsed.Tags);
+        Assert.Empty(parsed.ExtraFrontMatter);
+    }
+
+    [Fact]
+    public void Serialize_WritesTagsWhenPresent()
+    {
+        // 省略只針對空值。別的編輯器加上的 tags 經過 Notelet 一輪之後必須還在。
+        var text = NoteFile.Serialize(SampleNote() with { Tags = ["idea", "咖啡"] });
+
+        Assert.Contains("tags: [idea, 咖啡]", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parse_StillReadsFilesWithEmptyTags()
+    {
+        // Notelet 不再寫這一行,但既有的檔案裡到處都是,照樣要讀得懂 ——
+        // 而且 tags 不能掉進 ExtraFrontMatter,否則寫回去會多出一行空陣列。
+        var parsed = NoteFile.Parse("---\nid: abc\ntitle: 舊檔案\ntags: []\n---\n\n內文");
+
+        Assert.Empty(parsed.Tags);
+        Assert.Empty(parsed.ExtraFrontMatter);
+    }
+
+    [Fact]
     public void Parse_ReadsBlockStyleTags()
     {
         var content = """
