@@ -121,6 +121,9 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    成因是 toast,不是 `GoHome()`,後者的語意明明白白是「回主頁但保持開著」。
    **`ToastArgs.Result = KeepOpen` 救不回來**,搶焦點的是那個視窗本身,不是回傳值;
    toolkit 有幾個現成命令(例如 `CopyTextCommand`)預設就回 `ShowToast`,拿來用要記得改掉。
+   **這一條專指 `CommandResult.ShowToast`。`ToastStatusMessage` 名字很像但不是同一件事** ——
+   它呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 畫成底部命令列的 `InfoBadge`,
+   不開視窗、不關面板,存檔提示用的就是它。見 README〈`ToastStatusMessage` 不是那個 toast〉。
    需要回饋又要留在原地時走 `ListItem.Tags`(見〈查證 CmdPal 的行為〉最後那段)。
    而**導頁也不能靠回傳值**:`CommandResult.GoToPage` 是空殼,SDK 有型別但
    `ShellViewModel.UnsafeHandleCommandResult` 的 switch 裡沒有那個 case(安裝版沒有,

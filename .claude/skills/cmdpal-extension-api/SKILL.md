@@ -13,11 +13,20 @@ description: >-
 >
 > **它有幾處跟本專案實測到的行為衝突,照做會壞掉。以這一段為準:**
 >
-> 1. **不要用 toast。** 下面〈Status Messages and Toasts〉推薦的 `ToastStatusMessage(...).Show()`、
->    `CommandResult.ShowToast`,以及 `CopyTextCommand` 的預設回傳值,都會讓 **CmdPal 整個面板消失**
->    —— toast 是另一個會搶焦點的視窗,而主視窗一失焦就自我隱藏。`ToastArgs.Result = KeepOpen`
->    救不回來。要留在畫面上就一個 toast 都不能發,改用 `ListItem.Tags`
->    (見 `NoteListPage.FlashTag`)。README〈刪除成功時一個 toast 都不發〉。
+> 1. **下面〈Status Messages and Toasts〉那兩行是兩種完全不同的東西,只有一種會關掉面板。**
+>
+>    - **`CommandResult.ShowToast(...)`(以及 `CopyTextCommand` 的預設 `Result`)會讓面板消失。**
+>      它送的是 `ShowToastMessage`,由 CmdPal 開一個獨立的 `ToastWindow` —— 那個視窗會搶焦點,
+>      而主視窗一失焦就自我隱藏。`ToastArgs.Result = KeepOpen` 救不回來,搶焦點的是視窗本身。
+>      README〈刪除成功時一個 toast 都不發〉。
+>    - **`new ToastStatusMessage(...).Show()` 不會。** 它名字裡有 Toast,但根本沒開視窗:
+>      呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 加進 `StatusMessages`,顯示成底部命令列
+>      左邊那個 `InfoBadge`(點開是 flyout 裡的 `InfoBar`),2.5 秒後自己收掉。
+>      擴展跑在自己的進程裡,本來就開不了 CmdPal 的視窗 —— 它能做的只有呼叫 host。
+>      本專案的存檔提示走的就是這條(`NoteFormContent`、`NoteletSettingsForm`)。
+>
+>    要「做完之後留在原地」而且**不想離開清單**,還有第三條路:`ListItem.Tags`
+>    就地改一列的狀態(見 `NoteListPage.FlashTag`)。
 > 2. **`ListItem.Details` 只能整個換掉,不能就地改屬性。** 下面把它寫成一般屬性,但 `IDetails`
 >    在 SDK IDL 裡沒有宣告成可觀察介面,通知跨不過 out-of-process 邊界 —— 值改了畫面不動。
 >    `Details.Size` 更只在初始化時讀一次,不明著寫就是最窄那一檔。

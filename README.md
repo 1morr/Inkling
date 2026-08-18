@@ -631,6 +631,30 @@ CmdPal **沒有多選**:SDK 的 `IListItem` 沒有任何選取狀態的屬性
 操作丟例外的時候,使用者看到清單還剩東西,要能立刻知道那不是沒生效;那種時候面板被
 toast 關掉,也比默默少刪好。
 
+#### `ToastStatusMessage` 不是那個 toast
+
+名字很像,**但它不開視窗,也不會關掉面板**。上面那條規矩只管 `CommandResult.ShowToast`。
+
+| 用法 | 實際發生什麼 | 面板 |
+|---|---|---|
+| `CommandResult.ShowToast(…)` | 送出 `ShowToastMessage`,CmdPal 開一個獨立的 `ToastWindow` | **會關掉** |
+| `CopyTextCommand` 的預設 `Result` | 就是上面那個 | **會關掉** |
+| `new ToastStatusMessage(…).Show()` | 呼叫 `IExtensionHost.ShowStatus`,由 CmdPal 收進 `StatusMessages` | 不會 |
+
+`ToastStatusMessage.Show()` 在 toolkit 裡做的事只有一件:
+`ExtensionHost.ShowStatus(Message, StatusContext.Extension)`,然後隔 2500 ms 再 `HideStatus`。
+**擴展跑在自己的 COM 進程裡,本來就開不了 CmdPal 的視窗** —— 它能做的只有呼叫 host。
+CmdPal 那一頭把訊息畫成底部命令列左邊的一個 `InfoBadge`,點開是 flyout 裡的 `InfoBar`。
+
+安裝版 0.11.11762.0 對得上:`ProcessStatusMessage` 在 `Microsoft.CmdPal.UI.exe` 裡,
+`StatusMessagesButton` / `StatusMessagesFlyout` / `MessagesDropdown` 在 `resources.pri`(UTF-16)。
+反過來 `main` 那套 toast 改寫(`TransparentWindow` / `TransientSurface` / `ToastPosition`)
+安裝版**一個都掃不到** —— 又一個不能照 `main` 寫文檔的例子。
+
+所以存檔提示照樣用它(`NoteFormContent`、`NoteletSettingsForm`),
+而 `docs/manual-test-checklist.md` 那條「跳出『已儲存』的 toast **並回到上一頁**」
+本身就是證據:面板要是被關掉,那一項當初不會通過。
+
 ### 複製完留在原地,回饋是那一列上的標籤
 
 「複製完不要關掉面板」跟刪除踩的是同一顆地雷,但難一點:刪除的回饋是那一列消失,
