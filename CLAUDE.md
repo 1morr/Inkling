@@ -119,6 +119,9 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
 8. **想讓使用者「做完之後留在畫面上看」,就一個 toast 都不能發。** toast 是另一個會搶焦點的
    視窗,而主視窗一失焦就自我隱藏(第 7 條那個機制)—— 快速記下之後「CmdPal 整個消失」的
    成因是 toast,不是 `GoHome()`,後者的語意明明白白是「回主頁但保持開著」。
+   **`ToastArgs.Result = KeepOpen` 救不回來**,搶焦點的是那個視窗本身,不是回傳值;
+   toolkit 有幾個現成命令(例如 `CopyTextCommand`)預設就回 `ShowToast`,拿來用要記得改掉。
+   需要回饋又要留在原地時走 `ListItem.Tags`(見〈查證 CmdPal 的行為〉最後那段)。
    而**導頁也不能靠回傳值**:`CommandResult.GoToPage` 是空殼,SDK 有型別但
    `ShellViewModel.UnsafeHandleCommandResult` 的 switch 裡沒有那個 case(安裝版沒有,
    `main` 也沒有)。唯一還通的路是讓那一列的命令**本身就是一個 `IPage`** ——
@@ -133,6 +136,18 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
    trimming 只在 `dotnet publish` 生效,所以 trimming 相關的問題只有 Release 部署才驗得到。
    `[GeneratedComInterface]`(shell 的 COM 介面)需要 `AllowUnsafeBlocks`,
    而且**方法的宣告順序就是 vtable 順序** —— 排錯不會有編譯錯誤,只會呼叫到別的函式。
+10. **快速鍵全部收在 `src/Notelet/Shortcuts.cs`,而且不能碰搜尋框的文字編輯鍵。**
+    清單頁的焦點永遠在搜尋框上,而 CmdPal 在 `ShellPage_OnPreviewKeyDown` 的 tunneling
+    階段就把鍵送去比對(`TryCommandKeybindingMessage` → `CheckKeybinding`),比 `TextBox`
+    早收到 —— 綁走等於從搜尋框拿掉。**不能用的**:`Ctrl+A` / `C` / `X` / `V` / `Z` / `Y`、
+    `Ctrl+Backspace`、`Delete`、`Ctrl+Delete`、`Ctrl+方向鍵`(以上 `TextBox` 的),
+    以及 `Ctrl+K` / `Ctrl+Enter` / `Ctrl+,` / `Ctrl+I`(CmdPal 自己的)。
+    **偏好 `Ctrl+` 一個字母**,少一個修飾鍵就少一個;CmdPal 的 `WellKnownKeyChords`
+    與各內建擴展的 `KeyChords.cs` 只當參考,跟「好按」衝突時以好按為準
+    (現在的 `Ctrl+L` / `Ctrl+D` 就是這樣壓過 `Ctrl+Shift+E` / `Ctrl+Shift+Delete` 的;
+    複製維持 `Ctrl+Shift+C`,因為 `Ctrl+C` 是搜尋框的,而那組鍵本來就是複製的慣例)。
+    另外**同一個項目的選單裡撞鍵不會報錯** —— CmdPal 用 `TryAdd`,第二個被靜靜丟掉,
+    只在它自己的 log 留一行 warning。
 
 ## 慣例
 
@@ -176,6 +191,15 @@ Get-ChildItem $d -Recurse -Include *.dll,*.exe | Where-Object {
 
 (別用 `Select-String -Encoding Byte`,PowerShell 7 已經移除那個參數,整條會靜靜地失敗。)
 
+**找 XAML 的東西要多掃一種編碼、多掃一種檔案。** 樣板名、資源鍵、Style 的 `x:Key` 不在
+`.exe` 裡,而是編進 `resources.pri`,而且是 **UTF-16**。上面那段只解 UTF-8,拿它去找
+`CriticalContextMenuViewModelTemplate` 會得到「找不到」——但那是掃法不對,不是真的沒有:
+
+```powershell
+$bytes = [System.IO.File]::ReadAllBytes("$d\resources.pri")
+[System.Text.Encoding]::Unicode.GetString($bytes).Contains('要找的資源鍵')
+```
+
 **已知落差**(都是 `main` 有、安裝版**沒有**,而且都曾經被當成事實寫進文檔):
 
 - `MainListRanker` / `ClassifyTier` / `FallbackFloor` —— README 曾經照 `main` 寫過一段
@@ -204,8 +228,18 @@ Get-ChildItem $d -Recurse -Include *.dll,*.exe | Where-Object {
 
 **反過來也有「掃得到」的**:`ListItem.Tags` 改了畫面會即時更新這條路,安裝版是有的
 (`UpdateTags` / `VisibleTags` / `HasTags` / `TagViewModel` 都掃得到)—— 刪除頁的多選
-曾經靠它做出來過(後來整個移除,見 README〈為什麼沒有多選〉),但這條路本身是通的,
-下次需要在清單上就地改一列的狀態時可以直接用。byte-scan 不是只拿來否定,拿來確認一樣有用。
+曾經靠它做出來過(後來整個移除,見 README〈為什麼沒有多選〉),而**現在真的在用它**:
+複製內文之後那一列右邊的「已複製」標籤就是這條路(`NoteListPage.FlashTag`)——
+需要「不關面板、不重整清單、就地改一列的狀態」時就用它,別再想 toast。
+byte-scan 不是只拿來否定,拿來確認一樣有用。
+
+`CommandContextItem.IsCritical`(把 `Ctrl+K` 選單那一列變紅,IDL 的註解就寫著
+「make this red」)也是掃得到的:`ContextItemTemplateSelector` / `get_IsCritical` 在
+`Microsoft.CmdPal.UI.exe`,`CriticalContextMenuViewModelTemplate` /
+`ContextItemTitleTextBlockCriticalStyle` 在 `resources.pri`(UTF-16)。
+**這是擴展碰得到的唯一一處紅色** —— 底部工具列的按鈕寫死 `SubtleButtonStyle`,
+確認框的按鈕連屬性都沒有(那個 `IsPrimaryCommandCritical` 是另一回事,而且沒作用),
+見 README〈刪除的紅色只有一個地方碰得到〉。
 
 兩份設定檔:
 

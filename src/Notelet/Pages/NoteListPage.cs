@@ -2,7 +2,6 @@ using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Notelet.Commands;
 using Notelet.Core;
-using Windows.System;
 
 namespace Notelet.Pages;
 
@@ -14,6 +13,9 @@ namespace Notelet.Pages;
 /// </summary>
 internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 {
+    /// <summary>「已複製」那個標籤留多久。跟 CmdPal 自己的 toast 一樣長。</summary>
+    private static readonly TimeSpan TagDuration = TimeSpan.FromMilliseconds(2500);
+
     private readonly INoteRepository _repository;
     private readonly NoteletOptions _options;
 
@@ -39,6 +41,17 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// </summary>
     private (Note Note, ListItem Item)[] _shown = [];
 
+    /// <summary>
+    /// 「已複製」那個標籤的計時器,時間到自己把標籤收掉。
+    ///
+    /// 跟 CmdPal 自己的 toast 一樣是 2.5 秒(<c>ToastWindow.VisibleDuration</c>),
+    /// 讓兩種回饋的節奏一致。
+    /// </summary>
+    private readonly System.Threading.Timer _tagTimer;
+
+    /// <summary>目前掛著標籤的那一列,清的時候只碰它一個。</summary>
+    private ListItem? _taggedItem;
+
     private bool _showSource;
     private bool _disposed;
 
@@ -46,6 +59,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     {
         _repository = repository;
         _options = options;
+
+        _tagTimer = new System.Threading.Timer(_ => ClearTag(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
         _toggleSource = new AnonymousCommand(ToggleSource)
         {
@@ -123,6 +138,9 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             shown.Add((note, item));
         }
 
+        // 標籤屬於上一份清單那些項目物件,整批換掉之後就沒有意義了。
+        ClearTag();
+
         _shown = [.. shown];
         DiagnosticLog.Write($"BuildItems: query='{query}' 命中 {matches.Count} 則,列出 {shown.Count} 則");
 
@@ -146,48 +164,78 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         Subtitle = note.Summary,
         Icon = Icons.Note,
         Details = BuildDetails(note),
-        MoreCommands = [
-            // 第一個項目會被 CmdPal 當成次要命令放上底部工具列(Ctrl+Enter),
-            // 切換鍵要排在編輯後面,才不會把原本的次要命令擠掉。
-            new CommandContextItem(new NoteEditPage(_repository, note))
-            {
-                Title = "編輯",
-                Icon = Icons.Edit,
-                RequestedShortcut = KeyChordHelpers.FromModifiers(
-                    ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.E, scanCode: 0),
-            },
-            new CommandContextItem(_toggleSource)
-            {
-                // 這裡刻意不設 Title:讓它回落到 _toggleSource.Name,
-                // 切換之後選單上的字才會跟著從「顯示原始文字」變成「顯示渲染後的預覽」。
-                Subtitle = "不進預覽頁也能選取、複製原始 Markdown",
-                RequestedShortcut = KeyChordHelpers.FromModifiers(
-                    ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.U, scanCode: 0),
-            },
-            new CommandContextItem(new OpenUrlCommand(note.FilePath))
-            {
-                Title = "在預設編輯器開啟",
-                Icon = Icons.OpenExternal,
-            },
-            // **這裡沒有快速鍵,而且是刻意的。**
-            //
-            // Delete 系列的鍵一開始就不能用:清單頁的焦點永遠在搜尋框上,而 `Delete` 是
-            // 「刪游標右邊一個字」、`Ctrl+Delete` 是「刪游標右邊一個詞」,兩個都是 Windows
-            // 文字框的標準鍵,綁走等於把它們從搜尋框拿掉(頁面層級的 RequestedShortcut
-            // 比 TextBox 先收到鍵)。這一列因此曾經走 `Ctrl+D`。
-            //
-            // 現在連 `Ctrl+D` 都拿掉了:刪除有了自己的一頁(`Notelet:刪除筆記`),
-            // 那裡才是連續清理該去的地方 —— 有多選、有「刪除全部」、看得到外來檔案。
-            // 清單頁是拿來找筆記的,把一個不可逆的動作綁在搜尋框上按得到的鍵位上,
-            // 換來的方便配不上誤觸的代價。選單項留著,`Ctrl+K` 進去還是刪得掉。
-            // 見 README〈清單頁的刪除為什麼沒有快速鍵〉。
-            new CommandContextItem(CreateDeleteCommand(note))
-            {
-                Title = "刪除",
-                Subtitle = "移到資源回收筒",
-            },
-        ],
+        MoreCommands = BuildCommands(note),
     };
+
+    /// <summary>
+    /// 一則筆記的 <c>Ctrl+K</c> 選單。鍵位全部來自 <see cref="Shortcuts"/>,挑鍵的理由寫在那裡。
+    ///
+    /// 順序有意義:**第一項會被 CmdPal 當成次要命令放上底部工具列**(<c>Ctrl+Enter</c>),
+    /// 所以編輯一定排第一;其餘按「看 → 拿 → 出去 → 刪掉」由輕到重排,
+    /// 刪除排最後 —— 它是這裡唯一不可逆的動作。
+    /// </summary>
+    private IContextItem[] BuildCommands(Note note) =>
+    [
+        new CommandContextItem(new NoteEditPage(_repository, note))
+        {
+            Title = "編輯",
+            Icon = Icons.Edit,
+            RequestedShortcut = Shortcuts.Edit,
+        },
+        new CommandContextItem(_toggleSource)
+        {
+            // 這裡刻意不設 Title:讓它回落到 _toggleSource.Name,
+            // 切換之後選單上的字才會跟著從「顯示原始文字」變成「顯示渲染後的預覽」。
+            Subtitle = "不進預覽頁也能選取、複製原始 Markdown",
+            RequestedShortcut = Shortcuts.ToggleSource,
+        },
+        // 複製完**留在清單頁**,所以不發 toast(toast 會搶焦點,主視窗一失焦就自我隱藏)。
+        // 回饋改成在那一列打一個標籤,見 FlashTag。
+        new CommandContextItem(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.Id, message)))
+        {
+            Title = "複製內文",
+            Subtitle = "不含 front matter",
+            Icon = Icons.Copy,
+            RequestedShortcut = Shortcuts.CopyBody,
+        },
+        new CommandContextItem(new OpenUrlCommand(note.FilePath))
+        {
+            Title = "在預設編輯器開啟",
+            Icon = Icons.OpenExternal,
+            RequestedShortcut = Shortcuts.OpenExternal,
+        },
+
+        // 「開啟檔案位置」直接用 toolkit 現成的命令(它跑的是 `explorer.exe /select,"<路徑>"`),
+        // 自己寫一個只會多一份 Process.Start 的錯誤處理。Name 要換成中文:
+        // toolkit 給的是它自己資源檔裡的英文字串,而這一項有機會出現在底部工具列上。
+        new CommandContextItem(new ShowFileInFolderCommand(note.FilePath) { Name = "開啟檔案位置" })
+        {
+            Title = "開啟檔案位置",
+            Subtitle = "在檔案總管裡選中這個檔案",
+            Icon = Icons.FileLocation,
+            RequestedShortcut = Shortcuts.OpenFileLocation,
+        },
+
+        // **刪除的鍵位是 `Ctrl+D`,不是 `Delete` 也不是 `Ctrl+Delete`。**
+        // 後兩個是搜尋框的標準編輯鍵(刪右邊一個字 / 刪右邊一個詞),而快速鍵比 TextBox
+        // 先收到鍵(tunneling 階段的 `ShellPage_OnPreviewKeyDown`),綁走等於把它們從
+        // 搜尋框拿掉。`Ctrl+D` 在文字框裡沒有標準語意,CmdPal 自己也沒佔用。
+        //
+        // 它好按,所以也容易誤按 —— 那正是這個鍵位上一次被整個拿掉的理由。
+        // 防線是這一列一定會跳確認框,而且刪掉的檔案進資源回收筒,兩道都還在。
+        //
+        // `IsCritical` 讓這一項在選單裡變紅(圖示、標題、鍵位都套
+        // `SystemFillColorCriticalBrush`)—— SDK 的 IDL 對這個屬性的註解就是
+        // 「make this red」。這是擴展唯一碰得到的紅色:底部工具列的按鈕與確認框的按鈕
+        // 都沒有對應的樣式開口,見 README〈刪除的紅色只有一個地方碰得到〉。
+        new CommandContextItem(CreateDeleteCommand(note))
+        {
+            Title = "刪除",
+            Subtitle = "移到資源回收筒",
+            RequestedShortcut = Shortcuts.Delete,
+            IsCritical = true,
+        },
+    ];
 
     /// <summary>
     /// 刪除鍵按下去先跳確認框,確認了才真的刪。
@@ -288,6 +336,54 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         DiagnosticLog.Write($"RefreshDetails: 換掉 {shown.Length} 則的 Details");
     }
 
+    /// <summary>
+    /// 在某一列右邊打一個短暫的標籤,<see cref="_tagTimer"/> 到時自己收掉。
+    ///
+    /// 這是「複製完不關面板」換來的問題的解:**不能用 toast**(它是另一個會搶焦點的視窗,
+    /// 主視窗一失焦就自我隱藏,見 <see cref="Commands.DeleteNoteCommand"/>),
+    /// 但剪貼簿看不見,完全沒有回饋又會讓人以為快速鍵壞了。
+    ///
+    /// 用 <see cref="ListItem.Tags"/> 是因為**這條路跨進程是通的** —— 跟
+    /// <see cref="ListItem.Details"/> 相反(見 <see cref="RefreshDetails"/>):
+    /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
+    /// 而且安裝版的 <c>UpdateTags</c> / <c>VisibleTags</c> / <c>TagViewModel</c> 都掃得到。
+    /// 這裡也不呼叫 <c>RaiseItemsChanged</c>:整份清單翻新一次,選中項就有機會跑掉,
+    /// 而複製完的下一秒使用者通常還想留在同一列上。
+    ///
+    /// 計時器回呼跑在執行緒集區上,所以只碰 <see cref="_taggedItem"/> 這一個參考
+    /// (用 <see cref="Interlocked"/> 換走),不去走 <see cref="_shown"/> 那個會整個被換掉的陣列。
+    /// </summary>
+    private void FlashTag(string noteId, string text)
+    {
+        ClearTag();
+
+        foreach (var (note, item) in _shown)
+        {
+            if (!string.Equals(note.Id, noteId, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            item.Tags = [new Tag(text)];
+            _taggedItem = item;
+            _tagTimer.Change(TagDuration, Timeout.InfiniteTimeSpan);
+
+            DiagnosticLog.Write($"FlashTag: '{text}' 掛在 {noteId} 上");
+            return;
+        }
+    }
+
+    /// <summary>把標籤收掉。時間到、換一列複製、或整份清單重建時都會走到。</summary>
+    private void ClearTag()
+    {
+        var item = Interlocked.Exchange(ref _taggedItem, null);
+
+        if (item is not null)
+        {
+            item.Tags = [];
+        }
+    }
+
     private void OnRepositoryChanged(object? sender, EventArgs e)
     {
         // Version 已經讓下一次 GetItems 自己重建了;這裡的重點是主動通知 CmdPal
@@ -304,5 +400,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         _disposed = true;
         _repository.Changed -= OnRepositoryChanged;
+        _tagTimer.Dispose();
     }
 }

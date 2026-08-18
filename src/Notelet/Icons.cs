@@ -39,6 +39,14 @@ internal static class Icons
     /// <summary>OpenWith — 在外部編輯器開啟。</summary>
     public static IconInfo OpenExternal => Glyph(0xE7AC);
 
+    /// <summary>
+    /// FolderOpen — 在檔案總管裡選中這個檔案。
+    ///
+    /// 跟 CmdPal 內建的 <c>ShowFileInFolderCommand</c> 用同一個碼位(它寫死 0xE838),
+    /// 檔案索引與書籤擴展的「開啟檔案位置」長的就是這個樣子。
+    /// </summary>
+    public static IconInfo FileLocation => Glyph(0xE838);
+
     /// <summary>Copy — 複製內文。</summary>
     public static IconInfo Copy => Glyph(0xE8C8);
 

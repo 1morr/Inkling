@@ -203,6 +203,15 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// 或使用者自己丟進資料夾的檔案,不給它「跳過確認」這個選項。所以那一列的
     /// <c>Ctrl+Enter</c> 跟 <c>Enter</c> 做同一件事,標題也照實寫成「刪除」而不是
     /// 「直接刪除」,副標講明為什麼。
+    ///
+    /// 兩條路都設 <c>IsCritical</c>,讓它們在 <c>Ctrl+K</c> 選單裡是紅的 ——
+    /// 跟清單頁的「刪除」同一個樣子。**只有選單裡的那一列變得了色**:同一個命令
+    /// 出現在底部工具列上(<c>Ctrl+Enter</c> 那顆按鈕)時還是預設樣式,
+    /// 見 README〈刪除的紅色只有一個地方碰得到〉。
+    ///
+    /// 這裡刻意**不綁** <see cref="Shortcuts.Delete"/>:這一頁的 <c>Enter</c> 與
+    /// <c>Ctrl+Enter</c> 本來就是刪除,再多一個鍵只是多一種說法,而且語意會打架 ——
+    /// 清單頁的 <c>Ctrl+D</c> 是「會先問一次」,這一頁的這一列卻是「不問」。
     /// </summary>
     private CommandContextItem CreateQuickDeleteItem(Note note)
     {
@@ -212,6 +221,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
             {
                 Title = "刪除",
                 Subtitle = "不是 Notelet 建立的,一律先確認",
+                IsCritical = true,
             };
         }
 
@@ -219,6 +229,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         {
             Title = "直接刪除",
             Subtitle = "不問,直接移到資源回收筒",
+            IsCritical = true,
         };
     }
 

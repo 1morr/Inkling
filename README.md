@@ -22,12 +22,36 @@ PowerToys Command Palette 的筆記擴展,用來在幾秒內記下隨時冒出�
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
 | 原始文字 | 清單頁按 `Ctrl+U`,詳細窗格在渲染與原始 Markdown 之間切換 |
-| 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」跳出去改 |
-| 刪除 | 清單頁 `Ctrl+K` → 刪除,確認後**移到資源回收筒**(不是永久刪除) |
+| 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」(`Ctrl+O`)跳出去改 |
+| 複製內文 | `Ctrl+Shift+C` 把內文複製到剪貼簿,不含 front matter,**面板不會關掉** |
+| 開啟檔案位置 | `Ctrl+L` 在檔案總管裡選中那個 `.md` |
+| 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**(不是永久刪除) |
 | 連續刪 | `Notelet:刪除筆記` 開一頁,`Enter` 刪除(先問一次),`Ctrl+Enter` 直接刪;不是 Notelet 建立的檔案兩條路都會問 |
 | 清空 | 同一頁的「刪除全部」,**先列出會刪掉哪些檔案**,不是 Notelet 建立的排在最前面 |
 
 封存、tag 分類、置頂還沒做。檔案格式已經預留 `tags` 欄位。
+
+### 快速鍵
+
+清單頁(`Notelet`)與預覽頁上,選中一則筆記之後:
+
+| 鍵 | 做什麼 | 清單頁 | 預覽頁 |
+|---|---|:-:|:-:|
+| `Enter` | 打開預覽 | ✅ | — |
+| `Ctrl+E` | 編輯(表單) | ✅ | ✅ |
+| `Ctrl+U` | 詳細窗格切換渲染 / 原始 Markdown | ✅ | — |
+| `Ctrl+Shift+C` | 複製內文 | ✅ | ✅ |
+| `Ctrl+O` | 用系統預設的程式開啟 `.md` | ✅ | ✅ |
+| `Ctrl+L` | 在檔案總管裡選中這個檔案 | ✅ | ✅ |
+| `Ctrl+D` | 刪除(先跳確認框) | ✅ | — |
+| `Ctrl+K` | 打開選單,上面每一項都寫著自己的鍵 | ✅ | ✅ |
+
+`Notelet:刪除筆記` 那一頁另有自己的兩個鍵:`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪。
+
+**只有複製帶 Shift**:`Ctrl+C` 是搜尋框自己的複製鍵,拿走就沒辦法複製剛打的字,
+而 `Ctrl+Shift+C` 是 CmdPal 內建擴展的複製慣例。哪些字母不能碰(搜尋框與 CmdPal 各佔了
+哪些)、為什麼刪除是 `Ctrl+D`,都寫在 `src/Notelet/Shortcuts.cs` 與〈清單頁的快速鍵〉。
+**CmdPal 目前不讓使用者改擴展的快速鍵**,能改的只有頂層命令的 alias 與全域快速鍵。
 
 ## 需求
 
@@ -209,8 +233,8 @@ out-of-process 邊界;`BaseObservable.OnPropertyChanged` 又把例外整個吞�
 一個 `IDetailsWidthStore` 窄介面、一個 `DetailsWidthChanged` 事件、provider 那條
 「寬度變了就叫設定頁重讀」的訂閱,加上手動驗證清單裡整整一節的回歸測試。實際使用永遠
 停在最寬,那些程式碼只是在維護一個沒有人用的檔位,於是連同設定項一起移除。
-空出來的 `Ctrl+D` 後來給了刪除,再後來連那個也拿掉了 ——
-現在清單頁一個 `Ctrl+D` 都沒有(見〈清單頁的刪除為什麼沒有快速鍵〉)。
+空出來的 `Ctrl+D` 後來給了刪除,中間拿掉過,現在又回到刪除身上 ——
+那一段來回見〈清單頁的快速鍵〉。
 
 舊 `settings.json` 裡的 `Notelet.DetailsWidth` 鍵留著不管:`Settings.Update` 只認得
 自己註冊過的鍵,多一個孤兒鍵不會有任何影響,不值得為它寫一次遷移。
@@ -606,6 +630,30 @@ CmdPal **沒有多選**:SDK 的 `IListItem` 沒有任何選取狀態的屬性
 操作丟例外的時候,使用者看到清單還剩東西,要能立刻知道那不是沒生效;那種時候面板被
 toast 關掉,也比默默少刪好。
 
+### 複製完留在原地,回饋是那一列上的標籤
+
+「複製完不要關掉面板」跟刪除踩的是同一顆地雷,但難一點:刪除的回饋是那一列消失,
+**複製沒有任何看得見的結果** —— 剪貼簿是隱形的。
+
+toolkit 的 `CopyTextCommand` 預設回 `ShowToast`,而 `ToastArgs.Result` 的預設又是
+`Dismiss`,兩件事疊起來就是「複製一次關一次」。而且**光把 `ToastArgs.Result` 改成
+`KeepOpen` 沒有用**:toast 是另一個會搶焦點的視窗,主視窗一失焦就自我隱藏。
+想留在畫面上,就一個 toast 都不能發。
+
+所以回饋改成在那一列右邊打一個 **`已複製`** 的標籤,2.5 秒後自己收掉
+(跟 CmdPal 自己的 toast 同一個時長,`ToastWindow.VisibleDuration`)。沒有內文的筆記
+打的是 `沒有內文`,而且**不碰剪貼簿** —— `ClipboardHelper.SetText` 會先 `EmptyClipboard()`,
+對空筆記按下去等於把使用者剛複製的東西清掉。
+
+走 `ListItem.Tags` 是因為**這條路跨進程是通的**,跟 `Details` 正好相反(見
+〈為什麼不是就地改 `Details.Body`〉):`ICommandItem` 在 IDL 裡就繼承 `INotifyPropChanged`,
+CmdPal 對它無條件訂閱,而且安裝版的 `UpdateTags` / `VisibleTags` / `TagViewModel` 都掃得到。
+這裡也刻意不呼叫 `RaiseItemsChanged`:整份清單翻新一次選中項就有機會跑掉,而剛複製完
+使用者通常還想留在同一列上。
+
+預覽頁沒有清單列可以掛標籤,所以那裡的複製是**靜靜完成**的 —— 那一頁整頁顯示的就是
+剛複製走的內容,自己會說話。
+
 ### 確認框的按鈕沒有顏色,也沒有「危險」樣式
 
 `ConfirmationArgs` 的全部內容就是 `Title` / `Description` / `PrimaryCommand` /
@@ -628,6 +676,9 @@ if (vm.IsPrimaryCommandCritical)
 紅色按鈕在 `ShellPage.xaml.cs` 裡是**註解掉的 TODO**,微軟自己也還沒做。所以「刪除」按鈕
 沒有紅色、也沒有強調色,這是 CmdPal 目前就長這樣,不是我們漏設什麼 —— 兩個按鈕都是預設樣式,
 開啟時焦點落在主要按鈕(截圖上那圈黑框),Enter 就是確認。
+
+這一節講的只有**確認框**。`Ctrl+K` 選單裡的那一列是另一回事 —— 那裡有一個真的會變紅的
+開關,見下一節〈刪除的紅色只有一個地方碰得到〉。
 
 **而且 0.11 安裝版連上面那個 `if` 都沒有。** 整個套件掃不到 `set_DefaultButton`,
 同一段程式碼的 `set_PrimaryButtonText` / `set_CloseButtonText` / `set_XamlRoot` 卻都掃得到,
@@ -652,23 +703,133 @@ $u8.Contains('DefaultButton')           # False ← 一次都沒設過
 本身會先列出會刪掉哪些檔案。SDK 也沒有辦法把預設按鈕指定成「確認」—— 上游只有「設成取消」
 跟「不設」兩種。
 
-### 清單頁的刪除為什麼沒有快速鍵
+#### 藍色也不行,而且整個對話框我們只碰得到一個字串
 
-清單頁的「刪除」只在 `Ctrl+K` 選單裡,沒有綁任何鍵。這是兩層取捨疊出來的結果。
+紅色是註解掉的 TODO,那**藍色(強調色)呢**?WinUI 的 `ContentDialog` 只有一個機制會把某顆
+按鈕變成強調色:`DefaultButton`。而 CmdPal **從來沒把它設成 `Primary`** —— `main` 唯一
+設它的地方是 `IsPrimaryCommandCritical` 時設成 `Close`(那會讓「取消」變藍,不是「刪除」),
+而 0.11 安裝版連那一行都沒有。也就是說那個對話框裡**兩顆按鈕永遠都是預設樣式**,
+紅、藍、任何顏色都不是我們沒設,是那條路整個不存在。`PrimaryButtonStyle` 在整個套件裡
+只出現在 `Microsoft.ui.xaml.dll`(框架本身),CmdPal 一次都沒用過。
 
-**第一層:`Delete` 系列一開始就不能用。** 清單頁的焦點永遠在搜尋框上,所以那幾個鍵都是
-搜尋框的文字編輯鍵 —— `Delete` 刪右邊一個字,`Ctrl+Delete` 刪右邊一個詞。綁走等於把它們
-從搜尋框拿掉,因為頁面層級的 `RequestedShortcut` 比 `TextBox` 先收到鍵。刪除因此走過一段
-`Ctrl+D`:那個鍵在 Windows 文字框裡沒有標準語意,CmdPal 自己也沒佔用(上游原始碼裡唯一的
-`D` 是圖片檢視器的平移鍵,沒有修飾鍵),而且 `D` 對得上 Delete。它甚至是現成的 —— 那個鍵位
-本來是詳細面板寬度的三檔循環,那個功能拿掉之後就空著(見〈詳細面板寬度固定在最寬〉)。
+那個對話框裡**唯一由擴展決定的畫素是主要按鈕上的字**:
 
-**第二層:有了刪除頁之後,`Ctrl+D` 也拿掉了。** 連續清理該去的地方是 `Notelet:刪除筆記` ——
-那裡有不必確認的 `Ctrl+Enter`、有「刪除全部」、看得到外來檔案,而且每一步都在一個
-「使用者是為了刪東西才進來」
-的頁面裡。清單頁是拿來找筆記的,把一個不可逆的動作綁在搜尋框上按得到的鍵位上,換來的方便
-配不上誤觸的代價。選單項留著,`Ctrl+K` 進去還是刪得掉 —— 搜到內文才找得到的那一則,
-不必為了刪它跑去另一頁。
+```csharp
+var name = string.IsNullOrEmpty(vm.PrimaryCommand.Name) ? confirmText : vm.PrimaryCommand.Name;
+ContentDialog dialog = new() { Title = vm.Title, Content = vm.Description, PrimaryButtonText = name, ... };
+```
+
+`PrimaryButtonText` 就是我們 `PrimaryCommand.Name`。所以真要在那顆按鈕上見到顏色,
+只剩一招:把 emoji 放進命令名(`Name = "🗑️ 刪除"`),emoji 字型本身是彩色的。
+**現在沒有這樣做** —— 那是一顆彩色圖示,不是一顆紅色按鈕,而且跟整個介面的 Segoe Fluent
+單色圖示放在一起會很突兀。要試的話改一行就行,回頭也只是改回來。
+
+**自己畫一個確認畫面也換不到紅色按鈕。** Adaptive Cards 那條路試算過:CmdPal 的 host config
+裡 `"attention"` 是 `#FF5555`(安裝版的 exe 裡掃得到),所以**卡片上的文字可以是紅的**;
+但按鈕不行 —— AdaptiveCards 的 `Action.Style = "destructive"` 是靠宿主提供
+`Adaptive.Action.Destructive` 這個資源鍵去查樣式的(那兩個字串在
+`AdaptiveCards.Rendering.WinUI3.dll` 裡),而 CmdPal 的 `resources.pri` 裡**只定義了
+`Adaptive.TextBlock`**,查不到就退回預設按鈕。換句話說:多做一頁、失去「Enter 直接確認」的
+手感,只換到一行紅字。不做。
+
+### 刪除的紅色只有一個地方碰得到
+
+上一節講的是確認框:那裡沒有任何顏色的開口。但**選單裡的那一列有** ——
+`CommandContextItem.IsCritical`,SDK 的 IDL 對它的註解就一句話:
+
+```idl
+Boolean IsCritical { get; };   // READ: "make this red"
+```
+
+CmdPal 拿它做的事是換一整個 `DataTemplate`(`ContextItemTemplateSelector` 挑
+`CriticalContextMenuViewModelTemplate`),圖示、標題、右邊那個鍵位字串三個都套
+`SystemFillColorCriticalBrush`。**這條路在 0.11.11762.0 安裝版上是通的**,
+不是只有 `main` 有(byte-scan 對照過,兩邊都掃得到):
+
+```powershell
+$d = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8wekyb3d8bbwe"
+# Microsoft.CmdPal.UI.exe → ContextItemTemplateSelector / get_IsCritical
+# resources.pri(UTF-16)  → CriticalContextMenuViewModelTemplate /
+#                           ContextItemTitleTextBlockCriticalStyle
+```
+
+設在兩個地方:清單頁的「刪除」,以及刪除頁每一列選單裡的「直接刪除 / 刪除」。
+
+**別跟 `IsPrimaryCommandCritical` 搞混。** 名字像,是兩件事:
+
+| | 屬性在誰身上 | 做什麼 | 0.11 安裝版 |
+|---|---|---|---|
+| `IsCritical` | `CommandContextItem` | 選單那一列變紅 | **有效** |
+| `IsPrimaryCommandCritical` | `ConfirmationArgs` | 把確認框的預設按鈕設成「取消」 | **完全沒作用**(見上一節) |
+
+碰不到的地方,一次講完:
+
+| 哪裡 | 為什麼不行 |
+|---|---|
+| 底部工具列的按鈕(`Enter` / `Ctrl+Enter` 那兩顆) | `CommandBar.xaml` 裡兩顆都寫死 `SubtleButtonStyle`,沒有 critical 變體。所以刪除頁上那一列的「刪除 ⏎」是白的,同一個命令在 `Ctrl+K` 選單裡卻是紅的 |
+| 確認框的兩顆按鈕 | `ConfirmationArgs` 只有四個屬性,紅色在上游是註解掉的 TODO(見上一節) |
+| 清單列本身(「刪除全部 N 則」那兩列的圖示) | `ListItem` 沒有 `IsCritical`,glyph 圖示跟著主題前景色走。真要紅只能改成自備的圖檔(`IconHelpers.FromRelativePath` 吃 `.svg` / `.png`,CmdPal 自己就這樣用),為了兩列多帶一份資產與淺色/深色兩張圖,現在不做 |
+
+### 清單頁的快速鍵
+
+鍵位全部收在 `src/Notelet/Shortcuts.cs`(CmdPal 自己的擴展也是這個形狀 ——
+每個擴展一個 `KeyChords.cs`)。原則是**能少一個修飾鍵就少一個**:這幾個動作每天按,
+`Ctrl+X` 比 `Ctrl+Shift+X` 順得多。但「哪些 `Ctrl+字母` 可以拿」要先看誰已經佔著。
+
+**一、搜尋框(WinUI `TextBox`)的標準編輯鍵,一個都不能碰。** 清單頁的焦點永遠在搜尋框上,
+而 CmdPal 在 `ShellPage_OnPreviewKeyDown` 就把鍵送去比對快速鍵
+(`TryCommandKeybindingMessage` → `CheckKeybinding`)—— 那是 **tunneling** 階段,
+比 `TextBox` 早。綁走等於從搜尋框拿掉:
+
+| 誰的 | 有哪些 |
+|---|---|
+| `TextBox` | `Ctrl+A`、`Ctrl+C` / `X` / `V`、`Ctrl+Z` / `Y`、`Ctrl+Backspace`、`Ctrl+Delete`、`Ctrl+方向鍵` / `Home` / `End`、`Delete` |
+| CmdPal 自己 | `Ctrl+K`(選單)、`Ctrl+Enter`(次要命令)、`Ctrl+,`(設定)、`Ctrl+I`(它自己攔掉的 —— `TextBox` 會拿它插入 tab)、`Alt+Left` / `Alt+Home` / `Alt+F` |
+
+**二、剩下的字母隨我們挑,對得上動作最好。**
+
+| 動作 | 鍵位 | 為什麼是它 |
+|---|---|---|
+| 編輯 | `Ctrl+E` | E = Edit |
+| 原始文字 | `Ctrl+U` | 見〈原始文字模式〉 |
+| 在預設編輯器開啟 | `Ctrl+O` | O = Open;剪貼簿記錄擴展的 `KeyChords.OpenUrl` 也是它 |
+| 開啟檔案位置 | `Ctrl+L` | L = Location |
+| 複製內文 | `Ctrl+Shift+C` | **唯一還帶 Shift 的**,見下面 |
+| 刪除 | `Ctrl+D` | D = Delete |
+
+**跟 CmdPal 慣例不一致的兩個,是刻意的。** 內建擴展把「開啟檔案位置」放在 `Ctrl+Shift+E`
+(`WellKnownKeyChords.OpenFileLocation`,書籤與檔案索引都用它)、把刪除放在
+`Ctrl+Shift+Delete`(書籤、計算機、剪貼簿記錄三個都是)。兩個都做過一版,最後為了少按一個鍵
+讓位給 `Ctrl+L` / `Ctrl+D` —— 使用者按得最兇的是自己的筆記,不是跨擴展切換。
+
+**複製為什麼留著 Shift。** `Ctrl+C` 拿不得(搜尋框要拿它複製使用者剛打的字),所以複製
+只剩兩條路:借一個沒人要的字母(`Ctrl+B` = Body 試過一版),或照 CmdPal 的慣例走
+`Ctrl+Shift+C`(`WellKnownKeyChords.CopyFilePath`)。**選了後者** —— 那組鍵跟「複製」的
+關聯是手指本來就記得的,借來的字母得靠死記,省下的那一個 Shift 換不到。
+
+真要換成單一個 `Ctrl`,B / G / M / R / T 都還空著,改 `Shortcuts.cs` 一行就行。
+`Ctrl+Insert`(Windows 的老牌複製鍵)則刻意不碰:沒查證到 WinUI 的 `TextBox` 吃不吃它,
+吃的話就等於又拿走搜尋框的一個複製鍵;而且筆電鍵盤上的 `Insert` 常常要配 `Fn`。
+
+順帶一提:**同一個項目的選單裡撞鍵不會報錯**,CmdPal 用 `TryAdd`,第二個被靜靜丟掉
+(只在它自己的 log 留一行 warning,我們看不到)。加新鍵位時自己對一遍上面那兩張表。
+
+#### `Ctrl+D` 兜了一圈回來
+
+這一列的歷史值得留著,免得下次又繞一次:
+
+1. **`Ctrl+Delete`** —— 錯的。那是搜尋框的「刪右邊一個詞」,見上面第一條。
+2. **`Ctrl+D`** —— 能用,但後來整個拿掉了。當時的理由是「清單頁是拿來找筆記的,把一個
+   不可逆的動作綁在搜尋框上按得到的鍵位上,換來的方便配不上誤觸的代價」,刪除因此只留在
+   `Ctrl+K` 選單裡,連續清理請去 `Notelet:刪除筆記` 那一頁。
+3. **`Ctrl+Shift+Delete`** —— 跟三個內建擴展一致、也難誤按,但每次刪都要按三個鍵。
+4. **`Ctrl+D`(現在)** —— 「搜到某一則,順手刪掉」是清單頁上真實存在的動線;為此跑去
+   另一頁還得在那裡再搜一次(那一頁只搜標題),繞得比省下來的多。誤觸的顧慮沒有消失,
+   而是靠兩道防線扛:**一定會跳確認框**,而且刪掉的檔案**進資源回收筒**。
+
+`Notelet:刪除筆記` 那一頁**沒有**跟著綁 `Ctrl+D`:那裡的 `Enter` 與 `Ctrl+Enter`
+本來就是刪除,再多一個鍵只會讓語意打架 —— 清單頁的 `Ctrl+D` 是「會先問一次」,
+那一頁的次要命令卻是「不問」。
 
 ### 命令 Id 為什麼要寫死
 
@@ -759,6 +920,7 @@ src/
   Notelet/           CmdPal 擴展(MSIX COM server)
     NoteletExtension / NoteletCommandsProvider / SettingsManager
     CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
+    Shortcuts         清單頁與預覽頁的鍵位(挑鍵的兩條規則寫在那裡)
     ICaptureSeparatorStore / ICapturePreviewStore
                       「不重建、由現有頁面自己響應」的那兩個設定的窄介面
     RecycleBinFileDeleter  SHFileOperationW,把筆記送進資源回收筒
