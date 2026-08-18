@@ -23,7 +23,37 @@
       只有 FolderPicker 那組 shell 介面用得到,我們自己寫的程式碼裡沒有 unsafe。
     -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!--
+      中性資源是英文。SDK 會把它翻成 [assembly: NeutralResourcesLanguage("en")],
+      ResourceManager 在 CurrentUICulture 是英文時就直接讀主組件,不會多繞一圈
+      去找一個不存在的 en 附屬組件。(屬性名是 NeutralLanguage,不是屬性本身的名字
+      NeutralResourcesLanguage —— 寫錯不會報錯,只會 CA1824 說你沒標。)
+    -->
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
+
+  <!--
+    介面字串一律走 Properties\Resources.resx,語言跟著使用者的 Windows 顯示語言
+    (CultureInfo.CurrentUICulture)—— 見 README〈介面語言跟著 Windows 走〉。
+
+    產生強型別的 Resources 類別。用 StronglyTypedFileName 而不是 Visual Studio 的
+    設計工具,是因為這台機器上的建置全部走 dotnet CLI:交給 GenerateResource 這個
+    MSBuild 工作做,`dotnet build` 與 IDE 產出的東西才會一致。產出的檔案落在 obj\ 底下,
+    不進版控,而且它帶著 GeneratedCodeAttribute,分析器不會唸它。
+
+    zh-Hant / zh-Hans 那兩份不必在這裡列:.NET SDK 會從檔名認出文化,自動編成
+    zh-Hant\Notelet.resources.dll 這種附屬組件。trimmed publish 不會把它們砍掉(驗過)。
+  -->
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>MSBuild:Compile</Generator>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Resources.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>Notelet.Properties</StronglyTypedNamespace>
+      <StronglyTypedClassName>Resources</StronglyTypedClassName>
+    </EmbeddedResource>
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
