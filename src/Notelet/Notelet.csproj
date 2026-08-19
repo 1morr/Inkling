@@ -35,7 +35,7 @@
 
   <!--
     介面字串一律走 Properties\Resources.resx,語言跟著使用者的 Windows 顯示語言
-    (CultureInfo.CurrentUICulture)—— 見 README〈介面語言跟著 Windows 走〉。
+    (CultureInfo.CurrentUICulture)—— 見 docs/design-notes.md〈介面語言跟著 Windows 走〉。
 
     產生強型別的 Resources 類別。用 StronglyTypedFileName 而不是 Visual Studio 的
     設計工具,是因為這台機器上的建置全部走 dotnet CLI:交給 GenerateResource 這個
@@ -104,7 +104,24 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PublishSingleFile>true</PublishSingleFile>
+    <!--
+      **這個屬性對本專案的產出沒有任何作用**,加上條件純粹是為了不要製造誤導的錯誤訊息。
+
+      兩份 pubxml 都把 PublishSingleFile 設回 False(官方模板自己就是這樣,微軟的
+      Microsoft.CmdPal.Ext.PowerToys 更是直接寫 false),所以 publish 出來的從來不是
+      單一檔案 —— 實測 49 個 dll。模板留著這行無條件的 true,只在一種情況下會被看見:
+      方案層級的 `dotnet build`(Platform=AnyCPU,對不到 win-$(Platform).pubxml,
+      於是 true 沒被覆寫)會報 NETSDK1097「沒有 RID 就不能發佈成單一檔案」——
+      一個完全指不到問題的訊息。
+
+      加了條件之後那個假訊息消失,但**方案層級的 build 仍然建不起來**:MSIX 的打包目標
+      拒絕 ProcessorArchitecture neutral。那是打包專案的本質,不是這裡能解的
+      (`.slnx` 的 Platform 對應試過,它的 schema 不吃)。要建擴展就指定專案 +
+      `-p:Platform=x64`;`dotnet test` 不受影響,它只建測試專案與 Core。
+
+      單一檔案的分析器由下面 Debug 區塊的 EnableSingleFileAnalyzer 獨立控制,不受影響。
+    -->
+    <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
     <IsAotCompatible>true</IsAotCompatible>
 
     <CsWinRTAotOptimizerEnabled>true</CsWinRTAotOptimizerEnabled>
