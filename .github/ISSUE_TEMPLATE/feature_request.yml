@@ -1,0 +1,26 @@
+name: 功能建議
+description: 希望 Notelet 多出什麼能力
+labels: [enhancement]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 想解決什麼問題
+      description: 先講使用情境與痛點,再講你想要的功能 —— 有時候同一個問題有更好的解法。
+      placeholder: 我常常在會議中想快速記下一句話,但……
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望的行為
+      description: 具體描述你想像中的操作流程(從叫出 Command Palette 開始)。
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        提醒:Notelet 的設計目標是「叫出 CmdPal → 打字 → Enter」,
+        任何會拖慢主搜尋框的提案大概率不會被採納。

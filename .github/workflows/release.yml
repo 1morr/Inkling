@@ -1,0 +1,143 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Platform 的大小寫要跟 Notelet.csproj 的 <Platforms>x64;ARM64</Platforms> 一致。
+          - { arch: x64, platform: x64, profile: win-x64 }
+          - { arch: arm64, platform: ARM64, profile: win-arm64 }
+    env:
+      # 簽章佔位:走自購 OV 憑證路線時,把 PFX 以 base64 存進 repo secret
+      # SIGNING_CERT_BASE64、密碼存進 SIGNING_CERT_PASSWORD,下面的簽章步驟就會啟用。
+      # 走 Store 代簽路線則不需要 —— 直接拿這裡產出的未簽章 bundle 上傳 Partner Center。
+      SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve version from tag
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}' -replace '^v', ''
+          if ($tag -notmatch '^\d+\.\d+\.\d+$') {
+            throw "tag 必須是 v<major>.<minor>.<patch>,實際是 '${{ github.ref_name }}'"
+          }
+          # MSIX 版本是四段,而且第四段必須是 0(Store 的規定)。
+          "appx_version=$tag.0" >> $env:GITHUB_OUTPUT
+
+      - name: Inject version into Package.appxmanifest
+        shell: pwsh
+        run: |
+          # -p:AppxPackageVersion 對這套單專案 MSIX 目標沒有作用(本機實測:產生的
+          # AppxManifest.xml 仍是 manifest 裡的 0.1.0.0),所以直接改 manifest 的
+          # Version 屬性。身分欄位(Name / Publisher)不碰 —— 見 docs/release-checklist.md。
+          # 這個改動只發生在 CI 的 checkout 上,不會 commit 回去。
+          $path = 'src/Notelet/Package.appxmanifest'
+          [xml]$m = Get-Content $path
+          $m.Package.Identity.Version = '${{ steps.ver.outputs.appx_version }}'
+          $m.Save((Resolve-Path $path).Path)
+
+      - name: Publish (Release, trimmed)
+        run: dotnet publish src/Notelet/Notelet.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishProfile=${{ matrix.profile }}
+
+      - name: Stage package layout
+        shell: pwsh
+        run: |
+          # 與 tools/deploy.ps1 相同的佈局邏輯:publish 輸出 + build 佈局才會產生的
+          # AppxManifest.xml。resources.pri 與 Assets 已在 publish 輸出裡。
+          $tfm = 'net10.0-windows10.0.26100.0'
+          $publish = "src/Notelet/bin/Release/$tfm/win-${{ matrix.arch }}/publish"
+          $buildLayout = "src/Notelet/bin/${{ matrix.platform }}/Release/$tfm/win-${{ matrix.arch }}"
+          $stage = "artifacts/stage-${{ matrix.arch }}"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item "$publish/*" $stage -Recurse -Force
+          Copy-Item "$buildLayout/AppxManifest.xml" $stage -Force
+
+      - name: Pack .msix
+        shell: pwsh
+        run: |
+          $makeappx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makeappx) { throw '在 Windows Kits 底下找不到 makeappx.exe' }
+          New-Item -ItemType Directory -Force -Path artifacts/out | Out-Null
+          # 不加 /nv:讓 makeappx 做完整的套件驗證,清單或資產有問題在這裡就擋下。
+          & $makeappx pack /o `
+            /d "artifacts/stage-${{ matrix.arch }}" `
+            /p "artifacts/out/Notelet_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
+          if ($LASTEXITCODE -ne 0) { throw "makeappx pack 失敗($LASTEXITCODE)" }
+
+      - name: Sign .msix
+        # 需要憑證:目前還沒有公開信任的程式碼簽章憑證(決策見 docs/release-checklist.md)。
+        # 未設定 secret 時這一步整個跳過,產出的是未簽章套件 —— 只能拿去 Store 送審
+        # (Store 會代簽),不能給一般使用者側載(Windows 會以 0x800B0109 擋下)。
+        if: env.SIGNING_CERT_BASE64 != ''
+        shell: pwsh
+        run: |
+          $pfx = New-TemporaryFile
+          try {
+            [IO.File]::WriteAllBytes($pfx.FullName, [Convert]::FromBase64String($env:SIGNING_CERT_BASE64))
+            $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
+              Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+            & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
+              /f $pfx.FullName /p $env:SIGNING_CERT_PASSWORD `
+              "artifacts/out/Notelet_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
+            if ($LASTEXITCODE -ne 0) { throw "signtool sign 失敗($LASTEXITCODE)" }
+          }
+          finally {
+            Remove-Item $pfx.FullName -Force -ErrorAction SilentlyContinue
+          }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: msix-${{ matrix.arch }}
+          path: artifacts/out/*.msix
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: msix-*
+          path: artifacts/msix
+          merge-multiple: true
+
+      - name: Bundle .msixbundle
+        shell: pwsh
+        run: |
+          $makeappx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          & $makeappx bundle /o /d artifacts/msix /p "artifacts/Notelet_${{ github.ref_name }}.msixbundle"
+          if ($LASTEXITCODE -ne 0) { throw "makeappx bundle 失敗($LASTEXITCODE)" }
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 未簽章的 bundle 在這裡只是「Store 送審用 / 待簽章」的資產;
+          # 要給使用者側載,必須先完成簽章(見 build job 的 Sign 步驟註解)。
+          # PowerShell 不會對原生指令展開萬用字元,資產路徑要自己展開再傳。
+          $assets = Get-ChildItem artifacts/msix/*.msix | ForEach-Object FullName
+          $bundle = (Resolve-Path "artifacts/Notelet_${{ github.ref_name }}.msixbundle").Path
+          gh release create '${{ github.ref_name }}' `
+            --title '${{ github.ref_name }}' `
+            --generate-notes `
+            @assets $bundle

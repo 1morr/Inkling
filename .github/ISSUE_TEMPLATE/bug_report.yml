@@ -1,0 +1,64 @@
+name: Bug 回報
+description: Notelet 的行為與預期不符
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感謝回報。下面的版本與記錄資訊能大幅縮短定位時間 —— Notelet 沒有主控台,
+        很多問題只有 `diagnostic.log` 看得到。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 發生了什麼事
+      description: 實際看到的行為,以及你預期的行為。
+      placeholder: 我在清單頁按 Ctrl+D 刪除一則筆記,確認之後……
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 重現步驟
+      placeholder: |
+        1. 叫出 Command Palette
+        2. ……
+    validations:
+      required: true
+
+  - type: input
+    id: cmdpal-version
+    attributes:
+      label: Command Palette 版本
+      description: PowerShell 執行 `(Get-AppxPackage Microsoft.CommandPalette).Version` 的輸出。
+      placeholder: 0.11.11762.0
+    validations:
+      required: true
+
+  - type: input
+    id: notelet-version
+    attributes:
+      label: Notelet 版本
+      description: PowerShell 執行 `(Get-AppxPackage Notelet).Version` 的輸出。
+      placeholder: 0.1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: notes-folder
+    attributes:
+      label: 筆記資料夾位置
+      description: 設定頁裡填的那個路徑。跟問題無關可以留空。
+      placeholder: C:\Users\me\Documents\Notes
+
+  - type: textarea
+    id: diagnostic-log
+    attributes:
+      label: diagnostic.log
+      description: |
+        開啟方式:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` 建一個空檔 `diagnostic.on`
+        (`<PFN>` 用 `(Get-AppxPackage Notelet).PackageFamilyName` 查,目前是
+        `Notelet_bf0n0751x5hse`),在 Command Palette 執行 Reload,重現問題,
+        然後把同目錄的 `diagnostic.log` 內容貼上來。
+      render: text

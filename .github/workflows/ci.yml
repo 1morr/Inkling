@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # 方案層級不能建:src/Notelet 是 MSIX 專案(Platforms 只有 x64;ARM64),
+      # 方案檔沒有對應的組態對應,PublishSingleFile 與 MSIX 打包目標在方案層
+      # 都會直接報錯(本機實測 NETSDK1097 / ProcessorArchitecture neutral)。
+      # 所以分專案建 —— 這也正是 CLAUDE.md 記載的本機指令組合。
+      # 注意:方案層級絕對不能加 -p:Platform=x64,Notelet.slnx 沒有那個組態。
+      - name: Build extension (Debug, x64)
+        run: dotnet build src/Notelet/Notelet.csproj -p:Platform=x64
+
+      - name: Build tools
+        run: |
+          dotnet build tools/ApiDump/ApiDump.csproj
+          dotnet build tools/VerifyRegistration/VerifyRegistration.csproj
+
+      # dotnet test 只會建測試專案與它的依賴(Notelet.Core),不會碰到 MSIX 專案。
+      - name: Test Core
+        run: dotnet test
+
+      # trimming 只在 publish 生效,兩個 RID 各建一次,確認 trimming 沒有把東西砍壞。
+      # Release 的 IL2104 警告(Windows SDK 投影自身)是已知的,不視為失敗。
+      - name: Publish Release win-x64 (trimmed)
+        run: dotnet publish src/Notelet/Notelet.csproj -c Release -p:Platform=x64 -p:PublishProfile=win-x64
+
+      - name: Publish Release win-arm64 (trimmed)
+        run: dotnet publish src/Notelet/Notelet.csproj -c Release -p:Platform=ARM64 -p:PublishProfile=win-arm64
