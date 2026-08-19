@@ -40,7 +40,7 @@ internal sealed partial class SettingsManager
         Resources.SettingPreviewLabel,
 
         // 說明只留「按下去會發生什麼」。取捨的理由(為什麼預設開、為什麼沒有第二條路)
-        // 屬於 README,不是設定頁 —— 那段字每次打開設定都要看一次。
+        // 屬於 docs/design-notes.md,不是設定頁 —— 那段字每次打開設定都要看一次。
         Resources.SettingPreviewDescription,
         true);
 
@@ -78,6 +78,24 @@ internal sealed partial class SettingsManager
     public event EventHandler? CapturePreviewChanged;
 
     /// <summary>
+    /// <see cref="Apply"/> 對資料夾欄位的處理結果,設定頁照它決定要跟使用者講哪句話。
+    /// </summary>
+    public enum ApplyResult
+    {
+        /// <summary>全部存好了。</summary>
+        Applied,
+
+        /// <summary>
+        /// 存好了,但資料夾還不存在(第一次存檔時才會由 repository 建立)。
+        /// 要跟使用者講一聲:打錯一個字就靜靜換了資料夾,看起來會像「舊筆記全部消失」。
+        /// </summary>
+        AppliedToMissingFolder,
+
+        /// <summary>拒絕:不是完整路徑。整筆都沒存(分隔符與預覽開關也一樣)。</summary>
+        RejectedRelativePath,
+    }
+
+    /// <summary>
     /// 設定頁送出表單之後發出(不管值有沒有真的變)。
     ///
     /// 為什麼不是 toolkit 的 <c>Settings.SettingsChanged</c>:那個事件只有 toolkit 自己的
@@ -103,14 +121,23 @@ internal sealed partial class SettingsManager
     /// <param name="notesDirectory">使用者填的路徑;空白代表回到預設資料夾。</param>
     /// <param name="captureSeparator">快速記下的分隔符;空白代表回到預設值。</param>
     /// <param name="showCapturePreview">記下之後要不要停在預覽頁。</param>
-    public void Apply(
+    /// <returns>資料夾欄位的處理結果;相對路徑會整筆拒絕,什麼都不存。</returns>
+    public ApplyResult Apply(
         string notesDirectory,
         string captureSeparator,
         bool showCapturePreview)
     {
-        var directory = string.IsNullOrWhiteSpace(notesDirectory)
-            ? NoteletOptions.DefaultNotesDirectory()
-            : notesDirectory.Trim();
+        var directory = NormalizeDirectory(notesDirectory);
+
+        // 擋相對路徑(含「C:foo」這種磁碟機相對):它會對著擴展 COM server 進程的 CWD
+        // 解析,筆記落在使用者意想不到的位置 —— 看起來就像「舊筆記全部消失」。
+        // 整筆退回,分隔符與預覽開關也不存:表單留在原地,使用者改完路徑再送一次就好,
+        // 部分儲存只會讓「到底哪些生效了」變得難猜。
+        if (!Path.IsPathFullyQualified(directory))
+        {
+            DiagnosticLog.Write($"Apply: 拒絕非完整路徑 '{directory}',整筆未存");
+            return ApplyResult.RejectedRelativePath;
+        }
 
         // 存回去的是**整理過**的值(去空白、空的話退回預設),而不是使用者原本打的那串。
         // 這樣設定頁下次打開時顯示的就是實際生效的分隔符,不會出現「看起來設了、其實沒生效」。
@@ -142,6 +169,12 @@ internal sealed partial class SettingsManager
         {
             CapturePreviewChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        // 不存在的完整路徑不擋 —— repository 本來就會在第一次存檔時把它建出來。
+        // 但回給呼叫端講一聲,讓「打錯一個字就靜靜換了家」當場可見,而不是下次才發現。
+        return Directory.Exists(directory)
+            ? ApplyResult.Applied
+            : ApplyResult.AppliedToMissingFolder;
     }
 
     /// <summary>
@@ -165,7 +198,7 @@ internal sealed partial class SettingsManager
         }
     }
 
-    public string NotesDirectory => _notesDirectory.Value ?? NoteletOptions.DefaultNotesDirectory();
+    public string NotesDirectory => NormalizeDirectory(_notesDirectory.Value);
 
     /// <inheritdoc />
     /// <remarks>
@@ -177,15 +210,14 @@ internal sealed partial class SettingsManager
     /// <inheritdoc />
     public bool ShowCapturePreview => _capturePreview.Value;
 
-    public NoteletOptions ToOptions()
-    {
-        // 使用者可能把資料夾欄位清空。與其讓擴展壞掉,不如退回預設值。
-        var directory = string.IsNullOrWhiteSpace(NotesDirectory)
-            ? NoteletOptions.DefaultNotesDirectory()
-            : NotesDirectory.Trim();
+    public NoteletOptions ToOptions() => new() { NotesDirectory = NotesDirectory };
 
-        return new NoteletOptions { NotesDirectory = directory };
-    }
+    /// <summary>
+    /// 資料夾欄位的正規化只有這一份:空白(含沒設過)退回預設資料夾,其餘去頭尾空白。
+    /// 使用者可能把欄位清空,與其讓擴展壞掉,不如退回預設值。
+    /// </summary>
+    private static string NormalizeDirectory(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? NoteletOptions.DefaultNotesDirectory() : value.Trim();
 
     private static string Namespaced(string propertyName) => $"{SettingsNamespace}.{propertyName}";
 

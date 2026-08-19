@@ -6,6 +6,10 @@ namespace Notelet;
 /// 快速記下頁只需要這麼一個字串,不必認識整個設定管理員 —— 這樣它的相依關係看一眼就清楚,
 /// 測試(如果哪天 UI 層也能測)也不必生出一份 settings.json。
 /// <see cref="ICapturePreviewStore"/> 是同一個形狀。
+///
+/// 目前只有兩項設定走這個模式,一項一個窄介面還划算(各自的事件說明有地方掛)。
+/// **第三項出現時請考慮收成泛型 <c>ISettingValue&lt;T&gt;</c>(Value + Changed)** ——
+/// 「為什麼不能靠重建頁面生效」那份說明到時候搬到泛型介面上講一次就好。
 /// </summary>
 internal interface ICaptureSeparatorStore
 {

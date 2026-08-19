@@ -13,8 +13,9 @@ internal interface ICapturePreviewStore
     /// false 是記完直接收起(toast + 關掉)。
     ///
     /// 同一時間**只有一條路**在:另一條不會掛到 Ctrl+Enter,也不會出現在選單裡。
-    /// 預設 false:Notelet 的賣點是「叫出來、打字、Enter」一次到底,多按一個 Enter
-    /// 是每次都要付的成本,要不要付由使用者決定。
+    /// 預設是開(見 SettingsManager 的建構,與 docs/design-notes.md〈記下之後要不要先看一眼〉的
+    /// 「為什麼預設是看一眼」)—— 「叫出來、打字、Enter」一次到底是**關掉**這個開關
+    /// 的理由,寫在這裡免得被當成預設值的依據。
     /// </summary>
     bool ShowCapturePreview { get; }
 

@@ -62,8 +62,14 @@ internal static partial class FolderPicker
     /// <c>Task.Run</c>)—— 那條執行緒是 CmdPal 的,不該讓它在我們的對話框上等好幾分鐘。
     /// 對話框又規定要跑在 STA 上,所以這裡自己開一條。
     /// </summary>
+    /// <param name="failed">
+    /// 對話框**開不起來**時叫(也在對話框那條執行緒上):CoCreateInstance 失敗、
+    /// Show 回傳錯誤、或執行緒上拋了例外。不給這條路的話,那些失敗只有 DiagnosticLog
+    /// 留一行字,而它預設是關的 —— 使用者按「瀏覽…」的體驗就是「什麼都沒發生」,
+    /// 跟「絕對不能無聲失敗」的原則打架。取消不算失敗,不會走到這裡。
+    /// </param>
     /// <returns>已經有對話框開著時回傳 false。</returns>
-    public static bool TryShow(string title, string? initialDirectory, Action<string> picked)
+    public static bool TryShow(string title, string? initialDirectory, Action<string> picked, Action? failed = null)
     {
         if (Interlocked.CompareExchange(ref _open, 1, 0) != 0)
         {
@@ -75,7 +81,7 @@ internal static partial class FolderPicker
         {
             try
             {
-                var path = Pick(title, initialDirectory);
+                var path = Pick(title, initialDirectory, failed);
 
                 if (path is not null)
                 {
@@ -86,6 +92,7 @@ internal static partial class FolderPicker
             {
                 // 選資料夾失敗不該把整個擴展帶走,但也不能無聲無息。
                 DiagnosticLog.Write($"FolderPicker 失敗:{ex}");
+                failed?.Invoke();
             }
             finally
             {
@@ -104,13 +111,14 @@ internal static partial class FolderPicker
         return true;
     }
 
-    private static string? Pick(string title, string? initialDirectory)
+    private static string? Pick(string title, string? initialDirectory, Action? failed)
     {
         var hr = CoCreateInstance(in ClsidFileOpenDialog, IntPtr.Zero, ClsctxInprocServer, in IidFileDialog, out var native);
 
         if (hr < 0 || native == IntPtr.Zero)
         {
             DiagnosticLog.Write($"FolderPicker: CoCreateInstance 失敗 0x{hr:X}");
+            failed?.Invoke();
             return null;
         }
 
@@ -154,6 +162,7 @@ internal static partial class FolderPicker
             if (shown < 0)
             {
                 DiagnosticLog.Write($"FolderPicker: Show 失敗 0x{shown:X}");
+                failed?.Invoke();
                 return null;
             }
 

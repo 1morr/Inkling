@@ -45,11 +45,13 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private readonly CommandItem _emptyContent;
 
     private string _query = string.Empty;
-    private IListItem[]? _items;
-    private string? _itemsQuery;
-    private string? _itemsSeparator;
-    private bool _itemsPreview;
-    private int _itemsVersion = -1;
+
+    /// <summary>
+    /// 項目快取。規則只有一條 —— 鍵要帶 Version 與所有影響內容的設定值 ——
+    /// 「為什麼」寫在 <see cref="VersionedItemsCache{TKey}"/> 上,三個清單頁共用。
+    /// </summary>
+    private readonly VersionedItemsCache<(int Version, string Query, string Separator, bool Preview)> _cache = new();
+
     private bool _disposed;
 
     public QuickCapturePage(
@@ -64,7 +66,10 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         var separator = separatorStore.CaptureSeparator;
 
         Id = CommandIds.QuickCapturePage;
-        Icon = Icons.Add;
+
+        // 跟頂層那一列同一個燈泡:Icons.Capture 的存在理由就是跟「新增筆記」的加號分開
+        // (見 Icons.cs),進了頁面又變回加號的話,那個區隔就白做了。
+        Icon = Icons.Capture;
         Title = Resources.ProviderCapturePageTitle;
         Name = Resources.CommandOpen;
         PlaceholderText = PlaceholderFor(separator);
@@ -114,32 +119,16 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
     public override IListItem[] GetItems()
     {
-        // 快取的規則跟清單頁一樣:GetItems 會被頻繁呼叫,但鍵一定要帶上 repository 的
-        // Version —— 只看查詢字串的話,剛記下的那則不會出現在底下的「已經記過的」裡,
-        // 使用者會以為存檔沒生效,然後再記一次。
-        //
-        // 分隔符也在鍵裡面:同一句話在換掉分隔符之後切出來的標題與內文完全不同,
-        // 少了它會拿到用舊分隔符切出來的那一列。「記下後先看一眼」同理 ——
-        // 它換的是每一列上 Enter 掛哪一條命令,快取沒帶到就等於設定改了卻沒生效。
-        var version = _repository.Version;
+        // 快取的規則跟清單頁一樣(見 VersionedItemsCache),而鍵除了 Version 與查詢,
+        // 還要帶分隔符與「記下後先看一眼」:同一句話在換掉分隔符之後切出來的標題與內文
+        // 完全不同,少了它會拿到用舊分隔符切出來的那一列;預覽開關換的是每一列上
+        // Enter 掛哪一條命令,快取沒帶到就等於設定改了卻沒生效。
         var separator = _separatorStore.CaptureSeparator;
         var preview = _previewStore.ShowCapturePreview;
 
-        if (_items is not null
-            && _itemsVersion == version
-            && string.Equals(_itemsQuery, _query, StringComparison.Ordinal)
-            && string.Equals(_itemsSeparator, separator, StringComparison.Ordinal)
-            && _itemsPreview == preview)
-        {
-            return _items;
-        }
-
-        _items = BuildItems(_query, separator, preview);
-        _itemsQuery = _query;
-        _itemsSeparator = separator;
-        _itemsPreview = preview;
-        _itemsVersion = version;
-        return _items;
+        return _cache.Get(
+            (_repository.Version, _query, separator, preview),
+            () => BuildItems(_query, separator, preview));
     }
 
     private IListItem[] BuildItems(string query, string separator, bool preview)

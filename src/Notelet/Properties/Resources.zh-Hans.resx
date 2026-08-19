@@ -113,10 +113,10 @@
     <value>浏览与搜索笔记</value>
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
-    <value>打字直接存成笔记,分隔符后面接正文</value>
+    <value>打字直接存成笔记,分隔符后面接正文;设个 alias 更快</value>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
-    <value>Notelet:新建笔记</value>
+    <value>Notelet：新建笔记</value>
   </data>
   <data name="ProviderNewNoteSubtitle" xml:space="preserve">
     <value>打开表单写比较长的内容</value>
@@ -132,6 +132,12 @@
   </data>
   <data name="ListPageEmptySubtitle" xml:space="preserve">
     <value>用「{0}」记下第一则</value>
+  </data>
+  <data name="ListPageNoMatchTitle" xml:space="preserve">
+    <value>没有符合的笔记</value>
+  </data>
+  <data name="ListPageNoMatchSubtitle" xml:space="preserve">
+    <value>换个关键词试试,或按 Enter 去记下新笔记</value>
   </data>
   <data name="ListPageMoreResults" xml:space="preserve">
     <value>还有 {0} 则没显示</value>
@@ -152,13 +158,13 @@
     <value>_(没有正文)_</value>
   </data>
   <data name="DeleteConfirmTitle" xml:space="preserve">
-    <value>删除这则笔记?</value>
+    <value>删除这则笔记？</value>
   </data>
   <data name="DeleteConfirmDescription" xml:space="preserve">
     <value>「{0}」会被移到回收站。</value>
   </data>
   <data name="ProviderCapturePageTitle" xml:space="preserve">
-    <value>Notelet:快速记下</value>
+    <value>Notelet：快速记下</value>
   </data>
   <data name="QuickCapturePlaceholder" xml:space="preserve">
     <value>打字记下想法,{0} 后面接正文…</value>
@@ -173,19 +179,19 @@
     <value>已经记过的</value>
   </data>
   <data name="QuickCaptureItemTitle" xml:space="preserve">
-    <value>记下:{0}</value>
+    <value>记下：{0}</value>
   </data>
   <data name="QuickCaptureNewNoteSubtitle" xml:space="preserve">
     <value>存成新笔记</value>
   </data>
   <data name="QuickCaptureBodySubtitle" xml:space="preserve">
-    <value>正文:{0}</value>
+    <value>正文：{0}</value>
   </data>
   <data name="QuickCaptureClipboardSubtitle" xml:space="preserve">
     <value>正文取自剪贴板({0} 行) —— 搜索框只吃得下第一行</value>
   </data>
   <data name="CaptureSaved" xml:space="preserve">
-    <value>已记下:{0}</value>
+    <value>已记下：{0}</value>
   </data>
   <data name="CapturedPageName" xml:space="preserve">
     <value>记下并预览</value>
@@ -202,7 +208,7 @@
 {2}</value>
   </data>
   <data name="ProviderDeletePageTitle" xml:space="preserve">
-    <value>Notelet:删除笔记</value>
+    <value>Notelet：删除笔记</value>
   </data>
   <data name="DeletePagePlaceholder" xml:space="preserve">
     <value>找要删的笔记…</value>
@@ -229,7 +235,7 @@
     <value>删除全部仍然会删掉它们,这里只是列不下</value>
   </data>
   <data name="DeleteExternalConfirmTitle" xml:space="preserve">
-    <value>删除这个文件?</value>
+    <value>删除这个文件？</value>
   </data>
   <data name="DeleteExternalConfirmDescription" xml:space="preserve">
     <value>「{0}」不是 Notelet 创建的,会被移到回收站。</value>
@@ -247,7 +253,7 @@
     <value>删除全部</value>
   </data>
   <data name="DeleteAllConfirmTitle" xml:space="preserve">
-    <value>删除全部 {0} 则笔记?</value>
+    <value>删除全部 {0} 则笔记？</value>
   </data>
   <data name="DeleteAllConfirmDescription" xml:space="preserve">
     <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站。</value>
@@ -273,7 +279,7 @@
     <value>只删 Notelet 创建的</value>
   </data>
   <data name="DeleteMineConfirmTitle" xml:space="preserve">
-    <value>删除 Notelet 创建的 {0} 则笔记?</value>
+    <value>删除 Notelet 创建的 {0} 则笔记？</value>
   </data>
   <data name="DeleteMineConfirmDescription" xml:space="preserve">
     <value>移到回收站。另外 {0} 则不是 Notelet 创建的,不会动到。</value>
@@ -303,7 +309,7 @@
     <value>已删除 {0} 则,{1} 则删不掉(文件可能被其他程序开着)</value>
   </data>
   <data name="DeleteFailed" xml:space="preserve">
-    <value>删除失败:{0}</value>
+    <value>删除失败：{0} —— 请到设置检查笔记文件夹</value>
   </data>
   <data name="CopyNoBody" xml:space="preserve">
     <value>没有正文</value>
@@ -333,16 +339,16 @@
     <value>保存</value>
   </data>
   <data name="NoteCreated" xml:space="preserve">
-    <value>已新建:{0}</value>
+    <value>已新建：{0}</value>
   </data>
   <data name="NoteSaved" xml:space="preserve">
-    <value>已保存:{0}</value>
+    <value>已保存：{0}</value>
   </data>
   <data name="SaveFailed" xml:space="preserve">
-    <value>存档失败:{0}</value>
+    <value>存档失败：{0} —— 请到设置检查笔记文件夹</value>
   </data>
   <data name="EditPageTitle" xml:space="preserve">
-    <value>编辑:{0}</value>
+    <value>编辑：{0}</value>
   </data>
   <data name="EditOpenExternalTitle" xml:space="preserve">
     <value>改用默认编辑器打开</value>
@@ -369,22 +375,31 @@
     <value>选择笔记文件夹</value>
   </data>
   <data name="SettingsFolderPicked" xml:space="preserve">
-    <value>笔记文件夹:{0}</value>
+    <value>笔记文件夹：{0}</value>
   </data>
   <data name="SettingsPickerAlreadyOpen" xml:space="preserve">
     <value>已经有一个「选择文件夹」的窗口开着了</value>
+  </data>
+  <data name="SettingsFolderPickerFailed" xml:space="preserve">
+    <value>无法打开文件夹选择对话框</value>
+  </data>
+  <data name="SettingsDirectoryRejected" xml:space="preserve">
+    <value>未保存 —— 笔记文件夹要填完整路径,例如「C:\Notes」</value>
+  </data>
+  <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
+    <value>已保存 —— 这个文件夹还不存在,第一次保存时会创建：{0}</value>
   </data>
   <data name="SettingNotesDirectoryLabel" xml:space="preserve">
     <value>笔记文件夹</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
-    <value>放在 OneDrive 之类的云端硬盘底下,多端同步就交给它处理 —— Notelet 自己不做同步。换文件夹不会搬动已经写好的笔记,只是改成去读新的位置。</value>
+    <value>放在 OneDrive 之类的云端硬盘底下,多端同步就交给它处理 —— Notelet 自己不做同步。换文件夹不会搬动已经写好的笔记,只是改成去读新的位置。要填完整路径;文件夹还不存在的话,第一次保存时会创建。清空这个字段就回到默认文件夹。</value>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">
     <value>快速记下的分隔符</value>
   </data>
   <data name="SettingSeparatorDescription" xml:space="preserve">
-    <value>快速记下时,打在它前面的是标题、后面是正文。默认的「;;」不用按 Shift、连打两下最快,而连续两个分号在一般句子里不会出现,标题因此还是能自由使用单一个分号;常写 for (;;) 这种笔记的话换成「,,」,键位一样好按、撞得更少。半角全角算同一个:设置填「;;」、打字打「；；」照样切得开。</value>
+    <value>快速记下时,打在它前面的是标题、后面是正文。默认的「;;」不用按 Shift、连打两下最快,而连续两个分号在一般句子里不会出现,标题因此还是能自由使用单一个分号;常写 for (;;) 这种笔记的话换成「,,」,键位一样好按、撞得更少。半角全角算同一个：设置填「;;」、打字打「；；」照样切得开。</value>
   </data>
   <data name="SettingPreviewLabel" xml:space="preserve">
     <value>记下后先看一眼</value>

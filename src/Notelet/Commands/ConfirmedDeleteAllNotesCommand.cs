@@ -60,7 +60,7 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
             // **成功時一個 toast 都不發。** 這裡曾經回一個「已把 N 則移到資源回收筒」的
             // toast 配 KeepOpen,註釋還寫著「使用者當場看到清單真的空了」—— 但 toast 是
             // 另一個會搶焦點的視窗,主視窗一失焦就自我隱藏,實際上使用者什麼都沒看到,
-            // 面板直接消失(同一個機制見 README〈記下之後要不要先看一眼〉)。
+            // 面板直接消失(同一個機制見 docs/design-notes.md〈記下之後要不要先看一眼〉)。
             // 清單當場變成「沒有筆記可以刪除」本來就是最好的回饋。
             if (deleted == targets.Count)
             {

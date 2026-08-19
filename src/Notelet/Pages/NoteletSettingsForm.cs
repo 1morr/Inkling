@@ -90,10 +90,25 @@ internal sealed partial class NoteletSettingsForm : FormContent
             return Browse(directory, separator, preview);
         }
 
-        _settings.Apply(directory, separator, preview);
-        new ToastStatusMessage(Resources.SettingsSaved).Show();
+        var outcome = _settings.Apply(directory, separator, preview);
 
-        return CommandResult.GoHome();
+        switch (outcome)
+        {
+            case SettingsManager.ApplyResult.RejectedRelativePath:
+                // 整筆都沒存,表單留在原地:使用者打的東西還在卡片上,改完路徑再送一次就好。
+                new ToastStatusMessage(Resources.SettingsDirectoryRejected).Show();
+                return CommandResult.KeepOpen();
+
+            case SettingsManager.ApplyResult.AppliedToMissingFolder:
+                // 存是存了,但資料夾還不存在 —— 當場講,「打錯一個字就換了家」才不會無聲發生。
+                new ToastStatusMessage(
+                    Strings.Format(Resources.SettingsDirectoryWillBeCreated, _settings.NotesDirectory)).Show();
+                return CommandResult.GoHome();
+
+            default:
+                new ToastStatusMessage(Resources.SettingsSaved).Show();
+                return CommandResult.GoHome();
+        }
     }
 
     /// <summary>Action.Submit 的 data;空字串代表這張卡片沒帶 data(理論上不會發生)。</summary>
@@ -127,11 +142,15 @@ internal sealed partial class NoteletSettingsForm : FormContent
                 //
                 // 其他欄位一起套用,因為那就是使用者按下「瀏覽…」當下卡片上顯示的值 ——
                 // 表單既然會消失,壓在上面的改動就只有這一次機會存下來。
+                // 傳回值不用看:挑選器回來的一定是存在的完整路徑,兩條拒絕/提醒的路都踩不到。
                 _settings.Apply(picked, separator, preview);
                 new ToastStatusMessage(Strings.Format(Resources.SettingsFolderPicked, picked)).Show();
 
                 _refreshPage();
-            });
+            },
+            // 對話框開不起來也要講一聲,否則「瀏覽…」看起來像壞掉 —— 之前只有 DiagnosticLog
+            // 留一行字,而它預設是關的。用 InfoBadge:不開視窗、不關面板,表單留在原地。
+            failed: () => new ToastStatusMessage(Resources.SettingsFolderPickerFailed).Show());
 
         if (!opened)
         {
@@ -166,9 +185,12 @@ internal sealed partial class NoteletSettingsForm : FormContent
     /// 已經併進 <c>NotesDirectorySetting</c> 的說明裡,要加類似的話也照這條走,
     /// 不要在卡片頂上再開一塊。
     ///
-    /// 卡片層級只留「儲存」一顆:在單行輸入框裡按 Enter 時,CmdPal 送出的是
-    /// <c>card.Actions</c> 的第一個(<c>ContentFormControl.OnFormKeyDown</c>)——
-    /// 打完路徑按 Enter 應該是存檔,不是跳出對話框。
+    /// 卡片層級只留「儲存」一顆。這是防禦性設計,依據在 CmdPal 的 **main 分支**:
+    /// 在單行輸入框裡按 Enter 時,它送出的是 <c>card.Actions</c> 的第一個
+    /// (<c>ContentFormControl.OnFormKeyDown</c>)—— 打完路徑按 Enter 應該是存檔,
+    /// 不是跳出「瀏覽」對話框。**0.11.11762.0 沒有那段程式碼**(byte-scan 掃不到,
+    /// 見 docs/design-notes.md〈編輯表單〉),使用者手上單行框按 Enter 不會送出,Tab 到「儲存」
+    /// 是唯一的鍵盤路徑。只留一顆的安排兩個版本下都對,所以維持。
     /// </summary>
     private static string BuildTemplate(SettingsManager settings)
     {

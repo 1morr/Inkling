@@ -37,8 +37,12 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     private readonly INoteRepository _repository;
     private readonly NoteletOptions _options;
 
-    private IListItem[]? _items;
-    private int _itemsVersion = -1;
+    /// <summary>
+    /// 項目快取。規則只有一條 —— 鍵要帶 Version 與所有影響內容的設定值 ——
+    /// 「為什麼」寫在 <see cref="VersionedItemsCache{TKey}"/> 上,三個清單頁共用。
+    /// </summary>
+    private readonly VersionedItemsCache<int> _cache = new();
+
     private bool _disposed;
 
     public DeleteNotesPage(INoteRepository repository, NoteletOptions options)
@@ -72,16 +76,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     {
         // 快取的鍵只有 Version:這一頁不吃查詢字串(過濾交給 CmdPal),
         // 但刪完之後那份清單一定要重建,否則畫面上還留著剛剛刪掉的檔案。
-        var version = _repository.Version;
-
-        if (_items is not null && _itemsVersion == version)
-        {
-            return _items;
-        }
-
-        _items = BuildItems();
-        _itemsVersion = version;
-        return _items;
+        return _cache.Get(_repository.Version, BuildItems);
     }
 
     private IListItem[] BuildItems()
@@ -149,14 +144,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         Subtitle = Path.GetRelativePath(_options.NotesDirectory, note.FilePath),
         Icon = note.IsExternal ? Icons.External : Icons.Note,
         Section = note.IsExternal ? Resources.DeleteSectionExternal : section,
-        Details = new Details
-        {
-            Title = note.Title,
-            Body = note.Body.Length == 0 ? Resources.NoBody : NotePreview.PreserveLineBreaks(note.Body),
-
-            // 跟清單頁一樣固定最寬,理由見那邊的 BuildDetails —— 不明著寫就是最窄那一檔。
-            Size = ContentSize.Large,
-        },
+        Details = NoteDetails.For(note),
         MoreCommands = [
             // 第一個會被 CmdPal 當成次要命令放上底部工具列(Ctrl+Enter)。
             CreateQuickDeleteItem(note),
@@ -172,10 +160,12 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// <c>Enter</c> 走的路:跳確認框,按下主要按鈕才真的刪。
     ///
     /// 確認不是自己畫的 —— 命令回傳 <see cref="CommandResult.Confirm"/>,CmdPal 就會替我們
-    /// 跳一個對話框。<c>IsPrimaryCommandCritical</c> 這裡刻意**不設**:上游拿它做的事是把
-    /// 預設按鈕設成「取消」,而這條路的存在意義就是「看一眼再按 Enter」,再多一次方向鍵
-    /// 就本末倒置了。(反正 0.11 安裝版根本沒有那條程式路徑,設不設畫面一模一樣,
-    /// 見 README〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。)
+    /// 跳一個對話框。<c>IsPrimaryCommandCritical</c> 分兩種:**Notelet 建立的刻意不設** ——
+    /// 上游拿它做的事是把預設按鈕設成「取消」,而這條路的存在意義就是「看一眼再按 Enter」,
+    /// 再多一次方向鍵就本末倒置了。**外來檔案刻意設** —— 那是別的工具寫的檔案,
+    /// 值得多那一下方向鍵。(反正 0.11 安裝版根本沒有那條程式路徑,設不設畫面一模一樣,
+    /// 見 docs/design-notes.md〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉;現在這樣設是為了 CmdPal
+    /// 更新上來時語意就對。)
     /// </summary>
     private AnonymousCommand CreateConfirmedDelete(Note note) => new(() => { })
     {
@@ -203,7 +193,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// 兩條路都設 <c>IsCritical</c>,讓它們在 <c>Ctrl+K</c> 選單裡是紅的 ——
     /// 跟清單頁的「刪除」同一個樣子。**只有選單裡的那一列變得了色**:同一個命令
     /// 出現在底部工具列上(<c>Ctrl+Enter</c> 那顆按鈕)時還是預設樣式,
-    /// 見 README〈刪除的紅色只有一個地方碰得到〉。
+    /// 見 docs/design-notes.md〈刪除的紅色只有一個地方碰得到〉。
     ///
     /// 這裡刻意**不綁** <see cref="Shortcuts.Delete"/>:這一頁的 <c>Enter</c> 與
     /// <c>Ctrl+Enter</c> 本來就是刪除,再多一個鍵只是多一種說法,而且語意會打架 ——
@@ -314,6 +304,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         Title = Resources.DeleteDetailsTitle,
         Body = Strings.Format(Resources.DeleteDetailsBody, _options.NotesDirectory, scope),
 
+        // Size 不明著寫就是最窄那一檔 —— 理由與「為什麼固定最寬」都寫在 NoteDetails.For。
         Size = ContentSize.Large,
     };
 

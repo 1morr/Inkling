@@ -30,9 +30,12 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private readonly AnonymousCommand _toggleSource;
 
     private string _query = string.Empty;
-    private IListItem[]? _items;
-    private string? _itemsQuery;
-    private int _itemsVersion = -1;
+
+    /// <summary>
+    /// 項目快取。規則只有一條 —— 鍵要帶 Version 與所有影響內容的設定值 ——
+    /// 「為什麼」寫在 <see cref="VersionedItemsCache{TKey}"/> 上,三個清單頁共用。
+    /// </summary>
+    private readonly VersionedItemsCache<(int Version, string Query)> _cache = new();
 
     /// <summary>
     /// 目前列出來的每一則筆記,連同它的清單項目物件。
@@ -53,10 +56,23 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// <summary>目前掛著標籤的那一列,清的時候只碰它一個。</summary>
     private ListItem? _taggedItem;
 
+    /// <summary>
+    /// 空白狀態那一列。留著參照是為了依查詢就地換文案(見 UpdateEmptyContent)——
+    /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
+    /// 走這條一定收得到(<c>IDetails</c> 就不行,見 RefreshDetails)。
+    /// </summary>
+    private readonly CommandItem _emptyContent;
+
+    /// <summary>
+    /// 原始文字模式是**黏著的**:離開清單頁再回來不會自己回到渲染模式 ——
+    /// 這個頁面實例活得跟擴展進程一樣久,而 CmdPal 沒有「重新進入頁面」的通知可以掛重置。
+    /// 刻意的:會按 Ctrl+U 的人多半是在檢查 Markdown 的原始樣子,進進出出通常還在同一件事上。
+    /// 畫面上的線索是選單那一項的字會跟著狀態變(見 ToggleSourceName)。
+    /// </summary>
     private bool _showSource;
     private bool _disposed;
 
-    public NoteListPage(INoteRepository repository, NoteletOptions options)
+    public NoteListPage(INoteRepository repository, NoteletOptions options, QuickCapturePage capturePage)
     {
         _repository = repository;
         _options = options;
@@ -77,7 +93,10 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         PlaceholderText = Resources.ListPagePlaceholder;
         ShowDetails = true;
 
-        EmptyContent = new CommandItem(new NoOpCommand())
+        // 命令直接掛快速記下頁(跟頂層命令同一個實例):清單項的命令是 IPage 時 CmdPal
+        // 會導覽過去,所以這一列的 Enter 真的能帶使用者去記下第一則 ——
+        // 而不是給了指示(「用『快速記下』…」)卻按下去沒反應。
+        _emptyContent = new CommandItem(capturePage)
         {
             Title = Resources.ListPageEmptyTitle,
 
@@ -86,6 +105,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             Subtitle = Strings.Format(Resources.ListPageEmptySubtitle, Resources.ProviderCapturePageTitle),
             Icon = Icons.Note,
         };
+
+        EmptyContent = _emptyContent;
 
         // 別台機器經 OneDrive 同步下來、或使用者拿別的編輯器改了檔案時自動更新。
         _repository.Changed += OnRepositoryChanged;
@@ -104,24 +125,9 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
     public override IListItem[] GetItems()
     {
-        // GetItems 會被頻繁呼叫,同一個查詢字串不重建項目。
-        //
-        // 但快取的鍵一定要帶上 repository 的 Version:只看查詢字串的話,
-        // 新增一則筆記之後再回到清單頁,拿到的還是舊的那份結果 ——
+        // 鍵帶上 Version 的理由見 VersionedItemsCache —— 只看查詢字串的話,
         // 表現出來就是「筆記明明存好了,清單卻說還沒有任何筆記」。
-        var version = _repository.Version;
-
-        if (_items is not null
-            && _itemsVersion == version
-            && string.Equals(_itemsQuery, _query, StringComparison.Ordinal))
-        {
-            return _items;
-        }
-
-        _items = BuildItems(_query);
-        _itemsQuery = _query;
-        _itemsVersion = version;
-        return _items;
+        return _cache.Get((_repository.Version, _query), () => BuildItems(_query));
     }
 
     /// <summary>選單上顯示的字,講的是「按下去之後會看到什麼」。</summary>
@@ -131,6 +137,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private IListItem[] BuildItems(string query)
     {
         var matches = NoteSearch.Filter(_repository.GetAll(), query);
+
+        UpdateEmptyContent(query, matches.Count);
 
         var items = new List<IListItem>(Math.Min(matches.Count, _options.MaxResults) + 1);
         var shown = new List<(Note, ListItem)>(items.Capacity);
@@ -163,6 +171,27 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         return [.. items];
     }
 
+    /// <summary>
+    /// 空白提示有兩種,要分開講:**真的沒有筆記**(引導去快速記下)與**查詢沒有命中**。
+    ///
+    /// CmdPal 的 <c>ShowEmptyContent</c> 只看篩完的項目數是不是零,不看搜尋框裡有沒有字
+    /// (<c>ListViewModel</c>:IsInitialized、FilteredItems.Count 為零、不在載入中)。
+    /// 所以「資料夾裡有幾百則筆記、打一個搜不到的字」也會走到空白提示 ——
+    /// 那時候說「還沒有任何筆記」會讓人以為筆記不見了(真機重現過)。
+    ///
+    /// 就地改 Title/Subtitle 即時生效:<c>ICommandItem</c> 是無條件訂閱的
+    /// (跟 QuickCapturePage 更新提示同一條路;<c>IDetails</c> 才是斷的)。
+    /// </summary>
+    private void UpdateEmptyContent(string query, int matchCount)
+    {
+        var noMatch = matchCount == 0 && !string.IsNullOrWhiteSpace(query);
+
+        _emptyContent.Title = noMatch ? Resources.ListPageNoMatchTitle : Resources.ListPageEmptyTitle;
+        _emptyContent.Subtitle = noMatch
+            ? Resources.ListPageNoMatchSubtitle
+            : Strings.Format(Resources.ListPageEmptySubtitle, Resources.ProviderCapturePageTitle);
+    }
+
     private ListItem CreateItem(Note note) => new(new NotePreviewPage(_repository, note))
     {
         Title = note.Title,
@@ -173,7 +202,9 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     };
 
     /// <summary>
-    /// 一則筆記的 <c>Ctrl+K</c> 選單。鍵位全部來自 <see cref="Shortcuts"/>,挑鍵的理由寫在那裡。
+    /// 一則筆記的 <c>Ctrl+K</c> 選單。編輯 / 複製 / 開啟那幾項跟預覽頁、記下頁共用
+    /// <see cref="NoteCommands"/> 那一份組裝,鍵位全部來自 <see cref="Shortcuts"/>,
+    /// 挑鍵的理由寫在那裡。
     ///
     /// 順序有意義:**第一項會被 CmdPal 當成次要命令放上底部工具列**(<c>Ctrl+Enter</c>),
     /// 所以編輯一定排第一;其餘按「看 → 拿 → 出去 → 刪掉」由輕到重排,
@@ -181,12 +212,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// </summary>
     private IContextItem[] BuildCommands(Note note) =>
     [
-        new CommandContextItem(new NoteEditPage(_repository, note))
-        {
-            Title = Resources.CommandEdit,
-            Icon = Icons.Edit,
-            RequestedShortcut = Shortcuts.Edit,
-        },
+        NoteCommands.Edit(_repository, note),
         new CommandContextItem(_toggleSource)
         {
             // 這裡刻意不設 Title:讓它回落到 _toggleSource.Name,
@@ -196,34 +222,9 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         },
         // 複製完**留在清單頁**,所以不發 toast(toast 會搶焦點,主視窗一失焦就自我隱藏)。
         // 回饋改成在那一列打一個標籤,見 FlashTag。
-        new CommandContextItem(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.Id, message)))
-        {
-            Title = Resources.CommandCopyBody,
-            Subtitle = Resources.CommandCopyBodySubtitle,
-            Icon = Icons.Copy,
-            RequestedShortcut = Shortcuts.CopyBody,
-        },
-        new CommandContextItem(new OpenUrlCommand(note.FilePath))
-        {
-            Title = Resources.CommandOpenInEditor,
-            Icon = Icons.OpenExternal,
-            RequestedShortcut = Shortcuts.OpenExternal,
-        },
-
-        // 「開啟檔案位置」直接用 toolkit 現成的命令(它跑的是 `explorer.exe /select,"<路徑>"`),
-        // 自己寫一個只會多一份 Process.Start 的錯誤處理。Name 要自己換掉:
-        // toolkit 給的是它自己資源檔裡的字串,而它跟著 CmdPal 的語言走、不見得跟我們一致,
-        // 而這一項有機會出現在底部工具列上。
-        new CommandContextItem(new ShowFileInFolderCommand(note.FilePath)
-        {
-            Name = Resources.CommandOpenFileLocation,
-        })
-        {
-            Title = Resources.CommandOpenFileLocation,
-            Subtitle = Resources.CommandOpenFileLocationSubtitle,
-            Icon = Icons.FileLocation,
-            RequestedShortcut = Shortcuts.OpenFileLocation,
-        },
+        NoteCommands.CopyBody(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.Id, message))),
+        NoteCommands.OpenInEditor(note),
+        NoteCommands.OpenFileLocation(note),
 
         // **刪除的鍵位是 `Ctrl+D`,不是 `Delete` 也不是 `Ctrl+Delete`。**
         // 後兩個是搜尋框的標準編輯鍵(刪右邊一個字 / 刪右邊一個詞),而快速鍵比 TextBox
@@ -236,7 +237,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         // `IsCritical` 讓這一項在選單裡變紅(圖示、標題、鍵位都套
         // `SystemFillColorCriticalBrush`)—— SDK 的 IDL 對這個屬性的註解就是
         // 「make this red」。這是擴展唯一碰得到的紅色:底部工具列的按鈕與確認框的按鈕
-        // 都沒有對應的樣式開口,見 README〈刪除的紅色只有一個地方碰得到〉。
+        // 都沒有對應的樣式開口,見 docs/design-notes.md〈刪除的紅色只有一個地方碰得到〉。
         new CommandContextItem(CreateDeleteCommand(note))
         {
             Title = Resources.CommandDelete,
@@ -261,7 +262,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// (同一段程式碼的 <c>set_PrimaryButtonText</c> / <c>set_CloseButtonText</c> 都掃得到,
     /// 所以不是掃描失準)。也就是說現在這個旗標設不設**畫面上完全一樣**,
     /// 兩邊都是 <c>DefaultButton.None</c> + 焦點落在主要按鈕。維持現在的用法是為了
-    /// 之後 CmdPal 更新上來時語意正確。詳見 README〈確認框的預設按鈕是反過來的〉。
+    /// 之後 CmdPal 更新上來時語意正確。詳見 docs/design-notes.md〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。
     /// </summary>
     private AnonymousCommand CreateDeleteCommand(Note note) => new(() => { })
     {
@@ -275,35 +276,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         }),
     };
 
-    private Details BuildDetails(Note note) => new()
-    {
-        Title = note.Title,
-        Body = BuildDetailsBody(note),
-
-        // 寬度固定最寬(清單:詳情 = 1:1),沒有設定項也沒有快速鍵。清單那一邊只有標題與
-        // 時間,寬一點也不多給什麼資訊;右邊是筆記本文,窄一檔就多折斷幾十行,看原始文字時
-        // 特別有感。曾經做過一個三檔循環的 Ctrl+D 加一個設定項,代價是設定頁與清單頁之間
-        // 一整條雙向同步線,而實際上永遠停在最寬 —— 移除的理由見 README〈詳細面板寬度固定在最寬〉。
-        //
-        // **一定要明著寫**:ContentSize 的 0 是 Small,`new Details()` 不設就是最窄那一檔
-        // (實測過)。CmdPal 也只認 Small / Medium / Large,對應 3:1 / 2:1 / 1:1
-        // (它的 DetailsSizeToGridLengthConverter),沒有無段調整 —— 整個介面裡連一個
-        // GridSplitter 都沒有,所以「寬」就是能給的上限。
-        Size = ContentSize.Large,
-    };
-
-    private string BuildDetailsBody(Note note)
-    {
-        if (note.Body.Length == 0)
-        {
-            return Resources.NoBody;
-        }
-
-        // 渲染模式的換行處理要跟預覽頁一致,否則同一則筆記在兩個地方長得不一樣。
-        return _showSource
-            ? NotePreview.RenderSource(note.Body)
-            : NotePreview.PreserveLineBreaks(note.Body);
-    }
+    private Details BuildDetails(Note note) => NoteDetails.For(note, _showSource);
 
     /// <summary>詳細窗格在「渲染」與「原始文字」之間切換。</summary>
     private void ToggleSource()

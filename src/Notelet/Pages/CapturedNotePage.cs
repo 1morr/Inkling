@@ -1,8 +1,8 @@
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Notelet.Commands;
 using Notelet.Core;
 using Notelet.Properties;
-using Windows.System;
 
 namespace Notelet.Pages;
 
@@ -41,7 +41,12 @@ internal sealed partial class CapturedNotePage : ContentPage
     /// </summary>
     private readonly AnonymousCommand _done;
 
-    private readonly CopyTextCommand _copyBody;
+    /// <summary>
+    /// 複製內文。刻意用 <see cref="CopyNoteBodyCommand"/> 而不是 toolkit 原生
+    /// <see cref="CopyTextCommand"/>:後者預設回 ShowToast,而這一頁一個 toast 都不能發
+    /// (見上面的型別註解)。實例留著,重新取內容時才能改掉 <c>Text</c>。
+    /// </summary>
+    private readonly CopyNoteBodyCommand _copyBody;
 
     private Note? _note;
     private string? _error;
@@ -68,7 +73,7 @@ internal sealed partial class CapturedNotePage : ContentPage
             Result = CommandResult.Dismiss(),
         };
 
-        _copyBody = new CopyTextCommand(draft.Body);
+        _copyBody = new CopyNoteBodyCommand(draft.Body);
 
         // 存檔前只有這一顆:其餘幾個都要拿到存好的 Note 才建得出來(檔案路徑、id)。
         // 補齊的時機見 Capture()。
@@ -87,16 +92,14 @@ internal sealed partial class CapturedNotePage : ContentPage
                 Strings.Format(Resources.CaptureFailedContent, _error, _draft.Title, _draft.Body))];
         }
 
-        // 重新查一次而不是直接用存檔當下的快照:使用者可能剛從這一頁按 Ctrl+E 編輯完回來。
-        // 查不到就沿用手上這份,至少還看得到東西。
-        _note = _repository.GetById(captured.Id) ?? captured;
+        // 「重查 → 更新 → 渲染」與預覽頁共用同一份,理由見 NotePreviewContent。
+        // 重新查而不是用存檔當下的快照:使用者可能剛從這一頁按 Ctrl+E 編輯完回來。
+        var note = captured;
+        var content = NotePreviewContent.Reload(_repository, note.Id, ref note, _copyBody);
 
-        Title = _note.Title;
-        _copyBody.Text = _note.Body;
-
-        // 渲染規則(補標題、單換行變硬換行)全在 Core,跟預覽頁走同一條 —— 同一則筆記
-        // 在兩個地方長得一樣。
-        return [new MarkdownContent(NotePreview.Render(_note))];
+        _note = note;
+        Title = note.Title;
+        return [content];
     }
 
     /// <summary>
@@ -146,31 +149,19 @@ internal sealed partial class CapturedNotePage : ContentPage
     /// <summary>
     /// 存檔成功後的命令列。第二個項目會被 CmdPal 當成次要命令掛上 Ctrl+Enter,
     /// 所以「編輯」排在「完成」後面 —— 看完覺得要改,不必先繞去清單頁找。
+    ///
+    /// 其餘三項與預覽頁、清單頁共用同一份組裝(<see cref="NoteCommands"/>),
+    /// 鍵位因此自動一致 —— 這一頁是第三個顯示同一則筆記的畫面,手勢要跨頁通用。
     /// </summary>
     private IContextItem[] BuildCommands(Note note) => [
         new CommandContextItem(_done),
-        new CommandContextItem(new NoteEditPage(_repository, note, Refresh))
-        {
-            Title = Resources.CommandEdit,
-            Icon = Icons.Edit,
-            RequestedShortcut = KeyChordHelpers.FromModifiers(
-                ctrl: true, alt: false, shift: false, win: false, vkey: VirtualKey.E, scanCode: 0),
-        },
-        new CommandContextItem(new OpenUrlCommand(note.FilePath))
-        {
-            Title = Resources.CommandOpenInEditor,
-            Icon = Icons.OpenExternal,
-        },
-        new CommandContextItem(_copyBody)
-        {
-            Title = Resources.CommandCopyBody,
-            Icon = Icons.Copy,
-        },
+        NoteCommands.Edit(_repository, note, Refresh),
+        NoteCommands.CopyBody(_copyBody),
+        NoteCommands.OpenInEditor(note),
     ];
 
     /// <summary>
-    /// 編輯存檔後由表單呼叫。CmdPal 不會因為導覽回來就重新取內容,
-    /// 一定要主動發這個事件,否則畫面會停在編輯前的樣子。
+    /// 編輯存檔後由表單呼叫。為什麼一定要主動發這個事件,見 <see cref="NotePreviewContent"/>。
     /// </summary>
     private void Refresh() => RaiseItemsChanged(1);
 }

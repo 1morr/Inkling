@@ -115,8 +115,8 @@
     <value>Browse and search notes</value>
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
-    <value>Type to save a note; the body goes after the separator</value>
-    <comment>刻意不寫出實際的分隔符:那是可以改的設定,而頂層命令的副標不會跟著更新。</comment>
+    <value>Type to save a note; the body goes after the separator. Tip: set an alias</value>
+    <comment>刻意不寫出實際的分隔符:那是可以改的設定,而頂層命令的副標不會跟著更新。後半句是 alias 的提示 —— 「打字→Enter」成立的前提是使用者自己設了 alias,而那個入口(CmdPal 設定 → Extensions → Notelet → 這個命令)並不顯眼,產品內只有這裡會告訴他。</comment>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
     <value>Notelet: New note</value>
@@ -136,6 +136,14 @@
   <data name="ListPageEmptySubtitle" xml:space="preserve">
     <value>Capture your first one with “{0}”</value>
     <comment>{0} 是快速記下那個頂層命令的標題(ProviderCapturePageTitle),兩邊自動保持一致。</comment>
+  </data>
+  <data name="ListPageNoMatchTitle" xml:space="preserve">
+    <value>No matching notes</value>
+    <comment>查詢沒有命中時的空白提示。CmdPal 的 ShowEmptyContent 不看搜尋框有沒有字,所以「有筆記但搜不到」也會走到這裡 —— 不能說「還沒有任何筆記」。</comment>
+  </data>
+  <data name="ListPageNoMatchSubtitle" xml:space="preserve">
+    <value>Try different words, or press Enter to capture a new note instead</value>
+    <comment>空白提示那一列的命令就是快速記下頁,Enter 會導覽過去。</comment>
   </data>
   <data name="ListPageMoreResults" xml:space="preserve">
     <value>{0} more not shown</value>
@@ -335,8 +343,8 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
     <comment>{0} 成功、{1} 失敗的則數。</comment>
   </data>
   <data name="DeleteFailed" xml:space="preserve">
-    <value>Delete failed: {0}</value>
-    <comment>{0} 是例外訊息,由 .NET 提供,不會翻譯。</comment>
+    <value>Delete failed: {0} — check the notes folder in Settings</value>
+    <comment>{0} 是例外訊息,由 .NET 提供,不會翻譯。後半句給下一步:常見原因(資料夾被移走、沒權限、OneDrive 鎖檔)全都指向設定裡的資料夾路徑。</comment>
   </data>
   <data name="CopyNoBody" xml:space="preserve">
     <value>No body</value>
@@ -376,8 +384,8 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
     <comment>{0} 是筆記標題。</comment>
   </data>
   <data name="SaveFailed" xml:space="preserve">
-    <value>Save failed: {0}</value>
-    <comment>{0} 是例外訊息,由 .NET 提供,不會翻譯。</comment>
+    <value>Save failed: {0} — check the notes folder in Settings</value>
+    <comment>{0} 是例外訊息,由 .NET 提供,不會翻譯。後半句給下一步:常見原因(資料夾被移走、沒權限、OneDrive 鎖檔)全都指向設定裡的資料夾路徑。</comment>
   </data>
   <data name="EditPageTitle" xml:space="preserve">
     <value>Edit: {0}</value>
@@ -415,11 +423,23 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="SettingsPickerAlreadyOpen" xml:space="preserve">
     <value>A “Choose folder” window is already open</value>
   </data>
+  <data name="SettingsFolderPickerFailed" xml:space="preserve">
+    <value>Could not open the folder picker</value>
+    <comment>對話框開不起來(CoCreateInstance / Show 失敗、STA 執行緒拋例外)時給的回饋;細節在 DiagnosticLog。使用者按取消不算失敗,不會顯示這句。</comment>
+  </data>
+  <data name="SettingsDirectoryRejected" xml:space="preserve">
+    <value>Nothing saved — the notes folder must be a full path, like “C:\Notes”</value>
+    <comment>相對路徑會對著擴展進程的 CWD 解析,整筆拒絕,表單留在原地。</comment>
+  </data>
+  <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
+    <value>Saved — the folder does not exist yet and will be created on first save: {0}</value>
+    <comment>{0} 是資料夾路徑。打錯一個字就靜靜換了資料夾,看起來會像舊筆記全部消失,所以要當場講。</comment>
+  </data>
   <data name="SettingNotesDirectoryLabel" xml:space="preserve">
     <value>Notes folder</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
-    <value>Put it under a cloud drive such as OneDrive and let that handle multi-device sync — Notelet does not sync anything itself. Changing the folder does not move notes you have already written; it only points Notelet at the new location.</value>
+    <value>Put it under a cloud drive such as OneDrive and let that handle multi-device sync — Notelet does not sync anything itself. Changing the folder does not move notes you have already written; it only points Notelet at the new location. Use a full path — a folder that does not exist yet is created on first save. Clear the field to go back to the default folder.</value>
     <comment>會進 Adaptive Cards 的 TextBlock,它只認得粗體/斜體/清單/連結 —— 反引號會照字面印出來,引用一律用引號。</comment>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">

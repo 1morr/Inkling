@@ -104,19 +104,19 @@
     <value>開啟檔案位置</value>
   </data>
   <data name="CommandOpenFileLocationSubtitle" xml:space="preserve">
-    <value>在檔案總管裡選中這個檔案</value>
+    <value>在檔案總管裡選取這個檔案</value>
   </data>
   <data name="CommandDeleteSubtitle" xml:space="preserve">
     <value>移到資源回收筒</value>
   </data>
   <data name="ProviderListSubtitle" xml:space="preserve">
-    <value>瀏覽與搜索筆記</value>
+    <value>瀏覽與搜尋筆記</value>
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
-    <value>打字直接存成筆記,分隔符後面接內文</value>
+    <value>打字直接存成筆記,分隔符後面接內文;設個 alias 更快</value>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
-    <value>Notelet:新增筆記</value>
+    <value>Notelet：新增筆記</value>
   </data>
   <data name="ProviderNewNoteSubtitle" xml:space="preserve">
     <value>開表單寫比較長的內容</value>
@@ -125,13 +125,19 @@
     <value>挑幾則刪掉,或整個清空</value>
   </data>
   <data name="ListPagePlaceholder" xml:space="preserve">
-    <value>搜索標題與內文…</value>
+    <value>搜尋標題與內文…</value>
   </data>
   <data name="ListPageEmptyTitle" xml:space="preserve">
     <value>還沒有任何筆記</value>
   </data>
   <data name="ListPageEmptySubtitle" xml:space="preserve">
     <value>用「{0}」記下第一則</value>
+  </data>
+  <data name="ListPageNoMatchTitle" xml:space="preserve">
+    <value>找不到符合的筆記</value>
+  </data>
+  <data name="ListPageNoMatchSubtitle" xml:space="preserve">
+    <value>換個關鍵字試試,或按 Enter 去記下新筆記</value>
   </data>
   <data name="ListPageMoreResults" xml:space="preserve">
     <value>還有 {0} 則沒顯示</value>
@@ -152,13 +158,13 @@
     <value>_(沒有內文)_</value>
   </data>
   <data name="DeleteConfirmTitle" xml:space="preserve">
-    <value>刪除這則筆記?</value>
+    <value>刪除這則筆記？</value>
   </data>
   <data name="DeleteConfirmDescription" xml:space="preserve">
     <value>「{0}」會被移到資源回收筒。</value>
   </data>
   <data name="ProviderCapturePageTitle" xml:space="preserve">
-    <value>Notelet:快速記下</value>
+    <value>Notelet：快速記下</value>
   </data>
   <data name="QuickCapturePlaceholder" xml:space="preserve">
     <value>打字記下想法,{0} 後面接內文…</value>
@@ -173,19 +179,19 @@
     <value>已經記過的</value>
   </data>
   <data name="QuickCaptureItemTitle" xml:space="preserve">
-    <value>記下:{0}</value>
+    <value>記下：{0}</value>
   </data>
   <data name="QuickCaptureNewNoteSubtitle" xml:space="preserve">
     <value>存成新筆記</value>
   </data>
   <data name="QuickCaptureBodySubtitle" xml:space="preserve">
-    <value>內文:{0}</value>
+    <value>內文：{0}</value>
   </data>
   <data name="QuickCaptureClipboardSubtitle" xml:space="preserve">
     <value>內文取自剪貼簿({0} 行) —— 搜尋框只吃得下第一行</value>
   </data>
   <data name="CaptureSaved" xml:space="preserve">
-    <value>已記下:{0}</value>
+    <value>已記下：{0}</value>
   </data>
   <data name="CapturedPageName" xml:space="preserve">
     <value>記下並預覽</value>
@@ -202,7 +208,7 @@
 {2}</value>
   </data>
   <data name="ProviderDeletePageTitle" xml:space="preserve">
-    <value>Notelet:刪除筆記</value>
+    <value>Notelet：刪除筆記</value>
   </data>
   <data name="DeletePagePlaceholder" xml:space="preserve">
     <value>找要刪的筆記…</value>
@@ -229,7 +235,7 @@
     <value>刪除全部仍然會刪掉它們,這裡只是列不下</value>
   </data>
   <data name="DeleteExternalConfirmTitle" xml:space="preserve">
-    <value>刪除這個檔案?</value>
+    <value>刪除這個檔案？</value>
   </data>
   <data name="DeleteExternalConfirmDescription" xml:space="preserve">
     <value>「{0}」不是 Notelet 建立的,會被移到資源回收筒。</value>
@@ -247,7 +253,7 @@
     <value>刪除全部</value>
   </data>
   <data name="DeleteAllConfirmTitle" xml:space="preserve">
-    <value>刪除全部 {0} 則筆記?</value>
+    <value>刪除全部 {0} 則筆記？</value>
   </data>
   <data name="DeleteAllConfirmDescription" xml:space="preserve">
     <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒。</value>
@@ -273,7 +279,7 @@
     <value>只刪 Notelet 建立的</value>
   </data>
   <data name="DeleteMineConfirmTitle" xml:space="preserve">
-    <value>刪除 Notelet 建立的 {0} 則筆記?</value>
+    <value>刪除 Notelet 建立的 {0} 則筆記？</value>
   </data>
   <data name="DeleteMineConfirmDescription" xml:space="preserve">
     <value>移到資源回收筒。另外 {0} 則不是 Notelet 建立的,不會動到。</value>
@@ -303,7 +309,7 @@
     <value>已刪除 {0} 則,{1} 則刪不掉(檔案可能被其他程式開著)</value>
   </data>
   <data name="DeleteFailed" xml:space="preserve">
-    <value>刪除失敗:{0}</value>
+    <value>刪除失敗：{0} —— 請到設定檢查筆記資料夾</value>
   </data>
   <data name="CopyNoBody" xml:space="preserve">
     <value>沒有內文</value>
@@ -333,16 +339,16 @@
     <value>儲存</value>
   </data>
   <data name="NoteCreated" xml:space="preserve">
-    <value>已新增:{0}</value>
+    <value>已新增：{0}</value>
   </data>
   <data name="NoteSaved" xml:space="preserve">
-    <value>已儲存:{0}</value>
+    <value>已儲存：{0}</value>
   </data>
   <data name="SaveFailed" xml:space="preserve">
-    <value>存檔失敗:{0}</value>
+    <value>存檔失敗：{0} —— 請到設定檢查筆記資料夾</value>
   </data>
   <data name="EditPageTitle" xml:space="preserve">
-    <value>編輯:{0}</value>
+    <value>編輯：{0}</value>
   </data>
   <data name="EditOpenExternalTitle" xml:space="preserve">
     <value>改用預設編輯器開啟</value>
@@ -369,22 +375,31 @@
     <value>選擇筆記資料夾</value>
   </data>
   <data name="SettingsFolderPicked" xml:space="preserve">
-    <value>筆記資料夾:{0}</value>
+    <value>筆記資料夾：{0}</value>
   </data>
   <data name="SettingsPickerAlreadyOpen" xml:space="preserve">
     <value>已經有一個「選擇資料夾」的視窗開著了</value>
+  </data>
+  <data name="SettingsFolderPickerFailed" xml:space="preserve">
+    <value>開不了資料夾選擇對話框</value>
+  </data>
+  <data name="SettingsDirectoryRejected" xml:space="preserve">
+    <value>沒有儲存 —— 筆記資料夾要填完整路徑,例如「C:\Notes」</value>
+  </data>
+  <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
+    <value>已儲存 —— 這個資料夾還不存在,第一次存檔時會建立：{0}</value>
   </data>
   <data name="SettingNotesDirectoryLabel" xml:space="preserve">
     <value>筆記資料夾</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
-    <value>放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Notelet 自己不做同步。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。</value>
+    <value>放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Notelet 自己不做同步。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。要填完整路徑;資料夾還不存在的話,第一次存檔時會建立。清空這個欄位就回到預設資料夾。</value>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">
     <value>快速記下的分隔符</value>
   </data>
   <data name="SettingSeparatorDescription" xml:space="preserve">
-    <value>快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號;常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。半形全形算同一個:設定填「;;」、打字打「；；」照樣切得開。</value>
+    <value>快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號;常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。半形全形算同一個：設定填「;;」、打字打「；；」照樣切得開。</value>
   </data>
   <data name="SettingPreviewLabel" xml:space="preserve">
     <value>記下後先看一眼</value>

@@ -25,7 +25,7 @@ internal static class CommandIds
     /// <summary>清單頁(頂層命令「Notelet」)。</summary>
     public const string List = "Notelet.List";
 
-    /// <summary>完整表單的新增頁(頂層命令「Notelet:新增筆記」)。</summary>
+    /// <summary>完整表單的新增頁(頂層命令「Notelet：新增筆記」)。</summary>
     public const string NewNote = "Notelet.NewNote";
 
     /// <summary>
@@ -38,7 +38,7 @@ internal static class CommandIds
     public const string QuickCapture = "Notelet.QuickCapture";
 
     /// <summary>
-    /// 快速記下頁(頂層命令「Notelet:快速記下」)。
+    /// 快速記下頁(頂層命令「Notelet：快速記下」)。
     ///
     /// 刻意跟 <see cref="QuickCapture"/> 分開:CmdPal 是拿 Id 當鍵去存 alias、快速鍵、
     /// 釘選與 fallback 規則的,同一個 Id 掛著一個頂層命令又掛著一個 fallback,
@@ -48,10 +48,11 @@ internal static class CommandIds
     public const string QuickCapturePage = "Notelet.QuickCapturePage";
 
     /// <summary>
-    /// 刪除筆記那一頁(頂層命令「Notelet:刪除筆記」)。
+    /// 刪除筆記那一頁(頂層命令「Notelet：刪除筆記」)。
     ///
     /// 這個 Id 一路沿用下來:它原本掛在一個按下去就跳確認框的「刪除所有筆記」命令上,
-    /// 後來換成頁面,現在那一頁還多了多選。**每一次都刻意沿用同一個字串** ——
+    /// 後來換成頁面(多選曾經做過、又整個移除,見 docs/design-notes.md〈為什麼沒有多選〉)。
+    /// **每一次都刻意沿用同一個字串** ——
     /// 對 CmdPal 來說那只是「同一個命令換了行為」,使用者設過的 alias 與釘選都還對得上。
     /// 標題可以改(Id 有設就不會去算雜湊),Id 不行。
     /// </summary>

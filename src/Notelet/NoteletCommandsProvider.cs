@@ -55,7 +55,7 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
     // 真正的載入延後到使用者實際打開清單頁時。
     //
     // 沒有 FallbackCommands():快速記下走的是頁面 + 使用者自設的 alias。
-    // 為什麼不是 fallback,見 README〈快速記下為什麼是頁面,不是 fallback〉。
+    // 為什麼不是 fallback,見 docs/design-notes.md〈快速記下為什麼是頁面,不是 fallback〉。
     public override ICommandItem[] TopLevelCommands() => _state.Commands;
 
     private ProviderState BuildState()
@@ -67,8 +67,11 @@ public sealed partial class NoteletCommandsProvider : CommandProvider
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
         // 刪除走資源回收筒,不是直接抹掉 —— 筆記是手打的東西,誤刪要拿得回來。
         var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
-        var listPage = new NoteListPage(repository, options);
         var capturePage = new QuickCapturePage(repository, _settingsManager, _settingsManager);
+
+        // 清單頁的空狀態會拿 capturePage 當那一列的命令(按 Enter 直接導覽過去),
+        // 所以要先建。兩個地方掛同一個實例 —— 跟設定頁同一個做法。
+        var listPage = new NoteListPage(repository, options, capturePage);
         var deletePage = new DeleteNotesPage(repository, options);
 
         ICommandItem[] commands = [

@@ -57,7 +57,16 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // Release 會整個編掉,而日常安裝的就是 Release —— 也就是說最需要留下痕跡的
             // 那條路,在正式版反而什麼都查不到。
             DiagnosticLog.Write($"QuickCapture 失敗:{ex}");
-            return CommandResult.ShowToast(Strings.Format(Resources.SaveFailed, ex.Message));
+
+            // **這條路一個 toast 都不能發,也不能 Dismiss。** 搜尋框裡那句話是使用者
+            // 剛打的、還沒存下來的東西:toast 視窗一搶焦點主視窗就自我隱藏(第 8 條那個
+            // 機制),Dismiss 又會主動收起 —— 兩條路疊起來,失敗當下那句話就跟著消失,
+            // 只能憑記憶重打。對照 CapturedNotePage 的失敗處理(原文整段留在畫面上)。
+            //
+            // 所以走 InfoBadge(不開視窗、不關面板)+ KeepOpen:那句話留在搜尋框裡,
+            // 修好問題之後直接再按一次 Enter 就是重試。
+            new ToastStatusMessage(Strings.Format(Resources.SaveFailed, ex.Message)).Show();
+            return CommandResult.KeepOpen();
         }
     }
 }
