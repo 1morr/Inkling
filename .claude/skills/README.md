@@ -10,8 +10,12 @@
 
 重點結論(都是實測出來的,細節在那份 SKILL.md):
 
-- **`orca computer` 那套看不到 CmdPal** —— 它是 WinUI 3 應用,`MainWindowHandle`
-  永遠是 0,orca 的視窗列舉照那個屬性過濾就整個跳過了。要走 UI Automation。
+- **`orca computer` 那套看不到 CmdPal 的主面板** —— 它是 WinUI 3 應用,主面板
+  永遠不會成為進程的 MainWindow(`MainWindowHandle` 平常是 0),orca 的視窗列舉
+  照那個屬性過濾就整個跳過了。要走 UI Automation。**例外**:「Command Palette Settings」
+  視窗開著時 `MainWindowHandle` 會指向它、orca 也列得出 CmdPal —— 但那是設定視窗,
+  主面板依然列舉不到,對驗證沒有用。(orca 是作者自己的桌面工具,沒有它略過
+  這條即可,核心驗證工具是 `tools/cmdpal-ui.ps1`。)
 - **CmdPal 一失焦就自我隱藏**,所以一整串動作要在同一次呼叫裡跑完。
 - 面板隱藏之後 **UIA 只回得到根節點** —— 那半截樹看起來像「畫面上什麼都沒有」。
 
@@ -20,9 +24,17 @@
 # 底下六份是從 CmdPal 的擴展模板搬來的
 
 來源是 CmdPal「建立擴展」功能產生出來的專案裡的 `.github/`(檔案日期 2026-05-22,
-也就是 Command Palette 0.11 安裝包裡夾帶的那一份)。這個 repo 是從零寫的,沒有用模板,
+也就是 Command Palette 0.11 安裝包裡夾帶的那一份),上游是 `microsoft/PowerToys`。
+這個 repo 是從零寫的,沒有用模板,
 但那份 `.github/` 是模板唯一真正多出來的東西 —— 官方整理的 API 速查與幾條常見工作流程,
 其中 dock band 是本專案完全沒碰過的功能面。
+
+**授權聲明:那六份的原文著作權屬 Microsoft,以 MIT 授權釋出。** MIT 要求再散佈時
+附上聲明,在此補上:
+
+> Copyright (c) Microsoft Corporation. Licensed under the MIT License.
+
+授權全文見上游 repo 根目錄的 `LICENSE`(<https://github.com/microsoft/PowerToys/blob/main/LICENSE>)。
 
 ## 對照表
 
@@ -48,7 +60,7 @@ Copilot 專用的格式(`description` + `applyTo: '**/*.cs'`),frontmatter 換成
 
 **正文一個字都沒改**,只在 frontmatter 後面插了一塊引言,寫這個 repo 實測到、跟上游文檔
 衝突的地方。這件事非做不可:那份文檔推薦 `ToastStatusMessage`,而在這個專案裡發一個 toast
-等於把整個 CmdPal 面板關掉(見 README〈刪除成功時一個 toast 都不發〉);它也把
+等於把整個 CmdPal 面板關掉(見 [設計考證〈刪除成功時一個 toast 都不發〉](../../docs/design-notes.md#delete-no-toast));它也把
 `ListItem.Details` 寫成一般屬性,而那條通知路徑跨進程是斷的。照著做不會有編譯錯誤,
 只會得到「值改了、畫面不動」這種查半天的症狀。
 

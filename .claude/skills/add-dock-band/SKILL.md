@@ -17,7 +17,7 @@ description: >-
 >    而本專案的規矩更嚴:Id 進 `src/Notelet/CommandIds.cs`,而且**進去之後不能改**
 >    (使用者的釘選是用它當鍵的)。
 > 3. **標題走資源檔**,不要像範例那樣寫死字串。
-> 4. 範例裡那個 `System.Timers.Timer` 每分鐘更新的 band,跟 README〈效能上的規矩〉那一節
+> 4. 範例裡那個 `System.Timers.Timer` 每分鐘更新的 band,跟 [設計考證〈效能上的規矩〉](../../../docs/design-notes.md#perf-rules) 那一節
 >    要一起看:`TopLevelCommands()` 絕不碰磁碟。
 > 5. 加了之後 `docs/manual-test-checklist.md` 要補一節 —— dock 是另一個沒有自動化介面的表面。
 

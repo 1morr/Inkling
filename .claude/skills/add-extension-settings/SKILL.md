@@ -13,14 +13,14 @@ description: >-
 >
 > 1. **表單不是 toolkit 的 `Settings.ToContent()`,是自己畫的卡片**(`NoteletSettingsForm`)。
 >    toolkit 那張卡片放不下「瀏覽…」按鈕,而且它把 `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,
->    欄位名等於不會顯示。README〈表單也是自己的〉。
+>    欄位名等於不會顯示。[設計考證〈表單也是自己的〉](../../../docs/design-notes.md#settings-form-custom)。
 > 2. **`Settings.SettingsChanged` 擴展發不出來** —— `RaiseSettingsChanged()` 是 internal,
 >    唯一的呼叫者是 toolkit 自己的 `SettingsForm`。存檔走 `SettingsManager.Apply`,
 >    它自己發 `Applied` 事件。
 > 3. **設定頁有兩個入口,後者 CmdPal 只初始化一次**(CmdPal 設定 → Extensions → Notelet)。
 >    所以我們自己實作了 `ICommandSettings`,而且**送出表單後一定要 `NoteletSettingsPage.Refresh()`**
 >    —— 漏掉的話卡片永遠停在啟動時的值,**而且下一次送出會把那個過期值當成使用者輸入寫回設定**。
->    設定頁因此也不能跟著 `ProviderState` 重建。README〈設定頁有兩個入口〉。
+>    設定頁因此也不能跟著 `ProviderState` 重建。[設計考證〈設定頁有兩個入口,而且只有一個會自己更新〉](../../../docs/design-notes.md#settings-two-entries)。
 > 4. **「Settings are automatically persisted by the CmdPal host」不準。** 我們用
 >    `JsonSettingsManager` 存在自己的 `LocalState\settings.json`。載入是「一項爆掉、
 >    後面全部不載入」,所以布林那一項刻意排最後。

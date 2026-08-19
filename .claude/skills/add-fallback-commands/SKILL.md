@@ -14,9 +14,12 @@ description: >-
 >
 > 原因:只有 fallback 拿得到使用者正在打的字(`UpdateQuery`),但沒命中前綴時我們只能把
 > `Title` 設成空字串,而 0.11.11762.0 **只在底部 fallback 區塊那條路濾空標題** ——
-> 勾了「Include in the Global result」走的 `_scoredFallbackItems` 沒濾,每次搜索都多一個
+> 勾了「Include in the Global result」走的那條評分路沒濾,每次搜索都多一個
 > 點不動的空列;不勾又會排在所有結果後面、失去意義。**這不是我們能修的。**
-> 查證過程見 README〈快速記下為什麼是頁面,不是 fallback〉。
+> (那條路的名字對不到可驗證的識別名:0.11 安裝版兩種編碼都掃不到,`main` 也只有
+> `MainListPageResultFactory.Create` 的同義參數 `scoredFallbackItems`;
+> 結論本身來自當時的真機重現。)
+> 查證過程見 [設計考證〈快速記下為什麼是頁面,不是 fallback〉](../../../docs/design-notes.md#capture-page-not-fallback)。
 >
 > 現在的入口是 `QuickCapturePage` + 使用者自設的 alias,按鍵數一樣。
 >

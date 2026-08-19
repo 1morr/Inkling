@@ -18,7 +18,7 @@ description: >-
 >    - **`CommandResult.ShowToast(...)`(以及 `CopyTextCommand` 的預設 `Result`)會讓面板消失。**
 >      它送的是 `ShowToastMessage`,由 CmdPal 開一個獨立的 `ToastWindow` —— 那個視窗會搶焦點,
 >      而主視窗一失焦就自我隱藏。`ToastArgs.Result = KeepOpen` 救不回來,搶焦點的是視窗本身。
->      README〈刪除成功時一個 toast 都不發〉。
+>      [設計考證〈刪除成功時一個 toast 都不發〉](../../../docs/design-notes.md#delete-no-toast)。
 >    - **`new ToastStatusMessage(...).Show()` 不會。** 它名字裡有 Toast,但根本沒開視窗:
 >      呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 加進 `StatusMessages`,顯示成底部命令列
 >      左邊那個 `InfoBadge`(點開是 flyout 裡的 `InfoBar`),2.5 秒後自己收掉。
@@ -34,7 +34,7 @@ description: >-
 >    沒設的話 CmdPal 拿 `ProviderId + DisplayTitle + Title + Subtitle` 算雜湊當身分,
 >    標題改一個字,使用者的 alias / 快速鍵 / 釘選就全部對不上。
 > 4. **`Debug.Write()` 在這個專案沒用。** 它掛著 `[Conditional("DEBUG")]`,而日常安裝的是 Release。
->    用 `DiagnosticLog`,見 README〈排錯:讓擴展自己說話〉。
+>    用 `DiagnosticLog`,見 README〈排錯:讓擴展自己說話(DiagnosticLog)〉。
 > 5. **〈Build & Debug〉那節是 Visual Studio 流程,這台機器沒有 VS。** 走 `tools\deploy.ps1`。
 > 6. **圖示碼位不要寫成 `\uXXXX`。** 本專案的 `Icons.cs` 用 `Glyph(0xE70B)` —— `\u` 逸出
 >    被文字處理工具碰到會**無聲地**變成一個私用區字元,檔案看起來還是好的,圖示卻全部消失。
@@ -42,7 +42,11 @@ description: >-
 >    見 CLAUDE.md〈慣例〉。下面的範例為了簡潔都是寫死的字串。
 > 8. `CommandResult.Confirm` 的 `IsPrimaryCommandCritical` 在 0.11.11762.0 **完全沒有效果**
 >    (整個套件掃不到 `set_DefaultButton`),確認框的按鈕也碰不到任何顏色。
->    見 README〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。
+>    見 [設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](../../../docs/design-notes.md#confirm-dialog-colors)。
+> 9. **正文 `KeyChordHelpers.FromModifiers` 的範例是舊的 4 參數簽章,照抄編譯不過。**
+>    現行 SDK 是 6 參數:`(ctrl, alt, shift, win, vkey, scanCode)`(另有 `VirtualKey` 多載),
+>    `dotnet run --project tools\ApiDump -- KeyChordHelpers` 可複驗;本專案的用法見
+>    `src/Notelet/Shortcuts.cs`(6 參數具名呼叫)。
 
 # Command Palette Extension Development
 

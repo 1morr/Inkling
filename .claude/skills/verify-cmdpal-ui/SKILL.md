@@ -18,7 +18,9 @@ description: >-
 
 ## 先讀這一條:computer-use 對 CmdPal 走不通
 
-**`orca computer` 那套指令看不到 Command Palette。** 實測:
+**`orca computer` 那套指令看不到 Command Palette 的主面板。**(orca 是作者自己的
+桌面工具;沒有它的話略過這幾行即可 —— 核心驗證工具是 `tools\cmdpal-ui.ps1`,
+不依賴 orca。)實測:
 
 ```
 orca computer list-apps --json          # 清單裡沒有 CmdPal
@@ -26,9 +28,15 @@ orca computer list-windows --app pid:<CmdPal 的 pid>
   → { "ok": false, "error": { "code": "app_not_found" } }
 ```
 
-原因是 CmdPal 是 WinUI 3 應用,`(Get-Process Microsoft.CmdPal.UI).MainWindowHandle`
-**永遠是 0**,連面板開著的時候也是 —— orca 的視窗列舉照那個屬性過濾,於是整個進程被跳過。
-同一個原因,任何照 `MainWindowHandle` 找視窗的腳本都會失敗。
+原因是 CmdPal 是 WinUI 3 應用,**主面板永遠不會成為進程的 MainWindow**:
+`(Get-Process Microsoft.CmdPal.UI).MainWindowHandle` 平常是 0,連面板開著的時候也是 ——
+orca 的視窗列舉照那個屬性過濾,於是整個進程被跳過。同一個原因,任何照
+`MainWindowHandle` 找視窗的腳本都會失敗。
+
+**但這個斷言有一個例外,別被它騙了:「Command Palette Settings」視窗開著時,
+`MainWindowHandle` 會指向它**(實測 `MainWindowTitle` = 'Command Palette Settings'),
+orca 的 `list-apps` 也列得出 CmdPal、`list-windows` 回得到那個視窗。那個 handle
+是設定視窗的,**主面板依然列舉不到** —— 看到 orca 列得出 CmdPal 不代表它能驗面板。
 
 `tools\cmdpal-ui.ps1` 因此自己走 `EnumWindows` + 比對 pid 與視窗標題,再用 Windows 內建的
 UI Automation 讀畫面。**要驗 CmdPal 就用這個腳本,不要繞回 `orca computer`。**
@@ -38,7 +46,7 @@ UI Automation 讀畫面。**要驗 CmdPal 就用這個腳本,不要繞回 `orca 
 
 | 要驗什麼 | 用什麼 |
 |---|---|
-| `Ctrl+L` 有沒有在檔案總管裡**選中**那個 `.md` | `orca computer` 讀 explorer |
+| `Ctrl+L` 有沒有在檔案總管裡**選取**那個 `.md` | `orca computer` 讀 explorer |
 | `Ctrl+O` 有沒有用預設程式開起來 | `orca computer list-apps` 看有沒有多一個視窗 |
 | 設定頁「瀏覽…」跳出來的資料夾對話框 | `orca computer`(它是一般的 Win32 對話框) |
 | CmdPal 面板本身的任何東西 | **`tools\cmdpal-ui.ps1`** |
@@ -99,7 +107,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 
 ### 一整串動作一定要在同一次呼叫裡跑完
 
-**CmdPal 一失焦就自我隱藏**(沒有開關,README〈刪除成功時一個 toast 都不發〉那條規矩的
+**CmdPal 一失焦就自我隱藏**(沒有開關,[設計考證〈刪除成功時一個 toast 都不發〉](../../../docs/design-notes.md#delete-no-toast)那條規矩的
 成因也是它)。每啟動一個新的 PowerShell 進程都可能把它打斷 —— 所以是
 
 ```powershell
@@ -107,7 +115,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 ```
 
 而不是分成三次呼叫。腳本會在每個需要視窗的動作之後檢查 CmdPal 還是不是前景視窗,
-不是就把整串重跑(預設最多 4 次),輸出裡會看到 `~~~ CmdPal 中途失焦,整串重跑 ~~~`。
+不是就把整串重跑(含第一次最多試 4 次),輸出裡會看到 `~~~ CmdPal 中途失焦,整串重跑 ~~~`。
 偶爾出現一次是正常的,連著 4 次都失敗代表有別的東西在搶焦點。
 
 ### 動作
@@ -117,7 +125,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 | `show` | 叫出 CmdPal。熱鍵**從 CmdPal 自己的 `settings.json` 讀**,不寫死 |
 | `esc` | 送 Esc,退一層頁面;在主頁等於關掉面板 |
 | `type:<文字>` | 打字。走 `KEYEVENTF_UNICODE`,中文與全形符號都打得出來 |
-| `key:<組合>` | 按鍵,例如 `key:Enter`、`key:Ctrl+D`、`key:Ctrl+Shift+C` |
+| `key:<組合>` | 按鍵,例如 `key:Enter`、`key:Ctrl+D`、`key:Ctrl+Shift+C`。**一次只吃一組組合** —— `key:Down Down Down` 會被當成不認得的按鍵,整串中止(非零結束);連按就拆成多個 `key:Down` |
 | `wait:<毫秒>` | 等待 |
 | `tree[:<深度>]` | dump UI Automation 樹,預設深度 14 |
 | `shot:<路徑>` | 截圖 |
@@ -129,7 +137,10 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 **`type:` 的尾隨空白有意義,不要順手刪掉。** alias 是「alias + 空白」才觸發的
 (indirect alias 存的鍵就帶著那個空白),所以進清單頁是 `type:# ` 而不是 `type:#`。
 
-腳本層級還有兩個參數:`-Retries`(失焦重跑幾次,預設 4)與 `-MaxText`
+**不認得的動作會中止整串並以非零結束**(跟 `key:` 同一個理由:印個警告繼續跑的話,
+後面的步驟會落在沒預期的地方)。打錯動作名不會看到「跑完了」的假象。
+
+腳本層級還有兩個參數:`-Retries`(整串最多嘗試幾次,含第一次,預設 4)與 `-MaxText`
 (樹裡每個字串印到幾個字,預設 120)。
 
 ### 樹裡只有一行 `Window: 'Command Palette'` 的時候
@@ -146,10 +157,19 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 
 第二種比較陰:**畫面完全正常**(同一次跑裡截出來的圖是滿的),但那個
 `AutomationElement` 就是問不出子節點。拿舊的 root 重試沒有用,要重新 `FromHandle` ——
-腳本已經每一輪都重取,所以看到這行代表三輪都沒讀到,再跑一次通常就好了。
+腳本已經每一輪都重取,所以看到這行代表三輪都沒讀到。這時**重跑未必有用**
+(實測 10 次裡碰上 4 次);真正有效的是把動作之間的 `wait` 拉長到 1800ms 以上,
+讓轉場走完再讀。
 
 **兩種都不要照著那半截樹下判斷。** 想確定畫面上到底有什麼,同一次序列裡加一個 `shot`
-對照 —— 截圖走的是 `PrintWindow`,跟 UIA 是兩條獨立的路,不會一起壞。
+對照 —— 截圖走的是 `PrintWindow`,跟 UIA 是兩條獨立的路,在主面板上不會一起壞。
+
+**例外是 popup(`Ctrl+K` 選單、確認框):兩條路會一起空。** popup 是獨立的頂層視窗,
+`PrintWindow` 拍主視窗拍不到它,而轉場中的 UIA 又常常只讀到根節點 ——
+實測 `key:Ctrl+K` 之後立刻 `tree|shot`,樹只有根節點、截圖裡也沒有選單,但選單是開著的。
+所以「截圖裡沒有選單」不能推論成「選單沒開」:**驗 popup 只能靠 UIA,而且要把
+`wait` 拉到 1800ms 以上再讀。**(另外 `shot` 在轉場途中偶爾只截到 800x480 的小圖,
+那是視窗 rect 還沒穩定下來,同樣是 wait 不夠長。)
 
 ## 判讀 UIA 樹
 
@@ -161,10 +181,10 @@ Window: 'Command Palette' [FOCUS]
       List: ''
         ListItem: ' ListItemViewModel'
           Text: '結果'                          ← 分節標題
-        ListItem: 'Notelet' [SELECTED]          ← 選中的那一列
+        ListItem: 'Notelet' [SELECTED]          ← 選取的那一列
           Group: 'Notelet'
             Text: 'Notelet'                     ← Title
-            Text: '瀏覽與搜索筆記'               ← Subtitle
+            Text: '瀏覽與搜尋筆記'               ← Subtitle
             Custom: '# '                        ← 使用者設的 alias
     Button: 'Open Command Palette settings, shortcut Control plus comma'
     Button: '開啟'                              ← 底部命令列,主命令
@@ -176,11 +196,11 @@ Window: 'Command Palette' [FOCUS]
 ```
 Window: 'Command Palette' [FOCUS]
       Button: 'Back'
-      Edit: '搜索標題與內文…' value='' [FOCUS]      ← placeholder 換了 = 真的進頁了
+      Edit: '搜尋標題與內文…' value='' [FOCUS]      ← placeholder 換了 = 真的進頁了
         List: ''
           ListItem: 'rime' [SELECTED]
           ListItem: 'DSHCLIPROXY'
-      Pane: 'rime'                                 ← 詳細面板,名字是選中那則的標題
+      Pane: 'rime'                                 ← 詳細面板,名字是選取那則的標題
         Text: 'rime'
         Text: '```⏎當前我認為Rime…(共 3613 字)'      ← 渲染後的內文
         ScrollBar: 'Vertical' [off]
@@ -198,7 +218,7 @@ Window: 'Command Palette' [FOCUS]
 - **搜尋框的 `Name` 是 placeholder,`value` 才是使用者打的字。** 驗
   「placeholder 有沒有跟著分隔符設定更新」看的是 `Name`;
   「進了哪一頁」也看它 —— 主頁是「搜尋應用程式、檔案和命令...」,
-  清單頁是「搜索標題與內文…」。
+  清單頁是「搜尋標題與內文…」。
 - **`[SELECTED]` 是唯一能看出焦點落在哪一列的東西。** CLAUDE.md〈已知落差〉提到
   安裝版沒有 sticky selection,「刪掉當前那一列之後焦點落在哪」沒有保證 ——
   要驗那個,就在刪除前後各 dump 一次比對。
@@ -212,7 +232,7 @@ Window: 'Command Palette' [FOCUS]
 
 ## toast:唯一一條「沒發生才算對」的驗證
 
-README〈刪除成功時一個 toast 都不發〉那條規矩靠 `toast` 動作驗。CmdPal 的 toast 是
+[設計考證〈刪除成功時一個 toast 都不發〉](../../../docs/design-notes.md#delete-no-toast)那條規矩靠 `toast` 動作驗。CmdPal 的 toast 是
 **另一個頂層視窗**(`Command Palette Toast`),它一出現就搶焦點,主視窗一失焦就自己隱藏 ——
 「做完之後整個面板消失」的成因就是它,不是 `GoHome()`。
 
@@ -244,8 +264,8 @@ UIA 只會給你一個 `Image: ''`,空白佔位圖跟真圖示在樹裡完全一
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:! |wait:800|tree:8|type:測試想法;;這是內文|wait:800|tree:8|key:Enter|wait:1000|toast|notes|log:10"
 ```
 
-要看的:進頁之後 placeholder 換了沒、打字之後第一列是不是「記下:測試想法」而副標是
-「內文:這是內文」、Enter 之後 `notes` 有沒有多一個檔案、`toast` 是不是 `可見=False`。
+要看的:進頁之後 placeholder 換了沒、打字之後第一列是不是「記下：測試想法」而副標是
+「內文：這是內文」、Enter 之後 `notes` 有沒有多一個檔案、`toast` 是不是 `可見=False`。
 
 **快速鍵沒有被搜尋框搶走(第 10 條硬規則)**
 
@@ -272,7 +292,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|type:ab
 別在這些上面浪費時間,它們只能靠眼睛看 `shot` 出來的圖,或者根本驗不到:
 
 - **顏色。** `CommandContextItem.IsCritical` 的紅色是擴展唯一碰得到的顏色,
-  而 UIA 不給顏色資訊。確認框的按鈕連屬性都沒有(README〈確認框的按鈕沒有顏色〉)。
+  而 UIA 不給顏色資訊。確認框的按鈕連屬性都沒有([設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](../../../docs/design-notes.md#confirm-dialog-colors))。
 - **圖示的外觀。** 樹裡只有 `Image: ''`。
 - **游標在輸入框裡的位置。** 做不到,見 CLAUDE.md 第 4 條。
 - **確認框的預設按鈕。** 安裝版整個套件掃不到 `set_DefaultButton`,那個旗標沒有效果。

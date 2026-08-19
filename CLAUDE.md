@@ -11,14 +11,14 @@ out-of-process COM server 裡,把想法存成資料夾裡的 Markdown 檔。使�
 ```powershell
 dotnet test                                             # Core 全部行為
 dotnet test --filter "FullyQualifiedName~QuickCapture"  # 單一測試類別/方法
-dotnet build src\Notelet\Notelet.csproj -p:Platform=x64 # 只建擴展
+dotnet build src\Notelet\Notelet.csproj -p:Platform=x64 # 只建擴展(進程活著時會鎖輸出,見下方)
 
 .\tools\deploy.ps1 -Configuration Release -Reload       # 日常部署(trimmed + 自動重載)
 .\tools\deploy.ps1                                      # Debug 部署(~106 MB,不 trim)
 .\tools\deploy.ps1 -Configuration Release -SkipBuild    # 只重新註冊
 
 dotnet run --project tools\ApiDump -- FallbackCommandItem CommandResult
-dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在哪
+dotnet run --project tools\ApiDump -- --paths           # toolkit 在當前身分下用的設定路徑(ApiDump 不是 packaged,印的是 unpackaged 路徑,僅供對照;擴展實際的設定檔看文末表格)
 
 pwsh -NoProfile -File tools\render-icons.ps1                # 改完圖示的 SVG 之後重產 PNG
 
@@ -27,8 +27,15 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾是不是真資料
 ```
 
-- **方案層級不能帶 `-p:Platform=x64`**(`Notelet.slnx` 沒有那個組態,會直接失敗)。
-  x64 只屬於 `src/Notelet`;測試與工具專案跑 AnyCPU。
+- **方案層級建不了擴展。** `dotnet build Notelet.slnx` 走 AnyCPU,會撞 MSIX 打包目標的
+  「Packaged .NET applications with an app host exe cannot be ProcessorArchitecture neutral」
+  —— 打包專案不吃 AnyCPU,帶 `-p:Platform=x64` 也救不了(`Notelet.slnx` 沒有那個組態,
+  帶了直接失敗;`.slnx` 的 Platform 對應語法試過,它的 schema 不吃)。要建擴展就指定專案:
+  `dotnet build src\Notelet\Notelet.csproj -p:Platform=x64`。`dotnet test` 不受影響,
+  它只建測試專案與 Core。完整考證見 `src/Notelet/Notelet.csproj` 的 `PublishSingleFile` 註解。
+- **「只建擴展」那條在擴展進程活著時會失敗**(MSB3021,輸出檔被佔用)—— CmdPal 平常
+  就把擴展的 COM server 常駐拉起。先 `Stop-Process -Name Notelet`,或直接用
+  `deploy.ps1`(它會先停進程再建)。
 - 部署後**一定要 Reload**,否則 CmdPal 繼續用舊的擴展實例,你會以為改動沒生效。
   `-Reload` 需要 CmdPal 設定 → 一般 → For developers → Enable external reload。
 - 擴展沒有主控台,`Debug.WriteLine` 在 Release 被編掉。要確認某段程式有沒有跑到,
@@ -41,7 +48,9 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
 
 - **`src/Notelet.Core`** — 純 `net10.0`,**不引用任何 CmdPal 型別**。front matter 解析、
   檔名/id 產生、搜索排序、標題/內文切分(`QuickCapture.Split`)、預覽的換行規則,
-  全部在這一層,因此全部有單元測試。
+  全部在這一層,因此全部有單元測試。跨消費者的概念只留一份實作 ——
+  「內文的第一行有效文字」收在 `NoteBody`(清單摘要、外來檔案的推導標題、
+  預覽判斷「內文是否已含標題」三處共用),曾經各寫一份而且字元集已經漂移過。
 - **`src/Notelet`** — MSIX COM server,只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
   CmdPal 沒有提供 UI 自動化介面,這一層的驗證靠 `docs/manual-test-checklist.md`;
   清單內容、快速鍵、placeholder、有沒有跳 toast 這些**可以**用
@@ -64,13 +73,21 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
 `SettingsManager` 為每一項開一個窄介面 + 一個事件,由頁面自己訂閱 ——
 `ICaptureSeparatorStore.CaptureSeparatorChanged` 與
 `ICapturePreviewStore.CapturePreviewChanged`(兩個都在快速記下頁)就是這個形狀。
-頁面上快取項目的地方,快取鍵也要帶上那個設定值,否則事件收到了、拿到的還是舊結果。
+清單頁的項目快取收在 `VersionedItemsCache`(三個清單頁共用,基底型別不同抽不了
+共同基底,所以用組合):**快取鍵要帶 repository 的 `Version` 與每一個影響內容的設定值**,
+否則事件收到了、拿到的還是舊結果(「筆記明明存好了,清單卻說還沒有」就是漏帶
+Version 的症狀)。
+
+同一則筆記的 `Ctrl+K` 選單項(編輯 / 複製內文 / 在編輯器開啟 / 開啟檔案位置)收在
+`NoteCommands`,清單頁、預覽頁、記下並預覽頁三個畫面共用 —— 鍵位與圖示跨頁要一致,
+曾經各頁各刻一份而且已經漂移過(其中一份用了預設 `ShowToast` 的 `CopyTextCommand`,
+一複製整個面板消失)。各頁專屬的項仍由各頁自己插,順序也是:第一項會被放上底部工具列。
 
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
 
 ## 跟 CmdPal 打交道的硬規則
 
-這些都是踩過的坑,不是理論。改動前先讀 README 對應章節。
+這些都是踩過的坑,不是理論。改動前先讀 `docs/design-notes.md` 的對應章節。
 
 1. **每個頂層命令都要有固定 `Id`**(`src/Notelet/CommandIds.cs`)。沒設的話 CmdPal 會拿
    `ProviderId + DisplayTitle + Title + Subtitle` 做 WyHash64 當身分 —— 標題變一個字,
@@ -82,9 +99,11 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
 3. **不要把快速記下改回 fallback。** 這條路做完過,最後整個移除 —— 只有 fallback 拿得到
    使用者正在打的字(`UpdateQuery`),但沒命中前綴時我們只能把 `Title` 設成空字串,
    而 0.11.11762.0 只在底部 fallback 區塊那條路濾空標題,勾了「Include in the Global result」
-   走的 `_scoredFallbackItems` 沒濾 —— 每次搜索都多一個點不動的空列,而且不勾就排在
-   所有結果後面、失去意義。**這不是我們能修的**,查證過程見 README
-   〈快速記下為什麼是頁面,不是 fallback〉,實作在 git 歷史裡。
+   走的那條評分路沒濾 —— 每次搜索都多一個點不動的空列,而且不勾就排在
+   所有結果後面、失去意義。(那條路的名字對不到可驗證的識別名:0.11 安裝版兩種編碼
+   都掃不到,`main` 也只有 `MainListPageResultFactory.Create` 的同義參數
+   `scoredFallbackItems`;結論本身來自當時的真機重現。)**這不是我們能修的**,查證過程見
+   [設計考證〈快速記下為什麼是頁面,不是 fallback〉](docs/design-notes.md#capture-page-not-fallback),實作在 git 歷史裡。
    現在的入口是 `QuickCapturePage` + 使用者自設的 alias,按鍵數一樣。
    alias 觸發時送 `ClearSearchMessage`,所以 **alias 命令拿不到觸發當下那句話**,
    但進到自己的 `DynamicListPage` 之後打的字完全掌控 —— 那正是這個做法能成立的原因。
@@ -106,14 +125,15 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
    就足以把別的設定默默還原。加新設定項時特別容易忘,忘了不會報錯。
    設定頁表單後面曾經掛著一塊**空的** `MarkdownContent`,用來擋「背景的設定視窗跳到前面」——
    **已經移除**:那招依賴的 `OnlyControlOnPage` 判斷在安裝版裡根本不存在(見〈已知落差〉),
-   而且會觸發的情境隨舊的 `Ctrl+D`(當時是詳細面板寬度三檔循環,後來給了刪除,
-   現在整個拿掉了)一起沒了,拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
+   而且會觸發的情境隨著詳細面板寬度循環的移除一起沒了(`Ctrl+D` 當時是那個循環的鍵;
+   它後來給了刪除、中間一度整個拿掉,現在又回到刪除身上 —— 見
+   [設計考證〈`Ctrl+D` 兜了一圈回來〉](docs/design-notes.md#ctrl-d-roundtrip)),拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
    說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
    而且區塊之間有 32px 收不掉的間距)。表單本身也不是 toolkit 的 `Settings.ToContent()`
    而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
    `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。
    存檔因此走 `SettingsManager.Apply`(toolkit 的 `RaiseSettingsChanged()` 是 internal)。
-   細節見 README〈設定頁有兩個入口〉。
+   細節見 [設計考證〈設定頁有兩個入口,而且只有一個會自己更新〉](docs/design-notes.md#settings-two-entries)。
 6. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload
    一次即可,不必重開 PowerToys。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
    之前開著的設定頁是綁在舊擴展實例上的死物件,按 Save 靜靜地什麼都不做** ——
@@ -122,7 +142,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
    見 `FolderPicker`)得自己開一條 STA 執行緒,而且開出來的視窗**搶不到焦點** ——
    Windows 只讓前景進程這麼做。`FolderPicker` 用「找自己的可見頂層視窗 → SetForegroundWindow」
    兜過去;拉不上來時的退路是工作列按鈕,所以對話框**刻意不掛 owner**
-   (代價是那顆按鈕的圖示是套件的 Square44x44Logo,目前還是模板的空白佔位圖)。
+   (代價是那顆按鈕的圖示固定是套件的 Square44x44Logo —— 工作列按鈕的圖示擴展改不了)。
    另外 CmdPal 主視窗一失焦就自己隱藏(沒有開關),所以對話框選完的結果要**當場存**,
    不能指望使用者回到表單再按儲存。
 8. **想讓使用者「做完之後留在畫面上看」,就一個 toast 都不能發。** toast 是另一個會搶焦點的
@@ -132,7 +152,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
    toolkit 有幾個現成命令(例如 `CopyTextCommand`)預設就回 `ShowToast`,拿來用要記得改掉。
    **這一條專指 `CommandResult.ShowToast`。`ToastStatusMessage` 名字很像但不是同一件事** ——
    它呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 畫成底部命令列的 `InfoBadge`,
-   不開視窗、不關面板,存檔提示用的就是它。見 README〈`ToastStatusMessage` 不是那個 toast〉。
+   不開視窗、不關面板,存檔提示用的就是它。見 [設計考證〈`ToastStatusMessage` 不是那個 toast〉](docs/design-notes.md#toast-status-message)。
    需要回饋又要留在原地時走 `ListItem.Tags`(見〈查證 CmdPal 的行為〉最後那段)。
    而**導頁也不能靠回傳值**:`CommandResult.GoToPage` 是空殼,SDK 有型別但
    `ShellViewModel.UnsafeHandleCommandResult` 的 switch 裡沒有那個 case(安裝版沒有,
@@ -143,7 +163,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
    (`InitializeProperties` 先 `BuildCommandViewModels` 後 `FetchContent`),要在存檔後
    才建得出來的命令只能換掉整個陣列、靠 `PropChanged` 讓它重讀;而清單項本身
    **不會**觸發 `GetContent`(`CommandViewModel.InitializeProperties` 只讀 Id / Name / Icon),
-   所以「打字打到一半就存檔」不會發生。細節見 README〈記下之後要不要先看一眼〉。
+   所以「打字打到一半就存檔」不會發生。細節見 [設計考證〈記下之後要不要先看一眼〉](docs/design-notes.md#capture-preview)。
 9. CsWinRT 的要求:任何實作 WinRT 投影介面的型別都要標 `partial`(內部型別也一樣)。
    trimming 只在 `dotnet publish` 生效,所以 trimming 相關的問題只有 Release 部署才驗得到。
    `[GeneratedComInterface]`(shell 的 COM 介面)需要 `AllowUnsafeBlocks`,
@@ -171,7 +191,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   進 Adaptive Cards 的字串一律經過 `CardText.Json` 跳脫 —— 翻譯裡一個雙引號就能讓
   整張卡片變成不合法的 JSON。
   語言跟著 `CultureInfo.CurrentUICulture`(= Windows 顯示語言)走,**沒有設定項**,
-  理由見 README〈介面語言跟著 Windows 走〉。**Core 不碰資源檔**:那一層連例外訊息都是英文,
+  理由見 [設計考證〈介面語言跟著 Windows 走〉](docs/design-notes.md#ui-language)。**Core 不碰資源檔**:那一層連例外訊息都是英文,
   因為它會被 UI 包進「刪除失敗:{0}」裡,而同一個位置平常裝的是 .NET 自己的英文訊息。
 - **文檔、程式碼註釋一律繁體中文**;識別符、字串常量、log、commit message 用英文。
 - 註釋寫「為什麼」,特別是繞過 CmdPal 限制的地方 —— 這個 repo 的註釋密度刻意偏高,
@@ -206,20 +226,38 @@ Microsoft Learn 上的 API 參考有些頁面對不上 0.11 的實際簽章。�
 
 原始碼曾經 sparse clone 在 `%TEMP%\cp-spike`(只取 `src/modules/cmdpal`,而且是 `--depth 1`,
 沒有歷史可查),那是暫存目錄,可能已經不在;需要時重新 clone。**注意版本落差**:那份是 `main`,
-比使用者裝的 0.11.11762.0 新。從原始碼得到的結論要跟安裝版對照 —— 實用手法是拿方法名去
-byte-scan `Microsoft.CmdPal.UI.exe`,確認那條程式路徑在安裝版裡到底存不存在:
+比使用者裝的 0.11.11762.0 新。從原始碼得到的結論要跟安裝版對照 —— 實用手法是 byte-scan
+`Microsoft.CmdPal.UI.exe`,確認那條程式路徑在安裝版裡到底存不存在:
 
 ```powershell
 $d = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8wekyb3d8bbwe"
 Get-ChildItem $d -Recurse -Include *.dll,*.exe | Where-Object {
-  [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($_.FullName)).Contains('要找的方法名')
+  $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+  [System.Text.Encoding]::UTF8.GetString($bytes).Contains('要找的東西') -or
+  [System.Text.Encoding]::Unicode.GetString($bytes).Contains('要找的東西')
 } | Select-Object -ExpandProperty Name
 ```
 
+**UTF-8 與 UTF-16 都要掃,只掃一種會得到假的「不存在」。** .NET 的 metadata 分兩個 heap:
+**識別名**(型別名、方法名)在 `#Strings`,是 **UTF-8**;**C# 字串常量**在 `#US`,
+是 **UTF-16**。同一個 `Microsoft.CmdPal.UI.exe` 的實測對照:
+
+| 掃的東西 | UTF-8 | UTF-16 | 它是什麼 |
+|---|---|---|---|
+| `get_IsCritical` | 命中 | 沒有 | 方法名(#Strings) |
+| `windows-commandpalette-extension` | 沒有 | 命中 | 字串常量(#US) |
+| `x-cmdpal://reload` | 沒有 | 命中 | 字串常量(#US) |
+| `Reload Command Palette extensions` | 命中 | 沒有 | .resw 資源字串(編進 exe 的資源段) |
+| `set_DefaultButton` | 沒有 | 沒有 | 真的不存在 |
+
+只掃 UTF-8 的話,gallery 的 tag(`windows-commandpalette-extension`)、reload 的 URI、
+gallery feed 的名字(`CmdPal-ExtensionsJson`)全都會被誤判成「安裝版沒有」——
+**兩種編碼都掃不到,才算沒有。** 下面〈已知落差〉的每一條都用兩種編碼重掃過,結論不變。
+
 (別用 `Select-String -Encoding Byte`,PowerShell 7 已經移除那個參數,整條會靜靜地失敗。)
 
-**找 XAML 的東西要多掃一種編碼、多掃一種檔案。** 樣板名、資源鍵、Style 的 `x:Key` 不在
-`.exe` 裡,而是編進 `resources.pri`,而且是 **UTF-16**。上面那段只解 UTF-8,拿它去找
+**找 XAML 的東西要再多掃一種檔案。** 樣板名、資源鍵、Style 的 `x:Key` 不在
+`.exe` 裡,而是編進 `resources.pri`,而且是 **UTF-16**。拿上面的 exe/dll 掃法去找
 `CriticalContextMenuViewModelTemplate` 會得到「找不到」——但那是掃法不對,不是真的沒有:
 
 ```powershell
@@ -235,27 +273,27 @@ $bytes = [System.IO.File]::ReadAllBytes("$d\resources.pri")
   `ContentFormControl` / `OnFrameworkElementLoaded` / `FindFirstFocusableElement` 都掃得到,
   只有這個判斷沒有(`OnlyControl` / `SoleControl` / `SingleControl` 各種變體也都沒有)。
   設定頁因此曾經多掛一塊空的 `MarkdownContent` 去「湊滿兩塊內容」,而那招在安裝版上
-  八成從來沒生效過,現在已經移除,見 README〈表單後面那塊空白已經拿掉了〉。
+  八成從來沒生效過,現在已經移除,見 [設計考證〈表單後面那塊空白已經拿掉了(而且它八成從來沒生效過)〉](docs/design-notes.md#blank-markdown-removed)。
 - 確認框的 `ContentDialog.DefaultButton` —— `main` 在 `IsPrimaryCommandCritical` 時把它設成
   `Close`,安裝版整個套件掃不到 `set_DefaultButton`(同一段的 `set_PrimaryButtonText` /
   `set_CloseButtonText` / `set_XamlRoot` 都掃得到,所以不是掃描失準)。也就是說**那個旗標
   在使用者手上完全沒有效果**,批次刪除跟單則刪除的確認框長得一模一樣,Enter 都是確認。
   README 曾經照 `main` 寫成「設了它預設按鈕就變取消」,手動驗證清單還照那個寫了一條測試項。
   順帶一提**按鈕的顏色擴展碰不到**:`ConfirmationArgs` 只有四個屬性,而 CmdPal 那段把主要
-  按鈕標紅的樣式是註解掉的 TODO。見 README〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。
+  按鈕標紅的樣式是註解掉的 TODO。見 [設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](docs/design-notes.md#confirm-dialog-colors)。
 - `ListItemsView` 的 sticky selection —— `main` 在清單更新後會盡量把選中項留在原處
   (`_stickySelectedItem`),留不住才退回 `GetFirstSelectableIndex()` 選第一個可選項;
   安裝版 `_stickySelectedItem` / `firstUsefulIndex` / `ensureSelectionVisible` **一個都掃不到**。
   也就是說**刪掉當前那一列之後焦點落在哪,在使用者手上沒有保證**,舊版大概率就是跳第一列。
   刪除頁「刪除全部」排第一就是踩在這上面 —— 順手按 Enter 有機會落到它身上,靠確認框擋;
   而 `Ctrl+Enter` 那條連續刪的路踩不到(那一列沒有次要命令)。
-  見 README〈「刪除全部」排第一的代價〉。
+  見 [設計考證〈「刪除全部」排第一的代價〉](docs/design-notes.md#delete-all-first)。
 
 這就是為什麼每個從原始碼得到的結論都要 byte-scan 對照一次再寫進文檔。
 
 **反過來也有「掃得到」的**:`ListItem.Tags` 改了畫面會即時更新這條路,安裝版是有的
 (`UpdateTags` / `VisibleTags` / `HasTags` / `TagViewModel` 都掃得到)—— 刪除頁的多選
-曾經靠它做出來過(後來整個移除,見 README〈為什麼沒有多選〉),而**現在真的在用它**:
+曾經靠它做出來過(後來整個移除,見 [設計考證〈為什麼沒有多選〉](docs/design-notes.md#no-multiselect)),而**現在真的在用它**:
 複製內文之後那一列右邊的「已複製」標籤就是這條路(`NoteListPage.FlashTag`)——
 需要「不關面板、不重整清單、就地改一列的狀態」時就用它,別再想 toast。
 byte-scan 不是只拿來否定,拿來確認一樣有用。
@@ -266,7 +304,7 @@ byte-scan 不是只拿來否定,拿來確認一樣有用。
 `ContextItemTitleTextBlockCriticalStyle` 在 `resources.pri`(UTF-16)。
 **這是擴展碰得到的唯一一處紅色** —— 底部工具列的按鈕寫死 `SubtleButtonStyle`,
 確認框的按鈕連屬性都沒有(那個 `IsPrimaryCommandCritical` 是另一回事,而且沒作用),
-見 README〈刪除的紅色只有一個地方碰得到〉。
+見 [設計考證〈刪除的紅色只有一個地方碰得到〉](docs/design-notes.md#critical-red)。
 
 兩份設定檔:
 

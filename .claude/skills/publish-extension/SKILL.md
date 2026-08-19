@@ -13,14 +13,30 @@ description: >-
 >
 > 1. **改 `Identity` 的 `Name` 或 `Publisher` 會弄丟使用者的設定。** 套件家族名跟著變,
 >    等於換一個空的 `LocalState` —— 舊的 `settings.json` 還在磁碟上但再也沒人去讀。
->    上架換成 Partner Center 的身分就一定會發生這件事。README〈設定存在哪〉。
-> 2. **WinGet 那條路要把專案切成 unpackaged**,而擴展是靠 MSIX 的
->    `com:ComServer` + `uap3:AppExtension` 被 CmdPal 找到的 —— 那不是改個開關的事,
->    先確認 unpackaged COM 註冊怎麼做。
-> 3. 上架前要決定 manifest 的 `DisplayName` / `Description` 要不要本地化
+>    上架換成 Partner Center 的身分就一定會發生這件事。README〈設定存在哪,更新擴展之後還在嗎〉。
+> 2. **WinGet 那條路正文叫你切成 unpackaged EXE + Inno Setup —— 對本專案是錯的,別走。**
+>    實際在架的 CmdPal 擴展(`lin-ycv.EverythingCmdPal`、`8LWXpg.ProcessKillerforCommandPalette`)
+>    用的是 `InstallerType: msix`:x64/arm64 指向 GitHub Release 上同一個簽章過的
+>    `.msixbundle`,帶 `PackageFamilyName`、`SignatureSha256`、`RestrictedCapabilities: runFullTrust`。
+>    擴展是靠 MSIX 的 `com:ComServer` + `uap3:AppExtension` 被 CmdPal 找到的,
+>    切 unpackaged 等於把發現機制整個重寫,而且完全沒有必要。`references/winget-publishing.md`
+>    留著當上游參考,但它的 unpackaged 路線本專案不適用。manifest 的 Tags 要帶
+>    `windows-commandpalette-extension` —— CmdPal 內建的擴展瀏覽靠這個 tag 過濾,
+>    有帶的套件從 gallery 安裝時還會被設 `SkipDependencies`(見下一點)。
+> 3. **同一份還說 manifest 必須宣告 `Microsoft.WindowsAppRuntime` 依賴 —— 對本專案也是錯的。**
+>    Notelet 沒有引用 WindowsAppSDK(pubxml 是 self-contained),在架的 ProcessKiller
+>    manifest 也沒有 Dependencies 區段。而且 CmdPal 對帶 `windows-commandpalette-extension`
+>    tag 的套件設 `SkipDependencies = true`,宣告了從 gallery 安裝也會被跳過,
+>    只有走 winget CLI 的人會被多裝幾百 MB 的執行期。**什麼時候才要宣告:專案真的
+>    參考 `Microsoft.WindowsAppSDK` 的時候。**
+> 4. **gallery 的條目只是指到 Store 或 WinGet。** CmdPal 內建的擴展瀏覽讀的 feed 是
+>    `aka.ms/CmdPal-ExtensionsJson`,內容來自 `github.com/microsoft/CmdPal-Extensions`
+>    的 `extensions.json` —— 要進 gallery 是對那個 repo 送 PR,而前提是擴展已經先在
+>    Store 或 WinGet 上架。
+> 5. 上架前要決定 manifest 的 `DisplayName` / `Description` 要不要本地化
 >    (`ms-resource:` + `.resw` + MakePri)。目前是單語,而介面本身已經有三種語言,
->    見 README〈介面語言跟著 Windows 走〉。
-> 4. `APPX1707` 警告官方模板也有,無害。
+>    見 [設計考證〈介面語言跟著 Windows 走〉](../../../docs/design-notes.md#ui-language)。
+> 6. `APPX1707` 警告官方模板也有,無害。
 
 # Publish Your Command Palette Extension
 
