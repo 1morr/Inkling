@@ -15,13 +15,14 @@ Notelet itself contains zero sync code.
 <!-- 截圖用 tools\cmdpal-ui.ps1 的 shot 動作在真機上拍(PrintWindow,見該腳本與
      .claude/skills/verify-cmdpal-ui)。重拍請照 docs/manual-test-checklist.md 的畫面重跑一次。 -->
 
-叫出 Command Palette → 打 `n` 加一個空白 → 快速記下頁跳出來 →
+叫出 Command Palette → 打 `!` 加一個空白 → 快速記下頁跳出來 →
 打 `買咖啡機的想法` → Enter。存檔完成,全程不離開鍵盤。
 
-> **`n` 是你自己設的 alias,裝好之後要先設**,上面那條路才成立:CmdPal 設定 →
-> Extensions → Notelet → `Notelet：快速記下` → Alias 填 `n`。
-> 中間那次跳頁不用手動觸發 —— 打完 `n` 空白它自己就跳,所以按鍵數跟一路打在
-> 主搜尋框裡完全一樣。想更快就再給它一個全域快速鍵,連 `n` 都省了。
+> **`!` 是你自己設的 alias,裝好之後要先設**,上面那條路才成立:CmdPal 設定 →
+> Extensions → Notelet → `Notelet：快速記下` → Alias 填 `!`。
+> 挑標點而不是字母:字母會跟真實搜索撞(想搜 `n` 開頭的東西就誤觸),標點不會。
+> 中間那次跳頁不用手動觸發 —— 打完 `!` 空白它自己就跳,所以按鍵數跟一路打在
+> 主搜尋框裡完全一樣。想更快就再給它一個全域快速鍵,連 `!` 都省了。
 
 筆記是資料夾裡的純 Markdown 檔(YAML front matter + 內文),任何編輯器都能直接開。
 多端同步交給雲端硬碟處理,Notelet 本身沒有任何同步程式碼。

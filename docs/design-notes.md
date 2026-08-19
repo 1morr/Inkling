@@ -42,7 +42,7 @@ Run 看是不是一個可執行檔、開網址看像不像 URL,不像就自己�
 
 表現出來就是:**不管打什麼,結果裡永遠多一個點不動的空列**。這不是我們能修的。
 
-**換成頁面之後按鍵數一模一樣。** `n` 空白 想法 Enter —— 唯一的差別是中間會跳一次頁。
+**換成頁面之後按鍵數一模一樣。** `!` 空白 想法 Enter —— 唯一的差別是中間會跳一次頁。
 換來的是主搜尋框完全乾淨、不再受 CmdPal 版本行為影響,以及一件 fallback 結構上做不到的事:
 fallback 只有一列,頁面有一整個清單,所以「記下」底下能直接列出標題相近的既有筆記。
 
@@ -52,7 +52,7 @@ alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 
 | | |
 |---|---|
-| indirect alias 存的鍵是「alias + 空白」 | 所以填 `n`,實際觸發的是你打完 `n ` 的那一刻 |
+| indirect alias 存的鍵是「alias + 空白」 | 所以填 `!`,實際觸發的是你打完 `! ` 的那一刻 |
 | 觸發時送 `ClearSearchMessage` + `PerformCommandMessage` | 搜尋框被清空、跳進頁面。**所以 alias 觸發的命令拿不到觸發當下那句話** —— 但跳進去之後打的字,是我們自己 `DynamicListPage.UpdateSearchText` 收的,完全掌控。這正是頁面版能成立的原因 |
 
 **哪天 CmdPal 修好了想把 fallback 加回來**:整套實作在 git 歷史裡,
@@ -824,7 +824,7 @@ CmdPal 把使用者對命令做的設定 —— alias、全域快速鍵、釘選
 
 **現在這件事比以前更要緊**:快速記下唯一的入口就是使用者自己設的 alias,而 alias 存的鍵
 就是 `Id`。`Notelet.QuickCapturePage` 改一個字,使用者的 alias 當場失效,而且症狀是
-「打 `n ` 沒反應」—— 看不出跟改標題有任何關係。
+「打 `! ` 沒反應」—— 看不出跟改標題有任何關係。
 
 歷史教訓來自已經移除的 fallback,它的標題本來就跟著使用者打的字一直變:CmdPal 的
 settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的雜湊反推回去,正好是標題

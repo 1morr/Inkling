@@ -103,9 +103,9 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 
 本節 🤖 22 項 / 👀 1 項。
 
-先設好入口:設定 → Extensions → Notelet → `Notelet：快速記下` → Alias 填 `n`。
+先設好入口:設定 → Extensions → Notelet → `Notelet：快速記下` → Alias 填 `!`。
 
-- [ ] 🤖 主搜尋框打 `n` 空白 —— 搜尋框被清空,**直接進到快速記下頁**
+- [ ] 🤖 主搜尋框打 `!` 空白 —— 搜尋框被清空,**直接進到快速記下頁**
       (indirect alias 存的鍵是「alias + 空白」,所以是打完空白那一刻觸發)
 - [ ] 👀 快速記下頁的圖示是**燈泡**,跟頂層「快速記下」那一列同一個 ——
       **不是**「新增筆記」的加號(兩者刻意分開,見 `Icons.cs`)。
@@ -127,7 +127,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 
 相似筆記提醒(換成頁面才做得到的 —— fallback 只有一列):
 
-- [ ] 🤖 再打一次 `n ` 然後輸入 `測試想法一`,「記下」那一列底下出現
+- [ ] 🤖 再打一次 `! ` 然後輸入 `測試想法一`,「記下」那一列底下出現
       **已經記過的** 一節,列著剛才存的那則
 - [ ] 🤖 按方向鍵選中既有的那則、Enter,進的是**預覽頁**而不是又存一則新的
 - [ ] 🤖 剛存完一則之後立刻再打一樣的標題,新存的那則**馬上**出現在「已經記過的」裡
@@ -184,7 +184,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 - [ ] 🤖 **不該有任何前綴判斷**:打 `note about something` 照樣出現
       「記下：note about something」—— 進得了這一頁就代表意圖明確,不該再擋一次
 
-全域快速鍵(可選,設了就連 `n` 都省):
+全域快速鍵(可選,設了就連 `!` 都省):
 
 - [ ] 👀 給 `Notelet：快速記下` 設一個全域快速鍵,按下去直接進頁面,打字、Enter 一樣可用
       (要從 CmdPal 以外的視窗按才算數,腳本叫出來的面板本身就佔著前景)
@@ -195,7 +195,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 
 快速記下唯一的入口就是 alias,而 alias 存的鍵是命令的 `Id`。改標題不該影響它:
 
-- [ ] 🤖 設好 alias 之後 Reload 一次,`n ` **照樣**直接進快速記下頁
+- [ ] 🤖 設好 alias 之後 Reload 一次,`! ` **照樣**直接進快速記下頁
 - [ ] 🤖 重新部署(`deploy.ps1`)之後 alias 也還在
       (曾經有 bug:命令沒有設 `Id`,CmdPal 就拿 `ProviderId + DisplayTitle + Title + Subtitle`
       算一個雜湊當 Id。標題變一個字,使用者設過的 alias / 快速鍵 / 釘選就全部對不上。
