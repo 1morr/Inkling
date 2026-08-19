@@ -924,6 +924,40 @@ Reload 或重新登入才會重讀。
 它裡面 —— 佔位符 `{0}` 是什麼意思都寫在那裡。`ResourceParityTests` 會擋住只改一份、
 佔位符數目對不上、值是空的,以及「英文那份混進中文」。
 
+## 圖示
+
+原始檔是 `assets/icon/` 底下的三個 SVG,`src/Notelet/Assets/*.png` 全部由
+`tools/render-icons.ps1` 產生 —— **不要手改那些 PNG**,改圖示請改 SVG 再跑一次腳本。
+
+構圖是「一張小卡片 + 一根琥珀色游標」。游標是整張圖唯一的暖色,也是縮小之後最後
+才消失的東西 —— Notelet 的識別點不是「筆記」(那太多人用了),是「打字即存」。
+
+兩份方形原始檔的分工是刻意的:
+
+| 原始檔 | 用在 | 差別 |
+|---|---|---|
+| `notelet-tile.svg` | 150×150 以上 | 兩行文字 + 細游標 |
+| `notelet-tile-small.svg` | 88px 以下(工作列、CmdPal 清單) | 一行文字、筆畫加粗、卡片放大 |
+| `notelet-wide.svg` | 寬磚與啟動畫面 | 卡片縮到 70% 置中在寬底板上 |
+
+精細版那兩條文字線在 24px 只剩一像素高,會糊成一片灰;小尺寸版因此重畫過。
+這是圖示設計的常規做法(optical sizing),兩份的顏色與圓角比例一致,並排看得出是同一個。
+
+渲染器用的是 Chromium(Chrome 或 Edge,哪個在就用哪個):這台機器沒有 ImageMagick /
+Inkscape / rsvg,而 .NET 不會解 SVG。重點是它**以目標尺寸直接向量渲染**,不是先畫大張
+再縮圖,所以 24px 的邊緣是乾淨的。腳本裡有一個容易踩的地方:svg 的 CSS 尺寸要寫死成
+目標像素,不能用 `100vw`/`100vh` —— headless 的版面視窗寬度不等於 `--window-size`,
+用相對單位截出來會是偏移又放大的半張圖。
+
+### `Assets` 一定要 `CopyToOutputDirectory`
+
+`Notelet.csproj` 把圖示收成 `Content` **並且**設了 `CopyToOutputDirectory`。少了後者,
+那些 PNG 不會進建置輸出,而我們是以 loose file 註冊建置輸出當套件的 ——
+`AppxManifest.xml` 裡每一個 `Logo` 都會指向不存在的檔案。**症狀很騙人**:套件照樣註冊
+成功、擴展照樣能用,只是所有圖示變成 Windows 的預設灰方塊,看起來像「圖示做壞了」。
+`IconHelpers.FromRelativePath` 也一樣讀不到 —— 它組的是 `BaseDirectory` 底下的實體路徑,
+不走 MRT,所以 CmdPal 清單裡那一列也會是空的。
+
 ## 設定項
 
 | 設定 | 預設 | 說明 |
@@ -1002,6 +1036,9 @@ src/
     FolderPicker      IFileDialog + FOS_PICKFOLDERS,設定頁的「瀏覽…」
     Pages/            快速記下、記下後的預覽、清單、預覽、編輯、新增、刪除、設定
                       CardText  進 Adaptive Cards 的字串一律經過它做 JSON 跳脫
+assets/
+  icon/                圖示的原始檔(SVG)。src/Notelet/Assets 底下的 PNG 全部由
+                       tools/render-icons.ps1 從這裡產生,不要手改
 tests/
   Notelet.Core.Tests/  xUnit
 .claude/
@@ -1013,6 +1050,7 @@ tools/
   VerifyRegistration/  查 AppExtension 目錄的探針
   ApiDump/             印出 CmdPal Toolkit 型別的實際簽章
   cmdpal-ui.ps1        在真機上驅動 CmdPal 的畫面(UI Automation + 截圖)
+  render-icons.ps1     SVG → 套件要的那七張 PNG(用 Chromium 當向量渲染器)
 ```
 
 分層的重點:`Notelet.Core` 不知道 Command Palette 的存在。所有容易寫錯的邏輯

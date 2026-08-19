@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Notelet 的圖示,小尺寸版。用在 88px 以下的資產(工作列、開始選單、CmdPal 清單)。
+
+  為什麼要另一份:精細版那兩條文字線在 24px 只剩 1 像素高,會糊成一片灰。
+  小尺寸版因此只留一行文字,卡片放大、留白縮小、每一筆都加粗 ——
+  這是圖示設計的常規做法(optical sizing),不是偷懶。
+  兩份的顏色、圓角比例、底板完全一致,並排看得出是同一個圖示。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4348C4"/>
+      <stop offset="1" stop-color="#262A78"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" fill="url(#plate)"/>
+
+  <!-- 卡片比精細版大一圈(632x672),24px 下才不會小到看不出是張卡片 -->
+  <rect x="196" y="176" width="632" height="672" rx="88" fill="#F7F8FC"/>
+
+  <!-- 一行文字 + 游標,兩者中心都在 y=518。游標齊卡片內緣的右界。
+       游標刻意比精細版更寬(148 vs 52):24px 下它只剩 3.5 像素,再細就看不見了。
+       文字線也比精細版深一階,同樣是因為淺灰在小尺寸會直接融進卡片裡。 -->
+  <rect x="280" y="470" width="250" height="96" rx="48" fill="#AEB4DA"/>
+  <rect x="596" y="406" width="148" height="224" rx="74" fill="#FFB020"/>
+</svg>

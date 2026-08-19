@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Notelet 的圖示,精細版。用在 150x150 以上的資產。
+
+  構圖:一張小卡片浮在靛藍底板上,卡片第一行文字的末端立著一根琥珀色游標。
+  游標是整張圖唯一的暖色 —— 縮小之後它是最後才消失的東西,也是這個圖示的識別點:
+  Notelet 的重點不是「筆記」,是「打字即存」。卡片刻意留大量留白,呼應名字裡的 -let(小)。
+
+  座標系固定 1024 格,所有尺寸都從這裡向量縮放,不做點陣縮圖。
+  刻意不加陰影與描邊:模糊在 24px 會糊成一團,而且平塗在淺色與深色工作列上都站得住。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4348C4"/>
+      <stop offset="1" stop-color="#262A78"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底板。圓角 224/1024 ≈ 22%,跟 Windows 11 的 app 圖示同一個語彙。 -->
+  <rect width="1024" height="1024" rx="224" fill="url(#plate)"/>
+
+  <!-- 卡片 -->
+  <rect x="252" y="212" width="520" height="600" rx="64" fill="#F7F8FC"/>
+
+  <!-- 第一行文字 + 游標。兩者垂直置中在同一條線上(中心 y=512)。 -->
+  <rect x="316" y="456" width="292" height="44" rx="22" fill="#C3C8E4"/>
+  <rect x="632" y="428" width="52" height="100" rx="26" fill="#FFB020"/>
+
+  <!-- 第二行文字,短一截,讓卡片讀起來像「還沒寫完的筆記」 -->
+  <rect x="316" y="552" width="196" height="44" rx="22" fill="#C3C8E4"/>
+</svg>

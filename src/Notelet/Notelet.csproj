@@ -55,14 +55,20 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!--
+    套件的圖示。用萬用字元收,新增尺寸時不必回來改這裡 ——
+    那幾張 PNG 是 tools\render-icons.ps1 從 assets\icon\*.svg 產生的,不要手改。
+
+    CopyToOutputDirectory 是必要的:少了它 Content 不會進建置輸出,而我們是以
+    loose file 註冊建置輸出當套件(見 tools\deploy.ps1)。少了它 AppxManifest 裡
+    每一個 Logo 都指向不存在的檔案 —— 套件照樣註冊得起來,只是圖示全部變成
+    Windows 的預設灰方塊,而且 IconHelpers.FromRelativePath 也讀不到檔
+    (它組的是 BaseDirectory 底下的實體路徑,不走 MRT)。踩過一次,查了很久。
+  -->
   <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="Assets\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

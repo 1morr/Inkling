@@ -20,6 +20,8 @@ dotnet build src\Notelet\Notelet.csproj -p:Platform=x64 # 只建擴展
 dotnet run --project tools\ApiDump -- FallbackCommandItem CommandResult
 dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在哪
 
+pwsh -NoProfile -File tools\render-icons.ps1                # 改完圖示的 SVG 之後重產 PNG
+
 # 在真機上驗畫面(要 pwsh,一整串動作必須在同一次呼叫裡跑完)
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾是不是真資料
@@ -182,6 +184,11 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   原樣保留、沒有 front matter 的外來 `.md` 也要能列出來。
 - 改了指令、設定項、資料格式或對外行為,同一輪更新 `README.md` 與
   `docs/manual-test-checklist.md`。
+
+- **圖示的原始檔是 `assets/icon/*.svg`**,`src/Notelet/Assets/*.png` 是
+  `tools/render-icons.ps1` 產生的,不要手改 PNG。那些 PNG 必須帶
+  `CopyToOutputDirectory`(見 `Notelet.csproj` 的註解)—— 少了它套件照樣註冊得起來,
+  只是所有圖示變成 Windows 的預設灰方塊,而且 `IconHelpers.FromRelativePath` 讀不到檔。
 
 工具面的地雷:
 
