@@ -34,14 +34,6 @@ internal static partial class FolderPicker
 
     private const uint ClsctxInprocServer = 0x1;
 
-    /// <summary>不進工作列、不進 Alt+Tab 的視窗。</summary>
-    private const uint WsExToolWindow = 0x00000080;
-
-    private const uint WsPopup = 0x80000000;
-
-    private const int SmScreenWidth = 0;
-    private const int SmScreenHeight = 1;
-
     /// <summary>對話框最多等幾毫秒才放棄把它拉到前景 —— 見 <see cref="PullToFrontWhenItAppears"/>。</summary>
     private const int PullToFrontTimeoutMs = 5000;
 
@@ -134,8 +126,6 @@ internal static partial class FolderPicker
             _ = Marshal.Release(native);
         }
 
-        var owner = CreateHiddenOwner();
-
         try
         {
             dialog.GetOptions(out var options);
@@ -145,7 +135,15 @@ internal static partial class FolderPicker
 
             PullToFrontWhenItAppears();
 
-            var shown = dialog.Show(owner);
+            // owner 刻意傳 0(無主視窗),不傳 CmdPal 的 HWND。
+            // CmdPal 主視窗一失焦就會把自己藏起來(MainWindow 的 Deactivated → HideWindow,
+            // 沒有開關可以關掉),而 IFileDialog 會 EnableWindow(owner, FALSE) 做 modal ——
+            // 把一個馬上要消失的視窗設成 owner,對話框的下場只能靠運氣。
+            //
+            // 代價是這個對話框會拿到自己的工作列按鈕(圖示是套件的 Square44x44Logo),
+            // 但那是**刻意留著的退路**:萬一 PullToFrontWhenItAppears 沒把它拉上來,
+            // 使用者至少還點得到它。
+            var shown = dialog.Show(IntPtr.Zero);
 
             if (shown == ErrorCancelled)
             {
@@ -165,55 +163,9 @@ internal static partial class FolderPicker
         }
         finally
         {
-            if (owner != IntPtr.Zero)
-            {
-                // 一定要在建立它的這條執行緒上收掉。
-                _ = DestroyWindow(owner);
-            }
-
             // COM 物件不會等 GC 才放掉 —— 這個進程活得跟 CmdPal 一樣久。
             (dialog as IDisposable)?.Dispose();
         }
-    }
-
-    /// <summary>
-    /// 對話框的主人:一個永遠不顯示的 tool window。
-    ///
-    /// 為什麼要有它:**沒有 owner 的頂層視窗會拿到自己的工作列按鈕**,而這個進程在工作列上的
-    /// 身分是 MSIX 套件的圖示 —— 目前那還是 Visual Studio 模板留下的空白方框。掛上 owner
-    /// 之後對話框就不再是「無主的頂層視窗」,工作列不給它按鈕,也不會多一個看不懂的圖示。
-    ///
-    /// 為什麼不拿 CmdPal 的視窗當 owner:<c>IFileDialog</c> 會 <c>EnableWindow(owner, FALSE)</c>
-    /// 做 modal,而 CmdPal 主視窗一失焦就自己藏起來(沒有開關可以關掉)——
-    /// 把一個馬上要消失、而且被我們停用的視窗設成 owner,下場只能靠運氣。
-    ///
-    /// 用內建的 "STATIC" 類別,省掉註冊 window class 的一整套東西(WNDCLASSEX + wndproc 位址)。
-    /// 大小刻意跟目前的前景視窗一樣:對話框會以 owner 為中心擺位,給 0×0 的話它會貼到螢幕左上角。
-    /// </summary>
-    private static IntPtr CreateHiddenOwner()
-    {
-        var anchor = GetForegroundWindow();
-
-        if (anchor == IntPtr.Zero || GetWindowRect(anchor, out var bounds) == 0)
-        {
-            // 抓不到前景視窗(理論上不會)就拿主螢幕當範圍,至少會落在螢幕中央。
-            bounds = new WindowRect { Right = GetSystemMetrics(SmScreenWidth), Bottom = GetSystemMetrics(SmScreenHeight) };
-        }
-
-        // 沒有 WS_VISIBLE,所以從頭到尾不會被畫出來。
-        return CreateWindowEx(
-            WsExToolWindow,
-            "STATIC",
-            null,
-            WsPopup,
-            bounds.Left,
-            bounds.Top,
-            bounds.Right - bounds.Left,
-            bounds.Bottom - bounds.Top,
-            IntPtr.Zero,
-            IntPtr.Zero,
-            IntPtr.Zero,
-            IntPtr.Zero);
     }
 
     /// <summary>對話框一開就停在使用者目前設定的資料夾,而不是上次別的程式用過的位置。</summary>
@@ -379,30 +331,6 @@ internal static partial class FolderPicker
 
     [LibraryImport("user32.dll")]
     private static partial void SwitchToThisWindow(IntPtr window, [MarshalAs(UnmanagedType.Bool)] bool altTab);
-
-    [LibraryImport("user32.dll", EntryPoint = "CreateWindowExW", StringMarshalling = StringMarshalling.Utf16)]
-    private static partial IntPtr CreateWindowEx(
-        uint exStyle, string className, string? windowName, uint style,
-        int x, int y, int width, int height,
-        IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
-
-    [LibraryImport("user32.dll")]
-    private static partial int DestroyWindow(IntPtr window);
-
-    [LibraryImport("user32.dll")]
-    private static partial int GetWindowRect(IntPtr window, out WindowRect bounds);
-
-    [LibraryImport("user32.dll")]
-    private static partial int GetSystemMetrics(int index);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WindowRect
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
 }
 
 /// <summary>
