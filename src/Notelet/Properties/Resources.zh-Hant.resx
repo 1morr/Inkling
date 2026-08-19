@@ -113,7 +113,7 @@
     <value>瀏覽與搜尋筆記</value>
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
-    <value>打字直接存成筆記,分隔符後面接內文;設個 alias 更快</value>
+    <value>打字直接存成筆記,分隔符後面接內文</value>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
     <value>Notelet：新增筆記</value>

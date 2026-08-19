@@ -115,8 +115,8 @@
     <value>Browse and search notes</value>
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
-    <value>Type to save a note; the body goes after the separator. Tip: set an alias</value>
-    <comment>刻意不寫出實際的分隔符:那是可以改的設定,而頂層命令的副標不會跟著更新。後半句是 alias 的提示 —— 「打字→Enter」成立的前提是使用者自己設了 alias,而那個入口(CmdPal 設定 → Extensions → Notelet → 這個命令)並不顯眼,產品內只有這裡會告訴他。</comment>
+    <value>Type to save a note; the body goes after the separator</value>
+    <comment>刻意不寫出實際的分隔符:那是可以改的設定,而頂層命令的副標不會跟著更新。也刻意不放 alias 的提示:副標永遠顯示,而 alias 只需要學一次,而且這個命令沒有 alias 照樣能用(選中按 Enter 就進去了)—— 那件事寫在 README。</comment>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
     <value>Notelet: New note</value>
