@@ -73,16 +73,49 @@ public class ResourceParityTests
     /// <summary>
     /// 中性那一份是英文。這條擋的是「照著繁中改了英文那一份」——
     /// 中性同時也是所有非中文使用者看到的東西,混進中文不會有人回報。
+    /// 表意文字之外,中文標點(。、「」)與全形英數混進去一樣是漏翻。
     /// </summary>
     [Fact]
     public void Neutral_IsNotChinese()
     {
         foreach (var (key, value) in Load(NeutralFileName))
         {
-            Assert.DoesNotMatch(@"\p{IsCJKUnifiedIdeographs}", value);
+            if (!MayContainCjkCharacters.Contains(key))
+            {
+                Assert.DoesNotMatch(
+                    @"[\p{IsCJKUnifiedIdeographs}\p{IsCJKSymbolsandPunctuation}\p{IsHalfwidthandFullwidthForms}]",
+                    value);
+            }
+
             Assert.NotEqual(string.Empty, key);
         }
     }
+
+    /// <summary>
+    /// 翻譯那份不能整份留英文 —— 其他檢查只看 key 與佔位符,一條都沒翻也過得了,
+    /// 而那正是這份清單要擋的「只翻一半」的極端形狀。
+    /// 不要求每條都含中文(快速鍵組合、專有名詞可以留英文),但多數該含。
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(TranslatedFileNames))]
+    public void Translation_IsActuallyTranslated(string fileName)
+    {
+        var values = Load(fileName).Values;
+        var withCjk = values.Count(v => Regex.IsMatch(v, @"\p{IsCJKUnifiedIdeographs}"));
+
+        Assert.True(
+            withCjk * 2 >= values.Count,
+            FormattableString.Invariant($"{fileName} 只有 {withCjk}/{values.Count} 條含中文,疑似整份沒翻"));
+    }
+
+    /// <summary>
+    /// 合理含有全形 / CJK 字元的 key:SettingSeparatorDescription 整條就是在向使用者
+    /// 解釋「全形與半形分隔符視為同一個」,例子非用全形字元不可。
+    /// </summary>
+    private static readonly HashSet<string> MayContainCjkCharacters = new(StringComparer.Ordinal)
+    {
+        "SettingSeparatorDescription",
+    };
 
     private static void AssertNoEmptyValues(string fileName)
     {
