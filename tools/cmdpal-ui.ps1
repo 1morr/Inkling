@@ -10,6 +10,10 @@
     **一整串動作一定要在同一次呼叫裡跑完。** CmdPal 一失焦就自我隱藏,每啟動一個新的
     PowerShell 進程都可能把它打斷 —— 那正是要用 -Steps "a|b|c" 而不是連續呼叫三次的原因。
 
+    **不會把按鍵送到別的視窗。** SendInput 指定不了目標視窗,它送到的永遠是
+    當下的前景視窗 —— 所以每一個會送按鍵的步驟在送出**之前**都先確認
+    CmdPal 在前景,不在就中止整串,並把當時的前景視窗是誰印出來。
+
     要用 pwsh(PowerShell 7)跑。這個檔案是無 BOM 的 UTF-8,Windows PowerShell 5.1
     會照系統 ANSI 讀,中文全部變亂碼。
 
@@ -33,6 +37,9 @@
 
 .PARAMETER Retries
     整串動作最多嘗試幾次(含第一次),只有在 CmdPal 中途失焦時才會重跑。預設 4。
+    **重跑是從第一步開始**,已經送出的按鍵會再送一遍 —— 序列裡有存檔、
+    刪除這類有副作用的步驟時,重跑等於再做一次(真的重跑了會在輸出裡警告)。
+    全部試完還是沒跑完的話,腳本以**非零結束**。
 
 .EXAMPLE
     pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Notelet|wait:800|tree:6"
@@ -77,6 +84,20 @@ public class CmdPalNative {
     [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+
+    // 判斷「CmdPal 有沒有焦點」要看**前景視窗屬於哪個進程**,不是比對某一個 HWND。
+    // CmdPal 的 Ctrl+K 選單、確認框都是獨立的頂層視窗(標題不是 'Command Palette'),
+    // 比對 HWND 會把它們當成失焦 —— 然後整串白白重跑,而重跑會把按鍵再送一次。
+    public static uint ForegroundPid() {
+        uint pid = 0; GetWindowThreadProcessId(GetForegroundWindow(), out pid); return pid;
+    }
+
+    public static string ForegroundTitle() {
+        StringBuilder b = new StringBuilder(256);
+        GetWindowText(GetForegroundWindow(), b, 256);
+        return b.ToString();
+    }
 
     // 這個進程必須是 per-monitor DPI aware,否則截圖會缺一塊。
     //
@@ -191,10 +212,110 @@ function Find-CmdPalWindow {
     return $script:foundWindow
 }
 
+<#
+    CmdPal 有沒有焦點。
+
+    看的是**前景視窗的擁有進程**,不是某一個 HWND —— Ctrl+K 的選單、確認框都是
+    CmdPal 自己的獨立頂層視窗,比對 HWND 會把它們當成失焦(見 CmdPalNative.ForegroundPid)。
+    順帶一提這樣也不必每次都 EnumWindows。
+#>
 function Test-CmdPalForeground {
+    $targetPid = Get-CmdPalPid
+    if (-not $targetPid) { return $false }
+    if ([CmdPalNative]::ForegroundPid() -ne [uint32]$targetPid) { return $false }
+
+    # 前景屬於 CmdPal 還**不夠**:x-cmdpal:// 把進程拉起來之後有一段時間是
+    # 「進程在、面板還沒出來」,那時候前景視窗確實屬於 CmdPal,但打字會落在一個
+    # 看不見的視窗上,而且後面的 tree 只讀得到根節點。所以還要確認面板真的在。
+    return ((Find-CmdPalWindow -VisibleOnly) -ne [IntPtr]::Zero)
+}
+
+# 失焦時要能一眼看出「那串字跑到哪去了」,所以把前景視窗是誰印出來。
+function Get-ForegroundDescription {
+    $fgPid = [CmdPalNative]::ForegroundPid()
+    $name = (Get-Process -Id $fgPid -ErrorAction SilentlyContinue).ProcessName
+    if (-not $name) { $name = '?' }
+    return "$name (pid=$fgPid) '$([CmdPalNative]::ForegroundTitle())'"
+}
+
+<#
+    面板「可以用了」,而不只是「視窗在而且前景是 CmdPal」。
+
+    面板收起來的那一小段時間裡,前景進程還是 CmdPal、視窗也還 IsWindowVisible ——
+    純視窗層級的檢查分辨不出「開著」跟「正在關」。實測踩過兩次:show 因此判定
+    「已經開著」直接返回,然後打字打進一個正在關閉的面板;SetForegroundWindow 也
+    因此把一個正在關閉的面板拉到前景。兩次的症狀都是 tree 只讀得到根節點。
+
+    UIA 讀不讀得到子節點才是真的判準 —— 那也正是 Write-UiaTree 自己用的判準。
+#>
+function Test-CmdPalReady {
+    if (-not (Test-CmdPalForeground)) { return $false }
+
     $hwnd = Find-CmdPalWindow -VisibleOnly
     if ($hwnd -eq [IntPtr]::Zero) { return $false }
-    return ([CmdPalNative]::GetForegroundWindow() -eq $hwnd)
+
+    try {
+        $el = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
+        if ($null -eq $el) { return $false }
+        return ($null -ne [System.Windows.Automation.TreeWalker]::ControlViewWalker.GetFirstChild($el))
+    } catch {
+        # 畫面更新中 UIA 元素會失效 —— 那就是「還不能用」。
+        return $false
+    }
+}
+
+<#
+    等 CmdPal 的面板變成可用。輪詢而不是睡固定時間 —— 機器快慢差很多,
+    睡太短會讓後面的按鍵打進別的視窗,睡太長是白等。
+#>
+function Wait-CmdPalReady {
+    param([int]$TimeoutMs = 2000)
+
+    $script:CmdPalPid = $null   # 進程可能剛重啟過,快取住的 pid 會是舊的
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($true) {
+        if (Test-CmdPalReady) { return $true }
+        if ($sw.ElapsedMilliseconds -ge $TimeoutMs) { return $false }
+        Start-Sleep -Milliseconds 100
+    }
+}
+
+<#
+    **送任何按鍵之前**都要先過這一關。
+
+    SendInput 送到的是當下的前景視窗,不能指定目標。所以「CmdPal 不在前景」等於
+    「這串字會打進使用者正在用的別的視窗」—— 這個腳本曾經是先送再檢查,
+    檢查只是事後報告,而且失焦會整串重跑,同一串字被打進錯的地方好幾遍。
+
+    結果放在 $script:FocusOk,**不要改成回傳 $true / $false**。PowerShell 函式的
+    「回傳值」是它**整條輸出管線** —— 函式裡的 Write-Output 會跟 return 的布林值
+    併成一個陣列,`if (-not (Assert-CmdPalFocus ...))` 拿到的是非空陣列,判定永遠是
+    $false,守門等於完全放行,而且那幾行訊息還會被當成回傳值吞掉、根本印不出來。
+    這個坑真的踩過,症狀是「守門看起來在、實際上一次都沒擋」。
+
+    也不能改用 Write-Host:PS7 的 Write-Host 走 information stream,
+    `pwsh -File x.ps1 | Select-String` 看不到它 —— 而這份輸出就是拿來 grep 的。
+#>
+function Assert-CmdPalFocus {
+    param([string]$Verb)
+
+    $script:FocusOk = $true
+    if (Test-CmdPalReady) { return }
+
+    # 可能只是還在轉場(剛按完鍵、頁面正在切),給它一點時間再判定。
+    if (Wait-CmdPalReady -TimeoutMs 700) { return }
+
+    # 視窗還在、只是被壓在後面的話,拉一次看看。CmdPal 一失焦通常會自己隱藏,
+    # 所以這條多半救不回來,但成本只有一次呼叫。
+    $hwnd = Find-CmdPalWindow -VisibleOnly
+    if ($hwnd -ne [IntPtr]::Zero) {
+        [CmdPalNative]::SetForegroundWindow($hwnd) | Out-Null
+        if (Wait-CmdPalReady -TimeoutMs 500) { return }
+    }
+
+    Write-Output "  !! CmdPal 不在前景,'$Verb' **沒有送出**(送了會打進別的視窗)"
+    Write-Output "     目前前景:$(Get-ForegroundDescription)"
+    $script:FocusOk = $false
 }
 
 # ---------------------------------------------------------------- 鍵盤
@@ -295,23 +416,58 @@ function Show-CmdPal {
     for ($i = $modifiers.Length - 1; $i -ge 0; $i--) {
         $seq += [CmdPalNative]::Vk([ushort]$modifiers[$i], $true)
     }
-    [CmdPalNative]::Send($seq)
-    Start-Sleep -Milliseconds 900
-
-    # 熱鍵可能剛把 CmdPal 拉起來(PowerToys 重啟之後第一次就是這樣),那時候快取住的
-    # pid 還是 0 —— 不清掉的話後面每一步都會說「視窗不可見」。
-    $script:CmdPalPid = $null
-    if (-not (Get-CmdPalPid)) {
-        Start-Sleep -Milliseconds 1500
-        $script:CmdPalPid = $null
-    }
-
-    $hwnd = Find-CmdPalWindow -VisibleOnly
     $names = $modifiers | ForEach-Object {
         switch ($_) { 0x5B { 'Win' } 0x11 { 'Ctrl' } 0x12 { 'Alt' } 0x10 { 'Shift' } }
     }
     $chord = (@($names) + @('0x{0:X2}' -f $hotkey.code)) -join '+'
-    Write-Output "  熱鍵=$chord HWND=$hwnd"
+
+    <#
+        每一輪重新看狀態、做對應的動作,不是「送完熱鍵再看結果」。
+
+        1. 已經開著而且有焦點 -> **什麼都不做**。熱鍵是 toggle,這時候送等於把它關掉
+           (序列裡有第二個 show、或前一個動作已經把面板叫出來時就會踩到)。
+        2. 完全沒開 -> 送熱鍵。
+        3. 開著但焦點在別的視窗 -> 拉到前景,**不能送熱鍵**(那會關掉它)。
+
+        第 3 種還有一個陷阱:面板收起來的那一小段時間裡它仍然 visible,會被誤判成
+        「開著」。實測踩過 —— 拉到前景的是一個正在關閉的面板,UIA 只讀得到根節點。
+        所以要迴圈:下一輪重新看,那時候它已經真的不見了,就會走第 2 種送熱鍵。
+    #>
+    for ($round = 1; $round -le 3; $round++) {
+        if (Test-CmdPalReady) {
+            Write-Output "  熱鍵=$chord HWND=$(Find-CmdPalWindow -VisibleOnly)"
+            # 結果走 $script:FocusOk,理由見 Assert-CmdPalFocus 的註解。
+            $script:FocusOk = $true
+            return
+        }
+
+        # 這裡不能只看 IsWindowVisible:正在關閉的面板也還是 visible,
+        # 對它 SetForegroundWindow 拉到的是一個空殼。UIA 讀得到子節點才算真的開著。
+        $hwnd = Find-CmdPalWindow -VisibleOnly
+        if ($hwnd -ne [IntPtr]::Zero) {
+            try {
+                $probe = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
+                if ($null -eq [System.Windows.Automation.TreeWalker]::ControlViewWalker.GetFirstChild($probe)) {
+                    $hwnd = [IntPtr]::Zero
+                }
+            } catch { $hwnd = [IntPtr]::Zero }
+        }
+
+        if ($hwnd -eq [IntPtr]::Zero) {
+            if ($round -gt 1) { Write-Output '  面板還是沒開,再送一次熱鍵' }
+            [CmdPalNative]::Send($seq)
+            $null = Wait-CmdPalReady -TimeoutMs 2500
+        } else {
+            Write-Output '  面板開著但焦點在別的視窗,把它拉到前景'
+            [CmdPalNative]::SetForegroundWindow($hwnd) | Out-Null
+            $null = Wait-CmdPalReady -TimeoutMs 1200
+        }
+    }
+
+    $state = if ((Find-CmdPalWindow -VisibleOnly) -eq [IntPtr]::Zero) { '沒開' } else { '開著但拿不到焦點' }
+    Write-Output "  !! 試了 3 輪($chord),CmdPal 還是沒到前景(面板$state)"
+    Write-Output "     目前前景:$(Get-ForegroundDescription)"
+    $script:FocusOk = $false
 }
 
 # ---------------------------------------------------------------- 觀察
@@ -576,13 +732,22 @@ function Write-SettingsState {
 
 # ---------------------------------------------------------------- 主迴圈
 
+# 這一輪有沒有真的送出過按鍵。重跑是把整串從頭再做一次 —— 已經送出的按鍵會再送一遍,
+# 已經存檔的筆記會再存一則。擋不掉(腳本不知道哪一步有副作用),但至少要講出來。
+$inputSent = $false
+$lostFocus = $false
+
 for ($attempt = 1; $attempt -le $Retries; $attempt++) {
     if ($attempt -gt 1) {
         Write-Output "~~~ CmdPal 中途失焦,整串重跑(第 $attempt 次)~~~"
+        if ($inputSent) {
+            Write-Output '    !! 上一輪已經送出過按鍵 —— 重跑會再送一次,有副作用的步驟(存檔、刪除)會重複'
+        }
         Start-Sleep -Milliseconds 800
     }
 
     $lostFocus = $false
+    $inputSent = $false
 
     foreach ($step in ($Steps -split '\|')) {
         # 只切前導空白。**參數的尾隨空白不能動** —— alias 是「alias + 空白」才觸發的
@@ -597,11 +762,37 @@ for ($attempt = 1; $attempt -le $Retries; $attempt++) {
 
         Write-Output "### $verb $arg"
 
+        <#
+            **送出之前**先確認 CmdPal 在前景。
+
+            SendInput 指定不了目標視窗,它送到的永遠是當下的前景視窗 —— CmdPal 不在前景
+            就等於把這串字打進使用者正在用的別的視窗。這個腳本原本是先送再檢查,
+            檢查只是事後報告,而且失焦會整串重跑最多 $Retries 次,同一串字會被打進
+            錯的地方好幾遍。
+
+            tree / shot 不送按鍵,但 CmdPal 不在前景時 UIA 只讀得到根節點、截圖也沒有意義
+            (見 .claude/skills/verify-cmdpal-ui),所以一起擋。
+
+            esc 是例外,見下面。
+        #>
+        if ($verb -in @('type', 'key', 'tree', 'shot')) {
+            Assert-CmdPalFocus -Verb $verb
+            if (-not $script:FocusOk) { $lostFocus = $true; break }
+        }
+
+        # esc 的目的就是「退出去」。CmdPal 已經不在前景 = 已經退出去了,這時候送 Escape
+        # 只會打進別的視窗(關掉人家的對話框、取消人家編輯到一半的東西)。
+        # 跳過就好,不算失焦 —— 算失焦會讓整串為了一個本來就達成的目的白白重跑。
+        if ($verb -eq 'esc' -and -not (Test-CmdPalReady)) {
+            Write-Output '  CmdPal 已經不在前景,esc 跳過(面板應該已經收起來了)'
+            continue
+        }
+
         switch ($verb) {
-            'show' { Show-CmdPal }
-            'esc' { Send-Chord 'Escape'; Start-Sleep -Milliseconds 500 }
-            'type' { Send-Text $arg; Start-Sleep -Milliseconds 500 }
-            'key' { Send-Chord $arg; Start-Sleep -Milliseconds 600 }
+            'show' { Show-CmdPal; if (-not $script:FocusOk) { $lostFocus = $true } }
+            'esc' { Send-Chord 'Escape'; $inputSent = $true; Start-Sleep -Milliseconds 500 }
+            'type' { Send-Text $arg; $inputSent = $true; Start-Sleep -Milliseconds 500 }
+            'key' { Send-Chord $arg; $inputSent = $true; Start-Sleep -Milliseconds 600 }
             'wait' { Start-Sleep -Milliseconds ([int]$arg.Trim()) }
             'tree' { Write-UiaTree -Depth $(if ($arg.Trim()) { [int]$arg } else { 14 }) -MaxText $MaxText }
             'shot' { Save-CmdPalScreenshot -Path $arg }
@@ -614,15 +805,17 @@ for ($attempt = 1; $attempt -le $Retries; $attempt++) {
             default { throw "不認得的動作:$verb(整串中止)" }
         }
 
-        # 只有「還需要 CmdPal 在畫面上」的動作才檢查焦點 —— notes / log / state 純粹
-        # 讀檔案,esc 本來就可能把面板關掉。
-        $needsWindow = ($verb -in @('type', 'key', 'tree', 'shot'))
-        if ($needsWindow -and -not (Test-CmdPalForeground)) {
-            Write-Output "  !! CmdPal 在 '$verb' 這一步失去焦點"
-            $lostFocus = $true
-            break
-        }
+        # show 失敗要在這裡收掉(它的結果寫在 $lostFocus,不是靠事後檢查)。
+        if ($lostFocus) { break }
     }
 
     if (-not $lostFocus) { break }
+}
+
+# 全部重試都沒跑完就**以非零結束**。原本這裡什麼都不做,腳本照樣 exit 0 ——
+# 呼叫端(人或 agent)會以為驗證通過了,而實際上整串根本沒跑完。
+if ($lostFocus) {
+    throw "跑了 $Retries 次都沒能讓 CmdPal 保持在前景,整串沒有完成(沒有任何按鍵被送到別的視窗)。" +
+        "常見原因:有別的視窗一直在搶焦點(工作管理員、通知、另一個自動化腳本)," +
+        "或 CmdPal 的熱鍵被改掉了。上面每一次失敗都印了當時的前景視窗是誰。"
 }
