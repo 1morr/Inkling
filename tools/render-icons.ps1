@@ -15,6 +15,9 @@
       notelet-tile-small.svg  小尺寸版,88px 以下(工作列、CmdPal 清單)
       notelet-wide.svg        寬幅版,寬磚與啟動畫面
 
+    除了套件資產,另外產一張 CmdPal gallery 投稿用的圖示到 assets\gallery\icon.png
+    (256x256 PNG、≤100 KB —— microsoft/CmdPal-Extensions 的規則,SVG 不收)。
+
 .EXAMPLE
     pwsh -NoProfile -File tools\render-icons.ps1
 #>
@@ -26,6 +29,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $svgDir = Join-Path $repoRoot 'assets\icon'
 $outDir = Join-Path $repoRoot 'src\Notelet\Assets'
+$galleryDir = Join-Path $repoRoot 'assets\gallery'
 
 # Chrome 與 Edge 都是 Chromium,哪個在就用哪個。
 $browser = @(
@@ -42,6 +46,7 @@ Write-Host "渲染器: $browser" -ForegroundColor DarkGray
 
 # 檔名 → (原始檔, 寬, 高)。尺寸沿用 Visual Studio 模板產生的那一組,
 # 換掉檔案內容但不動檔名 —— Package.appxmanifest 與 csproj 都是照名字引用的。
+# Dir 不設就是 $outDir(套件資產);MaxKB 是 gallery 投稿的 100 KB 上限。
 $targets = @(
     @{ Name = 'Square44x44Logo.scale-200.png';                      Svg = 'notelet-tile-small.svg'; W = 88;   H = 88 }
     @{ Name = 'Square44x44Logo.targetsize-24_altform-unplated.png'; Svg = 'notelet-tile-small.svg'; W = 24;   H = 24 }
@@ -50,6 +55,8 @@ $targets = @(
     @{ Name = 'Square150x150Logo.scale-200.png';                    Svg = 'notelet-tile.svg';       W = 300;  H = 300 }
     @{ Name = 'Wide310x150Logo.scale-200.png';                      Svg = 'notelet-wide.svg';       W = 620;  H = 300 }
     @{ Name = 'SplashScreen.scale-200.png';                         Svg = 'notelet-wide.svg';       W = 1240; H = 600 }
+    # gallery 投稿用:microsoft/CmdPal-Extensions 要 PNG/JPEG、≤100 KB、建議 256x256。
+    @{ Name = 'icon.png';                                           Svg = 'notelet-tile.svg';       W = 256;  H = 256; Dir = $galleryDir; MaxKB = 100 }
 )
 
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "notelet-icons-$PID"
@@ -74,7 +81,9 @@ $svg
         $htmlPath = Join-Path $work ($target.Name + '.html')
         Set-Content -Path $htmlPath -Value $html -Encoding UTF8
 
-        $outPath = Join-Path $outDir $target.Name
+        $targetDir = if ($target.Dir) { $target.Dir } else { $outDir }
+        if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+        $outPath = Join-Path $targetDir $target.Name
 
         # 路徑用 [uri] 轉成 file:/// 形式,免得自己處理反斜線。
         # --default-background-color=00000000 讓沒被圖蓋到的地方保持透明。
@@ -96,11 +105,19 @@ $svg
             throw "$($target.Name) 尺寸不對:實際 ${width}x${height},預期 $($target.W)x$($target.H)"
         }
 
-        Write-Host ("  {0,-52} {1}x{2}" -f $target.Name, $width, $height) -ForegroundColor DarkGray
+        if ($target.MaxKB) {
+            $kb = $bytes.Length / 1KB
+            if ($kb -gt $target.MaxKB) {
+                throw "$($target.Name) 太大:$([math]::Round($kb, 1)) KB,超過 gallery 上限 $($target.MaxKB) KB"
+            }
+            Write-Host ("  {0,-52} {1}x{2}  ({3:N1} KB)" -f $target.Name, $width, $height, $kb) -ForegroundColor DarkGray
+        } else {
+            Write-Host ("  {0,-52} {1}x{2}" -f $target.Name, $width, $height) -ForegroundColor DarkGray
+        }
     }
 }
 finally {
     Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "`n圖示已更新:$outDir" -ForegroundColor Green
+Write-Host "`n圖示已更新:$outDir(套件資產)+ $galleryDir(gallery 投稿用)" -ForegroundColor Green

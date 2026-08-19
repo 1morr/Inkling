@@ -20,16 +20,19 @@
       esc             送 Esc(退一層頁面;在主頁等於關掉面板)
       type:<文字>     打字,走 Unicode 注入,中文與全形符號都可以
       key:<組合>      按鍵,例如 key:Enter / key:Ctrl+D / key:Ctrl+Shift+C
+                      (一次一組;不認得的按鍵會**中止整串**並以非零結束 —— 印個警告
+                      繼續跑的話,後面的 Enter 會落在沒預期的地方)
       wait:<毫秒>     等待
       tree[:<深度>]   dump UI Automation 樹(預設深度 14)
-      shot:<路徑>     截圖(PrintWindow,不受遮擋影響)
+      shot:<路徑>     截圖(PrintWindow,不受遮擋影響;**拍不到 Ctrl+K 的選單 popup**
+                      —— 那是獨立的頂層視窗,不在主視窗的內容裡,平台限制無解)
       toast           列出 CmdPal 的 toast 視窗狀態 —— 驗證「一個 toast 都不發」
       notes           列出目前設定的筆記資料夾內容
       log[:<行數>]    diagnostic.log 的尾巴(預設 20 行)
       state           兩份 settings.json 的摘要(Notelet 自己的 + CmdPal 那邊的)
 
 .PARAMETER Retries
-    整串動作在 CmdPal 中途失焦時重跑幾次。預設 4。
+    整串動作最多嘗試幾次(含第一次),只有在 CmdPal 中途失焦時才會重跑。預設 4。
 
 .EXAMPLE
     pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Notelet|wait:800|tree:6"
@@ -75,6 +78,29 @@ public class CmdPalNative {
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
 
+    // 這個進程必須是 per-monitor DPI aware,否則截圖會缺一塊。
+    //
+    // 螢幕縮放不是 100% 時(這台是 150%),DPI-unaware 的進程拿到的 GetWindowRect 是
+    // Windows 虛擬化過的**邏輯**座標(1200x720 的視窗回報成 800x480),而 PrintWindow
+    // 畫的是**實體**像素 —— 於是點陣圖只有 800x480、內容卻是照 1200 寬排的,
+    // 右邊與下面整片被切掉。而且它不會報錯,截出來的圖乍看還很正常,
+    // 只有拿去跟畫面對照才會發現少了東西。
+    //
+    // 用 SetProcessDpiAwarenessContext(Win10 1703+);拿不到就退回 SetProcessDPIAware
+    // (舊版 API,system-aware 而非 per-monitor,單螢幕情境夠用)。兩者都必須在
+    // 進程碰到任何視窗座標**之前**呼叫,設定之後不能改。
+    public const int DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
+
+    [DllImport("user32.dll")] private static extern bool SetProcessDpiAwarenessContext(IntPtr ctx);
+    [DllImport("user32.dll")] private static extern bool SetProcessDPIAware();
+
+    public static void MakeDpiAware() {
+        try {
+            if (SetProcessDpiAwarenessContext((IntPtr)DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)) { return; }
+        } catch (EntryPointNotFoundException) { }
+        try { SetProcessDPIAware(); } catch (EntryPointNotFoundException) { }
+    }
+
     // PrintWindow 抓的是視窗自己的內容,不是螢幕像素 —— CopyFromScreen 會抓到蓋在
     // 上面的那個視窗,而且在多螢幕 / 高 DPI 下座標還會對不上。
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
@@ -95,10 +121,27 @@ public class CmdPalNative {
 }
 "@
 
+# 進程一啟動就宣告 DPI 感知 —— 必須早於任何視窗座標的讀取(見 CmdPalNative.MakeDpiAware)。
+[CmdPalNative]::MakeDpiAware()
+
 # ---------------------------------------------------------------- 路徑與常數
 
 $CmdPalLocalState = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState'
-$NoteletLocalState = Join-Path $env:LOCALAPPDATA 'Packages\Notelet_bf0n0751x5hse\LocalState'
+
+# Package family name 不寫死:它由套件身分( Name + Publisher )推出,換身分之一個字
+# 就全變。寫死的話換完身分之後這裡會指向不存在的目錄,而 notes / log / state 讀不到
+# 檔案只會安靜跳過 —— 「看起來沒壞」比報錯更糟,所以動態取、取不到就直接中止。
+$NoteletLocalState = $null
+$noteletPackage = @(Get-AppxPackage -Name Notelet -ErrorAction SilentlyContinue)
+if ($noteletPackage.Count -gt 1) {
+    throw "找到不只一個 Notelet 套件($($noteletPackage.PackageFamilyName -join ', ')),請先清掉重複的。"
+}
+if ($noteletPackage.Count -eq 1) {
+    $NoteletLocalState = Join-Path $env:LOCALAPPDATA "Packages\$($noteletPackage[0].PackageFamilyName)\LocalState"
+} else {
+    Write-Output '  !! 找不到已註冊的 Notelet 套件(Get-AppxPackage -Name Notelet 是空的)——'
+    Write-Output '     notes / log / state 會讀不到東西。先跑 tools\deploy.ps1 註冊再來。'
+}
 
 # 視窗標題是寫死的英文,不跟著 Windows 顯示語言走(在 zh-TW 機器上實測仍是英文)。
 $MainWindowTitle = 'Command Palette'
@@ -119,9 +162,11 @@ function Get-CmdPalPid {
 <#
     照標題找 CmdPal 的頂層視窗。
 
-    不能用 (Get-Process ...).MainWindowHandle —— CmdPal 是 WinUI 3 應用,那個屬性
-    永遠是 0,連視窗開著的時候也是。同樣的原因,orca computer list-apps 整個看不到
-    CmdPal,--app pid:<CmdPal> 會回 app_not_found。
+    不能用 (Get-Process ...).MainWindowHandle 找主面板 —— CmdPal 是 WinUI 3 應用,
+    主面板不是它的「主視窗」,那個屬性平常是 0,連面板開著的時候也是。
+    (唯一的例外:設定視窗開著時 MainWindowHandle 會指向設定視窗 —— 拿它當依據
+    只會找到設定視窗,永遠找不到主面板。)同樣的原因,orca computer list-apps
+    整個看不到 CmdPal,--app pid:<CmdPal> 會回 app_not_found。
 #>
 function Find-CmdPalWindow {
     param([string]$Title = $MainWindowTitle, [switch]$VisibleOnly)
@@ -178,13 +223,14 @@ function Send-Chord {
                 'shift' { $modifiers += 0x10 }
                 'alt' { $modifiers += 0x12 }
                 'win' { $modifiers += 0x5B }
-                default { Write-Output "  !! 不認得的修飾鍵:$p" }
+                # 不認得就整串中止(throw 會讓腳本以非零結束):繼續跑等於把後面的
+                # 按鍵送進沒預期的狀態,那比直接失敗更難查。
+                default { throw "不認得的修飾鍵:$p(整串中止)" }
             }
         }
     }
     if (-not $VirtualKeys.ContainsKey($main)) {
-        Write-Output "  !! 不認得的按鍵:$main"
-        return
+        throw "不認得的按鍵:$main(整串中止)。key: 一次只吃一組組合,連按請拆成多個 step。"
     }
 
     $vk = $VirtualKeys[$main]
@@ -384,6 +430,18 @@ function Save-CmdPalScreenshot {
 
     $rect = New-Object CmdPalNative+RECT
     [CmdPalNative]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
+
+    # 視窗還在轉場時取到的 rect 會是中間狀態,截出來只有部分視窗。等 rect 連續兩次
+    # 讀到一樣的值再拍 —— 展開/收起動畫跑完之前尺寸一直在變。
+    for ($i = 0; $i -lt 10; $i++) {
+        Start-Sleep -Milliseconds 120
+        $again = New-Object CmdPalNative+RECT
+        [CmdPalNative]::GetWindowRect($hwnd, [ref]$again) | Out-Null
+        if ($again.Left -eq $rect.Left -and $again.Top -eq $rect.Top -and
+            $again.Right -eq $rect.Right -and $again.Bottom -eq $rect.Bottom) { break }
+        $rect = $again
+    }
+
     $width = $rect.Right - $rect.Left
     $height = $rect.Bottom - $rect.Top
     if ($width -le 0 -or $height -le 0) { Write-Output '  !! 視窗尺寸不合法'; return }
@@ -411,7 +469,7 @@ function Save-CmdPalScreenshot {
 <#
     看 toast 視窗在不在。
 
-    README〈刪除成功時一個 toast 都不發〉那條規矩就是靠這個驗的:CmdPal 的 toast 是
+    docs/design-notes.md〈刪除成功時一個 toast 都不發〉那條規矩就是靠這個驗的:CmdPal 的 toast 是
     **另一個頂層視窗**,它一出現就搶焦點,而主視窗一失焦就自我隱藏 —— 也就是
     「做完之後整個面板消失」的成因。要驗證某條路徑沒有發 toast,就在那個動作之後
     立刻跑這個。
@@ -429,11 +487,12 @@ function Write-ToastState {
     $mainVisible = (Find-CmdPalWindow -VisibleOnly) -ne [IntPtr]::Zero
     Write-Output "  toast 視窗:HWND=$toast 可見=$visible / 主視窗還在=$mainVisible"
     if ($visible) {
-        Write-Output '  !! 有 toast 跳出來 —— 主面板會跟著消失,見 README〈刪除成功時一個 toast 都不發〉'
+        Write-Output '  !! 有 toast 跳出來 —— 主面板會跟著消失,見 docs/design-notes.md〈刪除成功時一個 toast 都不發〉'
     }
 }
 
 function Get-NotesDirectory {
+    if (-not $NoteletLocalState) { return $null }
     $settingsPath = Join-Path $NoteletLocalState 'settings.json'
     if (-not (Test-Path $settingsPath)) { return $null }
     try {
@@ -460,6 +519,7 @@ function Write-NotesFolder {
 function Write-DiagnosticLog {
     param([int]$Lines = 20)
 
+    if (-not $NoteletLocalState) { Write-Output '  !! Notelet 套件沒註冊,讀不到 diagnostic.log'; return }
     $logPath = Join-Path $NoteletLocalState 'diagnostic.log'
     $switchPath = Join-Path $NoteletLocalState 'diagnostic.on'
     if (-not (Test-Path $switchPath)) {
@@ -472,12 +532,16 @@ function Write-DiagnosticLog {
 }
 
 function Write-SettingsState {
-    $noteletSettings = Join-Path $NoteletLocalState 'settings.json'
     Write-Output '  -- Notelet --'
-    if (Test-Path $noteletSettings) {
-        Get-Content $noteletSettings -Raw -Encoding UTF8 | ForEach-Object { "    $_" }
+    if (-not $NoteletLocalState) {
+        Write-Output '    !! Notelet 套件沒註冊,讀不到設定'
     } else {
-        Write-Output '    (還沒有 settings.json —— 擴展從來沒存過設定)'
+        $noteletSettings = Join-Path $NoteletLocalState 'settings.json'
+        if (Test-Path $noteletSettings) {
+            Get-Content $noteletSettings -Raw -Encoding UTF8 | ForEach-Object { "    $_" }
+        } else {
+            Write-Output '    (還沒有 settings.json —— 擴展從來沒存過設定)'
+        }
     }
 
     Write-Output '  -- CmdPal(只挑跟 Notelet 有關的)--'
@@ -545,7 +609,9 @@ for ($attempt = 1; $attempt -le $Retries; $attempt++) {
             'notes' { Write-NotesFolder }
             'log' { Write-DiagnosticLog -Lines $(if ($arg.Trim()) { [int]$arg } else { 20 }) }
             'state' { Write-SettingsState }
-            default { Write-Output "  !! 不認得的動作:$verb" }
+            # 不認得就整串中止(throw 會讓腳本以非零結束),跟 key: 同一個理由:
+            # 印個警告繼續跑的話,後面的步驟會落在沒預期的地方,那比直接失敗更難查。
+            default { throw "不認得的動作:$verb(整串中止)" }
         }
 
         # 只有「還需要 CmdPal 在畫面上」的動作才檢查焦點 —— notes / log / state 純粹
