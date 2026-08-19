@@ -54,7 +54,4 @@ public interface INoteRepository
     /// 而且使用者不知道刪到哪裡。
     /// </summary>
     int DeleteMany(IEnumerable<Note> notes);
-
-    /// <summary>丟掉快取,下次讀取時重新掃描資料夾。</summary>
-    void Invalidate();
 }

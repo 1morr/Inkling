@@ -1,3 +1,6 @@
+using System.Runtime.Versioning;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Xunit;
 
 namespace Notelet.Core.Tests;
@@ -10,6 +13,156 @@ public class FileSystemNoteRepositoryTests
     {
         clock = new FixedTimeProvider(Noon);
         return new FileSystemNoteRepository(temp.Options, clock);
+    }
+
+    [Fact]
+    public void GetAll_ExternalFileStartingWithCodeFence_TitleComesFromCodeContent()
+    {
+        // 使用者現有的筆記就有以 ``` 開頭的;標題變成三個反引號、副標顯示圍欄行
+        // 是實機確認過的缺陷。圍欄內的第一行內容才是有意義的標題與摘要。
+        using var temp = new TempDirectory();
+        temp.WriteFile("external-codefence.md", "```python\nimport os\n```");
+
+        using var repository = CreateRepository(temp, out _);
+        var note = Assert.Single(repository.GetAll());
+
+        Assert.Equal("import os", note.Title);
+
+        // 唯一一行內容已經被拿去當標題,副標就該留空,而不是重複一次。
+        Assert.Equal(string.Empty, note.Summary);
+    }
+
+    [Fact]
+    public void GetAll_ExternalFile_TitleAndSummaryAreNotTheSameLine()
+    {
+        // DeriveTitle 取第一行當標題,Summary 若也取第一行,清單上同一句話會出現兩次。
+        using var temp = new TempDirectory();
+        temp.WriteFile("external-plain.md", "# 外來標題\n\n這是別的工具寫的檔案。");
+
+        using var repository = CreateRepository(temp, out _);
+        var note = Assert.Single(repository.GetAll());
+
+        Assert.Equal("外來標題", note.Title);
+        Assert.Equal("這是別的工具寫的檔案。", note.Summary);
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")] // ACL 是 Windows-only API;這個 repo 本來就只跑 Windows
+    public void GetAll_InaccessibleSubdirectory_StillReturnsOtherNotes()
+    {
+        // 筆記資料夾指到 Documents 之類的位置時,底下很可能有進不去的子目錄
+        // (deny-read 的 junction、權限不對的資料夾)。一個進不去不該讓整份清單全滅。
+        using var temp = new TempDirectory();
+        temp.WriteFile("正常.md", "---\nid: ok\ntitle: 正常筆記\n---\n\n內文");
+        var hidden = temp.WriteFile(
+            Path.Combine("進不去", "藏起來.md"),
+            "---\nid: hidden\ntitle: 藏起來\n---\n\n內文");
+
+        // 只 deny 列目錄(ReadData),留著 ReadAttributes,Directory.Exists 才還是 true,
+        // 這樣走的是「枚舉途中被拒」那條路,而不是「目錄不存在」。
+        var subdir = new DirectoryInfo(Path.GetDirectoryName(hidden)!);
+        var acl = subdir.GetAccessControl();
+        using var identity = WindowsIdentity.GetCurrent();
+        var deny = new FileSystemAccessRule(identity.Name, FileSystemRights.ReadData, AccessControlType.Deny);
+        acl.AddAccessRule(deny);
+        subdir.SetAccessControl(acl);
+
+        try
+        {
+            using var repository = CreateRepository(temp, out _);
+            var note = Assert.Single(repository.GetAll());
+
+            Assert.Equal("正常筆記", note.Title);
+        }
+        finally
+        {
+            // 不把 Deny 拿掉的話,TempDirectory 收尾會刪不掉這個子目錄。
+            acl.RemoveAccessRuleSpecific(deny);
+            subdir.SetAccessControl(acl);
+        }
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")] // ACL 是 Windows-only API;這個 repo 本來就只跑 Windows
+    public void GetAll_UnreadableNotesDirectory_ReturnsEmptyInsteadOfThrowing()
+    {
+        // 設定頁允許填任意路徑,「整個資料夾列不出來」是使用者自己製造得出來的狀態。
+        // 那該退化成空清單,而不是讓例外一路穿出頁面的 GetItems。
+        using var temp = new TempDirectory();
+
+        var dir = new DirectoryInfo(temp.Path);
+        var acl = dir.GetAccessControl();
+        using var identity = WindowsIdentity.GetCurrent();
+        var deny = new FileSystemAccessRule(identity.Name, FileSystemRights.ReadData, AccessControlType.Deny);
+        acl.AddAccessRule(deny);
+        dir.SetAccessControl(acl);
+
+        try
+        {
+            using var repository = CreateRepository(temp, out _);
+            Assert.Empty(repository.GetAll());
+        }
+        finally
+        {
+            acl.RemoveAccessRuleSpecific(deny);
+            dir.SetAccessControl(acl);
+        }
+    }
+
+    [Fact]
+    public async Task Changed_FiresAgain_AfterDirectoryIsDeletedAndRecreated()
+    {
+        // OneDrive 重新佈建、或使用者自己砍掉再建資料夾之後,舊 watcher 監看的是
+        // 已經消失的目錄,永遠不會再發事件 —— 不拆掉的話,之後所有外部異動都無聲消失。
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        repository.GetAll(); // watcher 在這裡掛上
+
+        Directory.Delete(temp.Path, recursive: true);
+        repository.Invalidate();
+        Assert.Empty(repository.GetAll()); // 目錄不在:回傳空,同時該把死掉的 watcher 拆掉
+
+        Directory.CreateDirectory(temp.Path);
+        repository.GetAll(); // 目錄回來了,這裡要重新掛上 watcher
+
+        // 刪除那陣事件的去抖動通知可能還在排隊(去抖動是 250ms),等它過去再訂閱,
+        // 免得把舊事件誤當成後面那個檔案觸發的。
+        await Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
+
+        using var fired = new SemaphoreSlim(0, 1);
+        repository.Changed += (_, _) => fired.Release();
+
+        temp.WriteFile("later.md", "---\nid: later\ntitle: 後來新增\n---\n\n內文");
+
+        Assert.True(
+            await fired.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken),
+            "資料夾刪除再重建之後,外部新增檔案沒有收到 Changed 事件");
+    }
+
+    [Fact]
+    public void Create_IdAlreadyTaken_PicksAnotherId()
+    {
+        // 16-bit 後綴同一秒內有 1/65536 的碰撞率;撞了兩則筆記共用一個 id,
+        // Update / Delete 會作用在錯的那則上。撞了就要重抽。
+        using var temp = new TempDirectory();
+        temp.WriteFile("既有.md", "---\nid: taken-id\ntitle: 既有\n---\n\n內文");
+
+        var attempts = 0;
+        string Generate(DateTimeOffset _)
+        {
+            attempts++;
+            return attempts == 1 ? "taken-id" : "fresh-id";
+        }
+
+        using var repository = new FileSystemNoteRepository(
+            temp.Options, new FixedTimeProvider(Noon), idGenerator: Generate);
+
+        var note = repository.Create("新筆記", string.Empty);
+
+        Assert.Equal(2, attempts);
+        Assert.Equal("fresh-id", note.Id);
+        Assert.Equal(2, repository.GetAll().Count);
     }
 
     [Fact]

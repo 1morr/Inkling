@@ -20,18 +20,24 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     private readonly string _directory;
     private readonly TimeProvider _timeProvider;
     private readonly IFileDeleter _fileDeleter;
+    private readonly Func<DateTimeOffset, string> _idGenerator;
     private readonly Lock _gate = new();
     private readonly System.Threading.Timer _changeDebounce;
 
     private List<Note>? _cache;
     private FileSystemWatcher? _watcher;
-    private bool _disposed;
+    private volatile bool _disposed;
     private int _version;
 
+    /// <param name="idGenerator">
+    /// 產生筆記 id 的方法,預設是 <see cref="NoteFileName.CreateId"/>。
+    /// 是測試用的接縫:碰撞重抽的迴圈要有辦法確定性地製造碰撞才測得到。
+    /// </param>
     public FileSystemNoteRepository(
         NoteletOptions options,
         TimeProvider? timeProvider = null,
-        IFileDeleter? fileDeleter = null)
+        IFileDeleter? fileDeleter = null,
+        Func<DateTimeOffset, string>? idGenerator = null)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -41,9 +47,18 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         // 預設是直接刪。UI 層會換成送資源回收筒的那一個 —— 見 IFileDeleter 上的說明。
         _fileDeleter = fileDeleter ?? new PermanentFileDeleter();
 
+        _idGenerator = idGenerator ?? NoteFileName.CreateId;
+
         // 先建起來但不啟動;每次檔案異動就往後推遲觸發時間。
         _changeDebounce = new System.Threading.Timer(
-            _ => Changed?.Invoke(this, EventArgs.Empty),
+            _ =>
+            {
+                // 回呼在執行緒池上跑,Dispose 之後仍可能被叫到 —— 那時訂閱者多半已死。
+                if (!_disposed)
+                {
+                    Changed?.Invoke(this, EventArgs.Empty);
+                }
+            },
             null,
             Timeout.Infinite,
             Timeout.Infinite);
@@ -70,15 +85,22 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
                 return _cache;
             }
 
-            var loaded = Load();
+            // 先掛 watcher 再掃磁碟:反過來的話,掃描完成到 watcher 啟用之間進來的
+            // 檔案兩邊都漏掉,之後沒有任何東西會讓快取失效,那個檔案一直隱形。
+            // 掃描期間收到事件反而安全 —— 失效旗標會讓快取重來一次。
             EnsureWatcher();
+            var loaded = Load();
 
-            // 資料夾還不存在時不要快取空結果:第一次用 Notelet 的時候它本來就不存在,
-            // 而 watcher 也還掛不上去,沒有任何東西會來通知我們它出現了。
-            // 快取住的話,資料夾之後被建出來(第一次記筆記、或別台機器同步下來)
-            // 就再也讀不到內容。每次多一個 Directory.Exists 的成本可以忽略。
             if (!Directory.Exists(_directory))
             {
+                // watcher 監看的目錄已經消失,它永遠不會再發事件。拆掉,
+                // 目錄之後重建(OneDrive 重新佈建、使用者自己建回來)時這裡才掛得上新的。
+                DisposeWatcherUnlocked();
+
+                // 資料夾還不存在時不要快取空結果:第一次用 Notelet 的時候它本來就不存在,
+                // 而 watcher 也還掛不上去,沒有任何東西會來通知我們它出現了。
+                // 快取住的話,資料夾之後被建出來(第一次記筆記、或別台機器同步下來)
+                // 就再也讀不到內容。每次多一個 Directory.Exists 的成本可以忽略。
                 return loaded;
             }
 
@@ -100,7 +122,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         var note = new Note
         {
-            Id = NoteFileName.CreateId(now),
+            Id = GenerateUniqueId(now),
             Title = title.Trim(),
             Body = body,
             Created = now,
@@ -112,6 +134,22 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         Invalidate();
 
         return note;
+    }
+
+    /// <summary>
+    /// id 的後綴只有 16-bit,同一秒內兩次 Create 各有 1/65536 的碰撞率;撞了兩則筆記
+    /// 共用一個 id,GetById 只回第一筆,Update / Delete 會作用在錯的那則上。
+    /// 撞了就重抽 —— 這也順便擋住「別台機器同一秒同步下來同名 id」的情境。
+    /// </summary>
+    private string GenerateUniqueId(DateTimeOffset now)
+    {
+        var id = _idGenerator(now);
+        while (GetById(id) is not null)
+        {
+            id = _idGenerator(now);
+        }
+
+        return id;
     }
 
     public Note Update(string id, string title, string body)
@@ -176,10 +214,19 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         return deleted;
     }
 
+    /// <summary>
+    /// 丟掉快取,下次讀取時重新掃描資料夾,並立刻通知訂閱者。
+    ///
+    /// 刻意不在 <see cref="INoteRepository"/> 上:介面上的外部變動通知已由
+    /// <see cref="INoteRepository.Changed"/> 與 <see cref="INoteRepository.Version"/> 涵蓋,
+    /// UI 層沒有任何透過介面呼叫它的需求 —— 留著只會逼每個未來的替代實作
+    /// 替它發明一個語意。目前只有這個類自己的寫入路徑與測試在用。
+    ///
+    /// 由 Notelet 自己的寫入(Create / Update)觸發,一次操作就一個事件,
+    /// 不需要去抖動,而且要立刻通知 —— 使用者剛按下儲存,畫面就該跟上。
+    /// </summary>
     public void Invalidate()
     {
-        // 由 Notelet 自己的寫入(Create / Update)觸發,一次操作就一個事件,
-        // 不需要去抖動,而且要立刻通知 —— 使用者剛按下儲存,畫面就該跟上。
         InvalidateCore(notifyImmediately: true);
     }
 
@@ -210,19 +257,36 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         var notes = new List<Note>();
 
-        // 連子資料夾一起掃:使用者用檔案總管把筆記分門別類是很自然的事,
-        // 只掃頂層的話那些筆記會無聲消失,查都查不出來。新筆記一律寫在根目錄。
-        foreach (var path in Directory.EnumerateFiles(_directory, "*" + NoteFileName.Extension, SearchOption.AllDirectories))
+        try
         {
-            var note = TryReadNote(path);
-            if (note is not null)
+            // 連子資料夾一起掃:使用者用檔案總管把筆記分門別類是很自然的事,
+            // 只掃頂層的話那些筆記會無聲消失,查都查不出來。新筆記一律寫在根目錄。
+            //
+            // IgnoreInaccessible:進不去的子目錄(Documents 底下 deny-read 的 junction、
+            // 權限不對的資料夾)靜靜跳過 —— 一個壞子目錄不該讓整份清單列不出來。
+            var enumeration = new EnumerationOptions
             {
-                notes.Add(note);
-            }
-            else
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+            };
+
+            foreach (var path in Directory.EnumerateFiles(_directory, "*" + NoteFileName.Extension, enumeration))
             {
-                SkippedFileCount++;
+                var note = TryReadNote(path);
+                if (note is not null)
+                {
+                    notes.Add(note);
+                }
+                else
+                {
+                    SkippedFileCount++;
+                }
             }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // 目錄本身枚舉不了:Exists 之後被刪、根目錄沒有權限、OneDrive 把同步根抽掉。
+            // 回傳已掃到的部分,總比讓例外穿出頁面的 GetItems、整頁變成擴展錯誤好。
         }
 
         notes.Sort((a, b) => b.Updated.CompareTo(a.Updated));
@@ -306,16 +370,11 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
     private static string DeriveTitle(string body, string path)
     {
-        foreach (var line in body.Split('\n'))
-        {
-            var trimmed = line.Trim().TrimStart('#').Trim();
-            if (trimmed.Length > 0)
-            {
-                return trimmed.Length > 120 ? trimmed[..120] : trimmed;
-            }
-        }
+        var first = NoteBody.FirstContentLine(body);
 
-        return Path.GetFileNameWithoutExtension(path);
+        return first is not null
+            ? (first.Length > NoteBody.MaxLineLength ? first[..NoteBody.MaxLineLength] : first)
+            : Path.GetFileNameWithoutExtension(path);
     }
 
     /// <summary>
@@ -369,8 +428,9 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             watcher.Deleted += OnFileSystemChanged;
             watcher.Renamed += OnFileSystemChanged;
 
-            // 事件緩衝區溢位時前面的事件會遺失,唯一安全的反應就是整個重掃。
-            watcher.Error += (_, _) => OnFileSystemChanged(this, null!);
+            // 事件緩衝區溢位時前面的事件會遺失,而且這個 watcher 的狀態已不可信 ——
+            // 拆掉讓下一次 GetAll 重掃並重新掛上,而不是繼續信它。
+            watcher.Error += OnWatcherError;
 
             watcher.EnableRaisingEvents = true;
             _watcher = watcher;
@@ -382,16 +442,52 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         }
     }
 
+    private void OnWatcherError(object sender, ErrorEventArgs e)
+    {
+        OnFileSystemChanged(sender, null!);
+
+        FileSystemWatcher? stale;
+        lock (_gate)
+        {
+            stale = _watcher;
+            _watcher = null;
+        }
+
+        // FileSystemWatcher 從自己的事件回呼裡同步 Dispose 有死結回報,丟給執行緒池收。
+        if (stale is not null)
+        {
+            ThreadPool.QueueUserWorkItem(static w => ((FileSystemWatcher)w!).Dispose(), stale);
+        }
+    }
+
+    /// <summary>呼叫端必須已持有 <see cref="_gate"/>。</summary>
+    private void DisposeWatcherUnlocked()
+    {
+        _watcher?.Dispose();
+        _watcher = null;
+    }
+
     private void OnFileSystemChanged(object sender, FileSystemEventArgs e)
     {
         // 外部異動走去抖動:OneDrive 同步下來時是一陣爆發式的寫入,
         // 每個檔案都立刻通知一次的話,清單頁會在同步期間被重建幾十次。
         InvalidateCore(notifyImmediately: false);
 
-        if (!_disposed)
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
         {
             // 每來一個事件就把觸發時間往後推,連續寫入結束後才真的通知一次。
             _changeDebounce.Change(ChangeDebounceMs, Timeout.Infinite);
+        }
+        catch (ObjectDisposedException)
+        {
+            // watcher 事件在執行緒池上跑:上面的檢查通過之後、Change 之前,
+            // Dispose 可能已經把 Timer 收掉。吞掉 —— 物件正在消失,通知已無意義,
+            // 而執行緒池上沒接住的例外會直接終止整個擴展進程。
         }
     }
 
@@ -403,36 +499,12 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         }
 
         _disposed = true;
-        _watcher?.Dispose();
-        _watcher = null;
+
+        lock (_gate)
+        {
+            DisposeWatcherUnlocked();
+        }
+
         _changeDebounce.Dispose();
     }
-}
-
-public sealed class NoteNotFoundException : Exception
-{
-    public NoteNotFoundException()
-    {
-    }
-
-    public NoteNotFoundException(string message)
-        : base(message)
-    {
-    }
-
-    public NoteNotFoundException(string message, Exception innerException)
-        : base(message, innerException)
-    {
-    }
-
-    public string? Id { get; private init; }
-
-    /// <remarks>
-    /// 訊息是英文,而且刻意不走資源檔:Core 這一層不認得介面語言(它連 CmdPal 都不認得),
-    /// 而這句話最後會被 UI 包進「刪除失敗:{0}」那類字串裡顯示 —— 同一個位置平常裝的是
-    /// .NET 自己丟的例外訊息,在這個套件裡固定是英文(附屬組件沒有進 MSIX 佈局,驗過),
-    /// 所以跟著英文才不會一句中文一句英文。
-    /// </remarks>
-    public static NoteNotFoundException ForId(string id) =>
-        new($"No note with id '{id}'.") { Id = id };
 }
