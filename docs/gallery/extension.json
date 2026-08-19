@@ -1,0 +1,21 @@
+{
+  "$schema": "../../../.github/schemas/extension.schema.json",
+  "id": "1morr.notelet",
+  "title": "Notelet",
+  "shortDescription": "Capture thoughts as Markdown notes without leaving Command Palette. Type, press Enter, and the idea is already on disk.",
+  "description": "Notelet turns Command Palette into the fastest note-taking surface on Windows. Assign an alias, summon the palette, type your thought, press Enter — the idea is saved as a plain Markdown file before the window even closes.\n\nEverything lives in a folder you choose, as ordinary .md files with stable IDs in their front matter. Rename a note and the file keeps its identity; bring your own existing Markdown files and they simply show up in the list. There is no database, no lock-in, and nothing between your notes and your favorite editor, sync tool, or backup.\n\n- Quick capture: type a prefix and keep typing — title and body are split automatically, with a live preview before you commit.\n- Notes list: search, open, copy the body, rename, or delete (straight to the Recycle Bin, not the void).\n- Plain Markdown: unknown front matter fields are preserved untouched, so Notelet plays well with Obsidian, VS Code, or anything else that reads .md.\n- Fully keyboard-driven: every action has a shortcut, designed around the palette's always-focused search box.",
+  "author": {
+    "name": "1morr",
+    "url": "https://github.com/1morr"
+  },
+  "icon": "icon.png",
+  "homepage": "https://github.com/1morr/Notelet",
+  "tags": ["notes", "markdown", "quick-capture", "note-taking", "writing"],
+  "categories": ["productivity"],
+  "installSources": [
+    {
+      "type": "winget",
+      "id": "REPLACE-WITH-WINGET-PACKAGE-ID"
+    }
+  ]
+}
