@@ -19,6 +19,10 @@ dotnet build src\Notelet\Notelet.csproj -p:Platform=x64 # 只建擴展
 
 dotnet run --project tools\ApiDump -- FallbackCommandItem CommandResult
 dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在哪
+
+# 在真機上驗畫面(要 pwsh,一整串動作必須在同一次呼叫裡跑完)
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾是不是真資料
 ```
 
 - **方案層級不能帶 `-p:Platform=x64`**(`Notelet.slnx` 沒有那個組態,會直接失敗)。
@@ -37,7 +41,10 @@ dotnet run --project tools\ApiDump -- --paths           # 設定檔實際存在�
   檔名/id 產生、搜索排序、標題/內文切分(`QuickCapture.Split`)、預覽的換行規則,
   全部在這一層,因此全部有單元測試。
 - **`src/Notelet`** — MSIX COM server,只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
-  CmdPal 的 UI 沒有自動化介面,這一層的驗證只能靠 `docs/manual-test-checklist.md`。
+  CmdPal 沒有提供 UI 自動化介面,這一層的驗證靠 `docs/manual-test-checklist.md`;
+  清單內容、快速鍵、placeholder、有沒有跳 toast 這些**可以**用
+  `tools\cmdpal-ui.ps1` 驅動 Windows 的 UI Automation 驗掉(見
+  `.claude/skills/verify-cmdpal-ui/`),但顏色、圖示長相、游標位置只能靠眼睛。
 
 新增行為時先問:這段邏輯能不能放進 Core?能的話就放,並補測試。
 牽涉平台的部分(例如「刪除要送資源回收筒」需要 shell32)在 Core 留一個介面,

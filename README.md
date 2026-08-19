@@ -1009,11 +1009,13 @@ tests/
   Notelet.Core.Tests/  xUnit
 .claude/
   skills/              CmdPal 官方模板附的 API 速查與工作流程(dock band、上架…),
-                       每一份都加了「本專案的例外」,見 .claude/skills/README.md
+                       每一份都加了「本專案的例外」;另有自己寫的 verify-cmdpal-ui,
+                       見 .claude/skills/README.md
 tools/
   deploy.ps1           build → 註冊 → 驗證
   VerifyRegistration/  查 AppExtension 目錄的探針
   ApiDump/             印出 CmdPal Toolkit 型別的實際簽章
+  cmdpal-ui.ps1        在真機上驅動 CmdPal 的畫面(UI Automation + 截圖)
 ```
 
 分層的重點:`Notelet.Core` 不知道 Command Palette 的存在。所有容易寫錯的邏輯

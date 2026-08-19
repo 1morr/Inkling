@@ -10,9 +10,22 @@ Command Palette 沒有提供 UI 自動化介面,擴展又跑在獨立的 COM 進
 | 儲存、解析、搜索、標題/內文切分 | `dotnet test` —— 全自動,涵蓋所有非 UI 邏輯 |
 | 套件有沒有真的裝上 | `tools/VerifyRegistration` 探針 —— 全自動,查 Windows 的 AppExtension 目錄 |
 | 存檔結果對不對 | 直接看 `%OneDrive%\Notelet` 底下的檔案內容,可以斷言 |
-| **畫面有沒有出現、按下去有沒有反應** | **只能靠眼睛,就是這份清單** |
+| 清單內容、快速鍵、placeholder、有沒有跳 toast | `tools\cmdpal-ui.ps1` —— 半自動,驅動 Windows 的 UI Automation |
+| **顏色、圖示長什麼樣、游標落在哪** | **只能靠眼睛,就是這份清單** |
 
-換句話說:「行為對不對」靠測試,「長得對不對」靠這份清單。
+換句話說:「行為對不對」靠測試,「畫面上有什麼」可以用 `cmdpal-ui.ps1` 讀出來斷言,
+「長得對不對」才需要人。
+
+`cmdpal-ui.ps1` 的用法與它讀不到的東西寫在 `.claude/skills/verify-cmdpal-ui/SKILL.md`。
+最常用的兩條:
+
+```powershell
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"    # 先確認資料夾不是真資料
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
+```
+
+**跑會寫入的項目之前先確認筆記資料夾。** 它預設指向使用者真正在用的
+`%OneDrive%\Notelet` —— 新增與刪除類的驗證要先把資料夾換成暫存目錄,跑完換回去。
 
 ## 每次改動後的前置動作
 
