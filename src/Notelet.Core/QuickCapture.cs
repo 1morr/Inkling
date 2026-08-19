@@ -17,7 +17,7 @@ public sealed record QuickCaptureDraft(string Title, string Body);
 ///
 /// 這裡沒有前綴判斷:唯一的入口是快速記下頁,使用者靠 alias 進到那一頁就已經
 /// 表達過意圖了,打什麼就記什麼。曾經有一條走主搜尋框 fallback 的路,那條路
-/// 得先用前綴確認意圖 —— 為什麼放棄,見 README〈快速記下為什麼是頁面,不是 fallback〉。
+/// 得先用前綴確認意圖 —— 為什麼放棄,見 docs/design-notes.md〈快速記下為什麼是頁面,不是 fallback〉。
 /// </summary>
 public static class QuickCapture
 {
