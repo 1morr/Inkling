@@ -9,6 +9,10 @@ BundleArtifacts/
 _ReSharper*/
 *.DotSettings.user
 
+# Claude Code 的本機設定。裡面會有這台機器專屬的東西(API endpoint、權限允許清單),
+# 而且它是工具自己產生的 —— 不進版控。
+.claude/settings.local.json
+
 # 注意:標準 C# .gitignore 會排除下面兩者,但 Windows App SDK 需要它們才能部署套件。
 # 一旦忽略,clone 這個 repo 的人(包含未來的你換機器)就無法部署擴展。
 # 官方文檔明確要求把這兩行從 .gitignore 移除:
