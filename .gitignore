@@ -6,6 +6,17 @@ obj/
 TestResults/
 AppPackages/
 BundleArtifacts/
+
+# 打包與簽章產出物。*.pfx / *.p12 裡是私鑰 —— 一個 git add . 就可能把它送進
+# 公開 repo,事後刪檔也已外洩,憑證只能作廢重辦。要分享公開憑證指紋時
+# 用 .cer 明確加入,不要靠萬用字元放行。
+*.pfx
+*.p12
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+bundle_mapping.txt
 _ReSharper*/
 *.DotSettings.user
 
