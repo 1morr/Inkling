@@ -134,8 +134,9 @@ Version 的症狀)。
    `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。
    存檔因此走 `SettingsManager.Apply`(toolkit 的 `RaiseSettingsChanged()` 是 internal)。
    細節見 [設計考證〈設定頁有兩個入口,而且只有一個會自己更新〉](docs/design-notes.md#settings-two-entries)。
-6. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload
-   一次即可,不必重開 PowerToys。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
+6. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload 一次
+   有時收得回去,但**不保證**(實測兩次都沒有);清不掉就把 `Microsoft.CmdPal.UI`
+   進程停掉讓它重啟,PowerToys 本身不用重開。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
    之前開著的設定頁是綁在舊擴展實例上的死物件,按 Save 靜靜地什麼都不做** ——
    不寫檔、不重建、不報錯。查這種「改設定沒反應」之前,先把設定頁關掉重開。
 7. **擴展進程沒有視窗,也不是前景進程。** 要開系統對話框(目前只有設定頁的「瀏覽…」,

@@ -62,8 +62,10 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
 `Reload Command Palette extensions` 的那一個)。沒跑 Reload 的話 CmdPal 會繼續用舊的
 擴展實例,你會以為改動沒生效。
 
-設定頁的擴展清單出現**兩個 Notelet** 的話,再 Reload 一次就會收回一個 —— 那是 CmdPal
-在套件重新註冊時多建了一個 provider,不是擴展壞掉,不必重開 PowerToys。
+設定頁的擴展清單出現**兩個 Notelet** 的話,那是 CmdPal 在套件重新註冊時多建了一個
+provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清不掉就把 `Microsoft.CmdPal.UI`
+停掉讓它重啟(PowerToys 本身不用重開)。**驗證前要先確認只有一個**,兩個的話
+後面每一項看到的都可能是舊實例的畫面。
 
 **每次 Reload 或重新部署之後,設定頁要關掉重開**(退回 Extensions 清單再點進來)。
 那個頁面綁在舊的擴展實例上,不重開的話按 Save 會靜靜地什麼都不做 —— 驗設定相關的項目時

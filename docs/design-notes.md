@@ -930,8 +930,9 @@ CmdPal 那邊的問題,不是擴展的。重新註冊套件會讓 Windows 的套
 而 `TopLevelCommandManager.RegisterAndLoadCommandsAsync` 是直接 `AddRange`,不去重。
 
 手動 Reload 如果搶在那個非同步事件之前跑完,被清掉的是舊清單,事件補進來的就成了第二個。
-所以 `deploy.ps1 -Reload` 會先等幾秒再送重新載入。已經看到兩個的話,再 Reload 一次就好,
-不必重開 PowerToys 或 CmdPal。
+所以 `deploy.ps1 -Reload` 會先等幾秒再送重新載入。已經看到兩個的話,**再 Reload 一次不一定收得回去** ——
+實測兩次重新部署都出現重複,兩次都是 Reload 之後照樣是兩個,把 `Microsoft.CmdPal.UI`
+進程停掉讓它重啟才乾淨。PowerToys 本身不用重開。
 
 同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,之前開著的設定頁是綁在
 舊擴展實例上的死物件**,按 Save 靜靜地什麼都不做 —— 不寫檔、不重建、不報錯。

@@ -268,7 +268,8 @@ docs/                design-notes.md(設計考證)、manual-test-checklist.md
 
 **改了程式但 CmdPal 沒反應** — 要跑 Reload,而且要選副標題是
 `Reload Command Palette extensions` 的那一個。重新部署後有時會冒出兩個 Notelet
-(CmdPal 在套件安裝事件上沒去重),再 Reload 一次就好,成因見
+(CmdPal 在套件安裝事件上沒去重)。再 Reload 一次有時收得回去,清不掉就把
+`Microsoft.CmdPal.UI` 停掉讓它重啟(PowerToys 本身不用重開),成因見
 [設計考證](docs/design-notes.md#dev-notes)。
 
 **build 失敗說檔案被佔用** — CmdPal 把擴展的 COM server 留著沒關。`deploy.ps1` 會自動
