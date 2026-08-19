@@ -188,13 +188,7 @@ public static class NotePreview
         return true;
     }
 
-    private static bool IsFenceDelimiter(string line)
-    {
-        var trimmed = line.TrimStart();
-
-        return trimmed.StartsWith("```", StringComparison.Ordinal)
-            || trimmed.StartsWith("~~~", StringComparison.Ordinal);
-    }
+    private static bool IsFenceDelimiter(string line) => NoteBody.IsFenceDelimiter(line.TrimStart());
 
     private static bool IsTableRow(string line) => line.TrimStart().StartsWith('|');
 
@@ -212,17 +206,16 @@ public static class NotePreview
 
     private static bool BodyStartsWithTitle(string title, string body)
     {
-        foreach (var line in body.Split('\n'))
-        {
-            var trimmed = line.Trim();
-            if (trimmed.Length == 0)
-            {
-                continue;
-            }
+        var first = NoteBody.FirstContentLine(body);
 
-            return string.Equals(trimmed.TrimStart('#').Trim(), title, StringComparison.Ordinal);
+        if (first is null)
+        {
+            return false;
         }
 
-        return false;
+        // 外來檔案的標題推導有 120 字截斷,完整與截斷後兩種長度都要比。
+        var truncated = first.Length > NoteBody.MaxLineLength ? first[..NoteBody.MaxLineLength] : first;
+        return string.Equals(first, title, StringComparison.Ordinal)
+            || string.Equals(truncated, title, StringComparison.Ordinal);
     }
 }

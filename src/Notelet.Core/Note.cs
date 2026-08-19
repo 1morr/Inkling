@@ -45,19 +45,35 @@ public sealed record Note
     public IReadOnlyList<string> ExtraFrontMatter { get; init; } = [];
 
     /// <summary>
-    /// 給清單頁用的一行摘要。優先取內文第一行有內容的文字,沒有內文就留空。
+    /// 給清單頁用的一行摘要。取內文第一行有效文字(跳過程式碼圍欄、水平線與
+    /// 表格分隔列),沒有內文就留空。
+    ///
+    /// 標題是從內文第一行推導出來的時候(沒有 front matter 的外來檔案),
+    /// 那一行已經顯示在標題欄了 —— 摘要從它之後開始取,免得清單上同一句話出現兩次。
     /// </summary>
     public string Summary
     {
         get
         {
-            foreach (var line in Body.Split('\n'))
+            var isFirstLine = true;
+
+            foreach (var line in NoteBody.ContentLines(Body))
             {
-                var trimmed = line.Trim().TrimStart('#', '>', '-', '*', ' ').Trim();
-                if (trimmed.Length > 0)
+                if (isFirstLine)
                 {
-                    return trimmed.Length > 120 ? string.Concat(trimmed.AsSpan(0, 120), "…") : trimmed;
+                    isFirstLine = false;
+
+                    // 推導標題有 120 字的截斷,比對時要套用同樣的截斷才對得上。
+                    var comparable = line.Length > NoteBody.MaxLineLength ? line[..NoteBody.MaxLineLength] : line;
+                    if (string.Equals(comparable, Title, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
                 }
+
+                return line.Length > NoteBody.MaxLineLength
+                    ? string.Concat(line.AsSpan(0, NoteBody.MaxLineLength), "…")
+                    : line;
             }
 
             return string.Empty;
