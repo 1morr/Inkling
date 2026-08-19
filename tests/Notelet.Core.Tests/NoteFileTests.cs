@@ -115,6 +115,52 @@ public class NoteFileTests
     }
 
     [Fact]
+    public void RoundTrip_TagContainingComma_StaysOneTag()
+    {
+        // inline 陣列裡逗號是分隔符;含逗號的 tag 不加引號寫回去,讀回來就裂成兩個 ——
+        // 正好違反「別人的 metadata 經過 Notelet 一輪必須原封不動」的承諾。
+        var parsed = NoteFile.Parse(NoteFile.Serialize(SampleNote() with { Tags = ["a, b", "c"] }));
+
+        Assert.Equal(new[] { "a, b", "c" }, parsed.Tags);
+    }
+
+    [Fact]
+    public void Parse_InlineTags_DoesNotSplitInsideDoubleQuotes()
+    {
+        // Obsidian / Hugo 會寫出帶引號的逗號 tag;不看引號直接 Split 會裂出帶殘引號的碎片。
+        var parsed = NoteFile.Parse("---\ntags: [\"a, b\", \"c\"]\n---\n\nbody");
+
+        Assert.Equal(new[] { "a, b", "c" }, parsed.Tags);
+    }
+
+    [Fact]
+    public void Parse_InlineTags_DoesNotSplitInsideSingleQuotes()
+    {
+        var parsed = NoteFile.Parse("---\ntags: ['x, y']\n---\n\nbody");
+
+        Assert.Equal(new[] { "x, y" }, parsed.Tags);
+    }
+
+    [Fact]
+    public void Parse_InlineTags_HandlesEscapedQuotes()
+    {
+        var parsed = NoteFile.Parse("---\ntags: [\"say \\\"hi\\\", ok\", plain]\n---\n\nbody");
+
+        Assert.Equal(new[] { "say \"hi\", ok", "plain" }, parsed.Tags);
+    }
+
+    [Fact]
+    public void RoundTrip_TitleContainingNewline_IsCollapsedToSingleLine()
+    {
+        // 多行純量我們自己的 Parse 讀不回來:後半會掉進 ExtraFrontMatter,之後每編輯
+        // 一輪就把殘骸當別人的欄位再寫回去。標題本來就該是單行,序列化時收攏。
+        var parsed = NoteFile.Parse(NoteFile.Serialize(SampleNote("第一行\n第二行")));
+
+        Assert.Equal("第一行 第二行", parsed.Title);
+        Assert.Empty(parsed.ExtraFrontMatter);
+    }
+
+    [Fact]
     public void Parse_StillReadsFilesWithEmptyTags()
     {
         // Notelet 不再寫這一行,但既有的檔案裡到處都是,照樣要讀得懂 ——

@@ -197,10 +197,84 @@ public static class NoteFile
             ? value[1..^1]
             : value;
 
-        return [.. inner
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(Unquote)
-            .Where(t => t.Length > 0)];
+        // 引號感知的手動掃描:在雙/單引號內不切逗號,否則 Obsidian / Hugo 寫的
+        // ["a, b", "c"] 會裂成帶殘引號的碎片。引號原樣留在 token 裡,由 Unquote 解逸出。
+        var tags = new List<string>();
+        var current = new StringBuilder();
+        var inDouble = false;
+        var inSingle = false;
+        var escaped = false;
+
+        foreach (var ch in inner)
+        {
+            if (escaped)
+            {
+                current.Append(ch);
+                escaped = false;
+                continue;
+            }
+
+            if (inDouble)
+            {
+                current.Append(ch);
+                if (ch == '\\')
+                {
+                    escaped = true;
+                }
+                else if (ch == '"')
+                {
+                    inDouble = false;
+                }
+
+                continue;
+            }
+
+            if (inSingle)
+            {
+                current.Append(ch);
+
+                // 單引號的逸出是連續兩個 '';第一個關、第二個開,token 原樣,Unquote 處理。
+                if (ch == '\'')
+                {
+                    inSingle = false;
+                }
+
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inDouble = true;
+                current.Append(ch);
+            }
+            else if (ch == '\'')
+            {
+                inSingle = true;
+                current.Append(ch);
+            }
+            else if (ch == ',')
+            {
+                AddTag(tags, current);
+            }
+            else
+            {
+                current.Append(ch);
+            }
+        }
+
+        AddTag(tags, current);
+        return tags;
+
+        static void AddTag(List<string> tags, StringBuilder current)
+        {
+            var tag = Unquote(current.ToString().Trim());
+            if (tag.Length > 0)
+            {
+                tags.Add(tag);
+            }
+
+            current.Clear();
+        }
     }
 
     private static DateTimeOffset? ParseDate(string value)
@@ -243,7 +317,7 @@ public static class NoteFile
         // 有值時照樣寫,別的編輯器加的 tags 也因此原樣留著。
         if (note.Tags.Count > 0)
         {
-            builder.Append("tags: [").AppendJoin(", ", note.Tags.Select(Quote)).Append("]\n");
+            builder.Append("tags: [").AppendJoin(", ", note.Tags.Select(QuoteArrayItem)).Append("]\n");
         }
 
         // 別人加的欄位原樣寫回。
@@ -289,27 +363,55 @@ public static class NoteFile
             return "\"\"";
         }
 
+        // 純量只能佔一行:含換行的值寫出去是多行純量,我們自己的 Parse 讀不回來
+        // (後半會掉進 ExtraFrontMatter,之後每編輯一輪就把殘骸再寫回去一次)。
+        // 標題與 tag 本來就該是單行,這裡直接收攏。
+        value = SingleLine(value);
+
         var needsQuoting =
             char.IsWhiteSpace(value[0])
             || char.IsWhiteSpace(value[^1])
             || value.Contains(": ", StringComparison.Ordinal)
             || value.EndsWith(':')
             || value.Contains(" #", StringComparison.Ordinal)
-            || value.Contains('\n')
             || "-?:,[]{}#&*!|>'\"%@`".Contains(value[0])
             || IsYamlKeyword(value);
 
-        if (!needsQuoting)
+        return needsQuoting ? ForceQuote(value) : value;
+    }
+
+    /// <summary>
+    /// inline 陣列(<c>tags: […]</c>)裡的項目:逗號是分隔符、']' 會提前關閉陣列,
+    /// 所以值中間含這兩種字元時一律加引號 —— 純量位置不需要這兩條,才獨立一個方法。
+    /// </summary>
+    private static string QuoteArrayItem(string value)
+    {
+        var quoted = Quote(value);
+
+        // Quote 已經加過引號(或空值)就不用再判斷。
+        if (quoted.Length == 0 || quoted[0] == '"')
         {
-            return value;
+            return quoted;
         }
 
+        return quoted.Contains(',') || quoted.Contains('[') || quoted.Contains(']')
+            ? ForceQuote(quoted)
+            : quoted;
+    }
+
+    private static string ForceQuote(string value)
+    {
         var escaped = value
             .Replace("\\", "\\\\", StringComparison.Ordinal)
             .Replace("\"", "\\\"", StringComparison.Ordinal);
 
         return $"\"{escaped}\"";
     }
+
+    private static string SingleLine(string value) =>
+        value.Replace("\r\n", " ", StringComparison.Ordinal)
+            .Replace('\n', ' ')
+            .Replace('\r', ' ');
 
     /// <summary>不加引號會被 YAML 當成布林/空值/數字的字串。</summary>
     private static bool IsYamlKeyword(string value) =>
