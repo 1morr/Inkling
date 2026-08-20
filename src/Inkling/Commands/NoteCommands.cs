@@ -15,7 +15,7 @@ namespace Inkling.Commands;
 /// (預設 ShowToast,toast 一搶焦點主視窗就自我隱藏,整頁消失)、編輯鍵就地寫死
 /// 沒走 <see cref="Shortcuts"/>。收在這裡之後,加命令、改鍵、改圖示只有一個地方要動。
 ///
-/// 各頁專屬的項(清單頁的切換原始文字與刪除、記下頁的「完成」)仍由各頁自己插,
+/// 各頁專屬的項(清單頁的新增筆記與刪除、記下頁的「完成」)仍由各頁自己插,
 /// 順序也由各頁決定 —— 第一項會被 CmdPal 當成次要命令放上底部工具列,那是有語意的位置。
 /// </summary>
 internal static class NoteCommands
@@ -74,4 +74,5 @@ internal static class NoteCommands
             Icon = Icons.FileLocation,
             RequestedShortcut = Shortcuts.OpenFileLocation,
         };
+
 }

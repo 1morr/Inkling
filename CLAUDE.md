@@ -38,6 +38,12 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   `deploy.ps1`(它會先停進程再建)。
 - 部署後**一定要 Reload**,否則 CmdPal 繼續用舊的擴展實例,你會以為改動沒生效。
   `-Reload` 需要 CmdPal 設定 → 一般 → For developers → Enable external reload。
+  **Reload 之後還是要對一次進程時間**:實際踩過一次 —— 部署說「已送出 reload」、檔案也真的
+  換了,但舊的 `Inkling.exe` 還活著,CmdPal 一路用它,畫面上看到的是上一版的行為
+  (那次是選單順序,查了很久才發現不是程式碼的問題)。一行就驗得掉:
+  `Get-Process Inkling | Select-Object StartTime` 要**晚於**
+  `bin\stage-Release\Inkling.dll` 的 `LastWriteTime`;不是的話 `Stop-Process -Name Inkling`,
+  再不行就連 `Microsoft.CmdPal.UI` 一起停掉重來。
 - 擴展沒有主控台,`Debug.WriteLine` 在 Release 被編掉。要確認某段程式有沒有跑到,
   用 `DiagnosticLog`:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`
   建一個空檔 `diagnostic.on`,Reload,然後看同目錄的 `diagnostic.log`。
@@ -75,6 +81,10 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
 `SettingsManager` 為每一項開一個窄介面 + 一個事件,由頁面自己訂閱 ——
 `ICaptureSeparatorStore.CaptureSeparatorChanged` 與
 `ICapturePreviewStore.CapturePreviewChanged`(兩個都在快速記下頁)就是這個形狀。
+第三個 `ISourceModeStore`(`Ctrl+U` 的原始文字模式)形狀一樣但**有 setter** ——
+它是頁面自己寫的檢視狀態,不是設定頁寫的,而且會存進 settings.json。
+**只有長壽的頁面能訂閱那個事件**:預覽頁與記下並預覽頁是清單裡每個項目各建一個的短命物件,
+訂閱等於一路累積死掉的訂閱者,那兩頁改成在 `GetContent()` 當下讀一次。
 清單頁的項目快取收在 `VersionedItemsCache`(三個清單頁共用,基底型別不同抽不了
 共同基底,所以用組合):**快取鍵要帶 repository 的 `Version` 與每一個影響內容的設定值**,
 否則事件收到了、拿到的還是舊結果(「筆記明明存好了,清單卻說還沒有」就是漏帶
@@ -305,7 +315,11 @@ $bytes = [System.IO.File]::ReadAllBytes("$d\resources.pri")
 
 這就是為什麼每個從原始碼得到的結論都要 byte-scan 對照一次再寫進文檔。
 
-**反過來也有「掃得到」的**:`ListItem.Tags` 改了畫面會即時更新這條路,安裝版是有的
+**反過來也有「掃得到」的**:`IPlainTextContent`(整頁的純文字內容,預覽頁的原始文字模式
+在用)安裝版是有的 —— `ContentPlainTextViewModel` / `PlainTextContentViewer` /
+`get_WrapWords` / `PlainTextTemplate` 在 `Microsoft.CmdPal.UI.exe`(UTF-8),
+`PlainTextContentTemplate` 與那個檢視器的右鍵選單字串在 `resources.pri`(UTF-16)。
+`ListItem.Tags` 改了畫面會即時更新這條路,安裝版也是有的
 (`UpdateTags` / `VisibleTags` / `HasTags` / `TagViewModel` 都掃得到)—— 刪除頁的多選
 曾經靠它做出來過(後來整個移除,見 [設計考證〈為什麼沒有多選〉](docs/design-notes.md#no-multiselect)),而**現在真的在用它**:
 複製內文之後那一列右邊的「已複製」標籤就是這條路(`NoteListPage.FlashTag`)——

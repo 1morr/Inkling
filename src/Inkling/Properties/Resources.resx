@@ -166,9 +166,17 @@
   <data name="ToggleSourceSubtitle" xml:space="preserve">
     <value>Select and copy raw Markdown without opening the preview</value>
   </data>
+  <data name="ToggleSourcePageSubtitle" xml:space="preserve">
+    <value>Exactly what the file holds — indentation, HTML and SVG included</value>
+    <comment>預覽頁上同一個切換的副標。跟清單頁那條不同:這裡走的是純文字檢視器,連縮排都不動,而且渲染時會整段消失的 HTML / SVG 在這裡看得到。</comment>
+  </data>
   <data name="NoBody" xml:space="preserve">
     <value>_(no body)_</value>
     <comment>會進 Markdown 詳細窗格,前後的底線是斜體語法,翻譯時要留著。</comment>
+  </data>
+  <data name="NoBodyPlain" xml:space="preserve">
+    <value>(no body)</value>
+    <comment>同一句話的純文字版,給預覽頁的原始文字模式用 —— 那個檢視器不解析 Markdown,底線會照字面印出來。</comment>
   </data>
   <data name="DeleteConfirmTitle" xml:space="preserve">
     <value>Delete this note?</value>

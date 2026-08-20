@@ -157,8 +157,14 @@
   <data name="ToggleSourceSubtitle" xml:space="preserve">
     <value>不進預覽頁也能選取、複製原始 Markdown</value>
   </data>
+  <data name="ToggleSourcePageSubtitle" xml:space="preserve">
+    <value>檔案裡真正的字元:縮排、HTML 與 SVG 都原樣顯示</value>
+  </data>
   <data name="NoBody" xml:space="preserve">
     <value>_(沒有內文)_</value>
+  </data>
+  <data name="NoBodyPlain" xml:space="preserve">
+    <value>(沒有內文)</value>
   </data>
   <data name="DeleteConfirmTitle" xml:space="preserve">
     <value>刪除這則筆記？</value>

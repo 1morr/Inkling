@@ -80,7 +80,11 @@ internal static class Shortcuts
     /// </summary>
     public static KeyChord NewNote { get; } = Ctrl(VirtualKey.N);
 
-    /// <summary>詳細窗格在渲染與原始 Markdown 之間切換。</summary>
+    /// <summary>
+    /// 在渲染結果與原始文字之間切換。清單頁換的是詳細窗格,預覽頁與記下並預覽頁換的是
+    /// 整頁的內容,而**狀態是全域共用而且存進 settings.json 的**(見
+    /// <see cref="ISourceModeStore"/>)—— 在哪一頁按都一樣。
+    /// </summary>
     public static KeyChord ToggleSource { get; } = Ctrl(VirtualKey.U);
 
     /// <summary>用系統預設的程式開啟這個 <c>.md</c>。</summary>

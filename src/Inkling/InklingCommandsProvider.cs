@@ -67,15 +67,22 @@ public sealed partial class InklingCommandsProvider : CommandProvider
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
         // 刪除走資源回收筒,不是直接抹掉 —— 筆記是手打的東西,誤刪要拿得回來。
         var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
-        var capturePage = new QuickCapturePage(repository, _settingsManager, _settingsManager);
+
+        // 三個 _settingsManager 是同一個物件,各自從一個窄介面看它 ——
+        // 具名參數是為了讓呼叫端看得出誰是誰(見 ICaptureSeparatorStore 那一族的說明)。
+        var capturePage = new QuickCapturePage(
+            repository,
+            separatorStore: _settingsManager,
+            previewStore: _settingsManager,
+            sourceMode: _settingsManager);
 
         // 新增筆記頁同樣是兩個地方掛同一個實例:頂層命令那一列,以及清單頁的 Ctrl+N。
         var newNotePage = new NewNotePage(repository);
 
         // 清單頁的空狀態會拿 capturePage 當那一列的命令(按 Enter 直接導覽過去),
         // 所以要先建。兩個地方掛同一個實例 —— 跟設定頁同一個做法。
-        var listPage = new NoteListPage(repository, options, capturePage, newNotePage);
-        var deletePage = new DeleteNotesPage(repository, options);
+        var listPage = new NoteListPage(repository, options, capturePage, newNotePage, _settingsManager);
+        var deletePage = new DeleteNotesPage(repository, options, _settingsManager);
 
         ICommandItem[] commands = [
             new CommandItem(listPage)

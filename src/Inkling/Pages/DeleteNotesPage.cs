@@ -38,17 +38,27 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     private readonly InklingOptions _options;
 
     /// <summary>
+    /// 原始文字模式(全域,見 <see cref="ISourceModeStore"/>)。這一頁跟著走,但**不給切換鍵**:
+    /// 詳細窗格的內容只能靠換掉整批項目物件才會重讀(見 <c>NoteListPage.RefreshDetails</c>
+    /// 講的那條斷掉的通知路),而重建清單會讓選中項跑掉 —— 這一頁的第一列是「刪除全部」,
+    /// 不值得為了一個切換鍵多一條「焦點跳到那一列」的路。要切換請在清單頁按 <c>Ctrl+U</c>,
+    /// 切完再進來就是新的模式(快取鍵帶著它)。
+    /// </summary>
+    private readonly ISourceModeStore _sourceMode;
+
+    /// <summary>
     /// 項目快取。規則只有一條 —— 鍵要帶 Version 與所有影響內容的設定值 ——
     /// 「為什麼」寫在 <see cref="VersionedItemsCache{TKey}"/> 上,三個清單頁共用。
     /// </summary>
-    private readonly VersionedItemsCache<int> _cache = new();
+    private readonly VersionedItemsCache<(int Version, bool ShowSource)> _cache = new();
 
     private bool _disposed;
 
-    public DeleteNotesPage(INoteRepository repository, InklingOptions options)
+    public DeleteNotesPage(INoteRepository repository, InklingOptions options, ISourceModeStore sourceMode)
     {
         _repository = repository;
         _options = options;
+        _sourceMode = sourceMode;
 
         Id = CommandIds.DeleteAll;
         Icon = Icons.Delete;
@@ -74,12 +84,15 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 
     public override IListItem[] GetItems()
     {
-        // 快取的鍵只有 Version:這一頁不吃查詢字串(過濾交給 CmdPal),
-        // 但刪完之後那份清單一定要重建,否則畫面上還留著剛剛刪掉的檔案。
-        return _cache.Get(_repository.Version, BuildItems);
+        // 這一頁不吃查詢字串(過濾交給 CmdPal),但刪完之後那份清單一定要重建,
+        // 否則畫面上還留著剛剛刪掉的檔案 —— 所以鍵要帶 Version。原始文字模式也要帶:
+        // 它決定右邊那塊詳細窗格是渲染結果還是原文,而它是在別的頁面上切的。
+        var showSource = _sourceMode.ShowSource;
+
+        return _cache.Get((_repository.Version, showSource), () => BuildItems(showSource));
     }
 
-    private IListItem[] BuildItems()
+    private IListItem[] BuildItems(bool showSource)
     {
         var notes = _repository.GetAll();
 
@@ -112,7 +125,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 
         foreach (var note in ordered.Take(_options.MaxResults))
         {
-            items.Add(CreateNoteItem(note, section));
+            items.Add(CreateNoteItem(note, section, showSource));
         }
 
         // 列不完的時候一定要講,而且要講清楚「沒列出來不等於不會刪」 ——
@@ -138,17 +151,17 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// 預覽降到選單第二項:這一頁 <c>ShowDetails</c> 是開的,右邊的詳細窗格本來就在顯示
     /// 標題與內文,預覽頁多出來的只有 Markdown 渲染 —— 不值得佔著前面那兩個鍵位。
     /// </summary>
-    private ListItem CreateNoteItem(Note note, string section) => new(CreateConfirmedDelete(note))
+    private ListItem CreateNoteItem(Note note, string section, bool showSource) => new(CreateConfirmedDelete(note))
     {
         Title = note.Title,
         Subtitle = Path.GetRelativePath(_options.NotesDirectory, note.FilePath),
         Icon = note.IsExternal ? Icons.External : Icons.Note,
         Section = note.IsExternal ? Resources.DeleteSectionExternal : section,
-        Details = NoteDetails.For(note),
+        Details = NoteDetails.For(note, showSource),
         MoreCommands = [
             // 第一個會被 CmdPal 當成次要命令放上底部工具列(Ctrl+Enter)。
             CreateQuickDeleteItem(note),
-            new CommandContextItem(new NotePreviewPage(_repository, note))
+            new CommandContextItem(new NotePreviewPage(_repository, note, _sourceMode))
             {
                 Title = Resources.CommandPreview,
                 Icon = Icons.Preview,

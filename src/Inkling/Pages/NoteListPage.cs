@@ -19,6 +19,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
     private readonly INoteRepository _repository;
     private readonly InklingOptions _options;
+    private readonly ISourceModeStore _sourceMode;
 
     /// <summary>
     /// 「新增筆記」那一頁,跟頂層命令同一個實例(<see cref="InklingCommandsProvider"/> 建的)。
@@ -32,11 +33,11 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// <summary>
     /// 詳細窗格的「渲染 / 原始文字」切換鈕。
     ///
-    /// 全部項目共用同一個實例,所以改一次 <see cref="Command.Name"/>,
-    /// 每個項目選單上的字就一起變 —— <c>CommandItem.Title</c> 沒有明確設定時
-    /// 會回落到命令的名字,而且它有訂閱命令的屬性變更。
+    /// 全部項目共用同一個命令實例,所以狀態一變,每個項目選單上的字就一起變 ——
+    /// <c>CommandItem.Title</c> 沒有明確設定時會回落到命令的名字,而且它有訂閱
+    /// 命令的屬性變更。狀態本身是全域的,見 <see cref="ISourceModeStore"/>。
     /// </summary>
-    private readonly AnonymousCommand _toggleSource;
+    private readonly SourceModeToggle _toggleSource;
 
     private string _query = string.Empty;
 
@@ -44,7 +45,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 項目快取。規則只有一條 —— 鍵要帶 Version 與所有影響內容的設定值 ——
     /// 「為什麼」寫在 <see cref="VersionedItemsCache{TKey}"/> 上,三個清單頁共用。
     /// </summary>
-    private readonly VersionedItemsCache<(int Version, string Query)> _cache = new();
+    private readonly VersionedItemsCache<(int Version, string Query, bool ShowSource)> _cache = new();
 
     /// <summary>
     /// 目前列出來的每一則筆記,連同它的清單項目物件。
@@ -72,33 +73,26 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// </summary>
     private readonly CommandItem _emptyContent;
 
-    /// <summary>
-    /// 原始文字模式是**黏著的**:離開清單頁再回來不會自己回到渲染模式 ——
-    /// 這個頁面實例活得跟擴展進程一樣久,而 CmdPal 沒有「重新進入頁面」的通知可以掛重置。
-    /// 刻意的:會按 Ctrl+U 的人多半是在檢查 Markdown 的原始樣子,進進出出通常還在同一件事上。
-    /// 畫面上的線索是選單那一項的字會跟著狀態變(見 ToggleSourceName)。
-    /// </summary>
-    private bool _showSource;
     private bool _disposed;
 
     public NoteListPage(
         INoteRepository repository,
         InklingOptions options,
         QuickCapturePage capturePage,
-        NewNotePage newNotePage)
+        NewNotePage newNotePage,
+        ISourceModeStore sourceMode)
     {
         _repository = repository;
         _options = options;
         _newNotePage = newNotePage;
+        _sourceMode = sourceMode;
 
         _tagTimer = new System.Threading.Timer(_ => ClearTag(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
-        _toggleSource = new AnonymousCommand(ToggleSource)
-        {
-            Name = ToggleSourceName,
-            Icon = Icons.Source,
-            Result = CommandResult.KeepOpen(),
-        };
+        // 切換的回呼傳 null:這一頁活得跟擴展進程一樣久,直接訂閱事件就好 ——
+        // 那條路連「在預覽頁上切的」也收得到,回呼只收得到自己按的那一次。
+        _toggleSource = new SourceModeToggle(_sourceMode);
+        _sourceMode.ShowSourceChanged += OnShowSourceChanged;
 
         Id = CommandIds.List;
         Icon = Icons.Note;
@@ -141,12 +135,13 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     {
         // 鍵帶上 Version 的理由見 VersionedItemsCache —— 只看查詢字串的話,
         // 表現出來就是「筆記明明存好了,清單卻說還沒有任何筆記」。
-        return _cache.Get((_repository.Version, _query), () => BuildItems(_query));
+        //
+        // 原始文字模式也要帶:它決定每一列的 Details 長什麼樣,而且可能是在別的頁面
+        // (預覽頁的 Ctrl+U)切掉的。切換本身不會重建清單 —— 見 RefreshDetails ——
+        // 這裡是為了下一次真的重建時拿到的是新模式。
+        return _cache.Get(
+            (_repository.Version, _query, _sourceMode.ShowSource), () => BuildItems(_query));
     }
-
-    /// <summary>選單上顯示的字,講的是「按下去之後會看到什麼」。</summary>
-    private string ToggleSourceName =>
-        _showSource ? Resources.ToggleSourceShowRendered : Resources.ToggleSourceShowRaw;
 
     private IListItem[] BuildItems(string query)
     {
@@ -206,7 +201,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             : Strings.Format(Resources.ListPageEmptySubtitle, Resources.ProviderCapturePageTitle);
     }
 
-    private ListItem CreateItem(Note note) => new(new NotePreviewPage(_repository, note))
+    private ListItem CreateItem(Note note) => new(new NotePreviewPage(_repository, note, _sourceMode))
     {
         Title = note.Title,
         Subtitle = note.Summary,
@@ -227,13 +222,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private IContextItem[] BuildCommands(Note note) =>
     [
         NoteCommands.Edit(_repository, note),
-        new CommandContextItem(_toggleSource)
-        {
-            // 這裡刻意不設 Title:讓它回落到 _toggleSource.Name,
-            // 切換之後選單上的字才會跟著從「顯示原始文字」變成「顯示渲染後的預覽」。
-            Subtitle = Resources.ToggleSourceSubtitle,
-            RequestedShortcut = Shortcuts.ToggleSource,
-        },
+        _toggleSource.CreateItem(Resources.ToggleSourceSubtitle),
         // 複製完**留在清單頁**,所以不發 toast(toast 會搶焦點,主視窗一失焦就自我隱藏)。
         // 回饋改成在那一列打一個標籤,見 FlashTag。
         NoteCommands.CopyBody(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.Id, message))),
@@ -306,16 +295,20 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         }),
     };
 
-    private Details BuildDetails(Note note) => NoteDetails.For(note, _showSource);
+    private Details BuildDetails(Note note) => NoteDetails.For(note, _sourceMode.ShowSource);
 
-    /// <summary>詳細窗格在「渲染」與「原始文字」之間切換。</summary>
-    private void ToggleSource()
+    /// <summary>
+    /// 有人切了原始文字模式 —— 可能是這一頁的 <c>Ctrl+U</c>,也可能是預覽頁的。
+    ///
+    /// 狀態是全域的(<see cref="ISourceModeStore"/>),所以兩種來源在這裡沒有分別:
+    /// 更新選單上那一項的字,再把已經顯示的項目換上新的詳細窗格。
+    /// </summary>
+    private void OnShowSourceChanged(object? sender, EventArgs e)
     {
-        _showSource = !_showSource;
-        _toggleSource.Name = ToggleSourceName;
+        _toggleSource.Sync();
 
         RefreshDetails();
-        DiagnosticLog.Write($"ToggleSource: showSource={_showSource}");
+        DiagnosticLog.Write($"OnShowSourceChanged: showSource={_sourceMode.ShowSource}");
     }
 
     /// <summary>
@@ -412,6 +405,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         _disposed = true;
         _repository.Changed -= OnRepositoryChanged;
+        _sourceMode.ShowSourceChanged -= OnShowSourceChanged;
         _tagTimer.Dispose();
     }
 }

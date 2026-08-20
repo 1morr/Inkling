@@ -14,7 +14,7 @@ namespace Inkling;
 /// 則存在 CmdPal 的套件底下,由 CmdPal 管理,擴展碰不到。
 /// </summary>
 internal sealed partial class SettingsManager
-    : JsonSettingsManager, ICaptureSeparatorStore, ICapturePreviewStore
+    : JsonSettingsManager, ICaptureSeparatorStore, ICapturePreviewStore, ISourceModeStore
 {
     private const string SettingsNamespace = "Inkling";
 
@@ -44,6 +44,19 @@ internal sealed partial class SettingsManager
         Resources.SettingPreviewDescription,
         true);
 
+    /// <summary>
+    /// 原始文字模式。**這一項不在設定頁上** —— 它的介面是 <c>Ctrl+U</c> 那個切換鍵,
+    /// 存在這裡只是為了記住上一次的選擇(見 <see cref="ISourceModeStore.ShowSource"/>)。
+    ///
+    /// 標籤與說明還是給了資源字串:這個型別的建構子要求要有,而萬一哪天它真的被畫出來,
+    /// 借用切換鍵那兩條字串至少讀得通。
+    /// </summary>
+    private readonly ToggleSetting _showSource = new(
+        Namespaced(nameof(ShowSource)),
+        Resources.ToggleSourceShowRaw,
+        Resources.ToggleSourceSubtitle,
+        false);
+
     public SettingsManager()
     {
         FilePath = SettingsJsonPath();
@@ -61,14 +74,20 @@ internal sealed partial class SettingsManager
         // 排最後,寫錯就只影響它自己。
         //
         // 我們自己畫設定卡片,所以這個順序不影響畫面上的欄位順序(那個在 InklingSettingsForm)。
+        //
+        // 兩個布林項的先後也是照這條規則排的:**壞掉的代價小的排後面**。
+        // _capturePreview 是設定頁上看得到、使用者可能手改的那一個,所以它排在
+        // 兩個字串項後面;_showSource 排最後 —— 它只是檢視狀態,再按一次 Ctrl+U 就回來,
+        // 是這三項裡唯一丟了也不痛的。
         Settings.Add(_notesDirectory);
         Settings.Add(_captureSeparator);
         Settings.Add(_capturePreview);
+        Settings.Add(_showSource);
 
         LoadSettings();
         DiagnosticLog.Write(
             $"SettingsManager: 載入 {FilePath} 分隔符='{CaptureSeparator}' "
-                + $"記下後預覽={ShowCapturePreview}");
+                + $"記下後預覽={ShowCapturePreview} 原始文字={ShowSource}");
     }
 
     /// <inheritdoc />
@@ -76,6 +95,9 @@ internal sealed partial class SettingsManager
 
     /// <inheritdoc />
     public event EventHandler? CapturePreviewChanged;
+
+    /// <inheritdoc />
+    public event EventHandler? ShowSourceChanged;
 
     /// <summary>
     /// <see cref="Apply"/> 對資料夾欄位的處理結果,設定頁照它決定要跟使用者講哪句話。
@@ -209,6 +231,33 @@ internal sealed partial class SettingsManager
 
     /// <inheritdoc />
     public bool ShowCapturePreview => _capturePreview.Value;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// **這一項不走 <see cref="Apply"/>** —— 那是設定表單的入口,而這個值是使用者在
+    /// 清單頁或預覽頁按 <c>Ctrl+U</c> 當場改的。兩邊各自寫回同一個 <c>settings.json</c>
+    /// 沒有問題:<c>SaveSettings</c> 每次都把整份設定寫出去,而表單那邊的欄位值
+    /// 也是送出當下才從卡片讀的。
+    ///
+    /// 值一樣就整個跳過:不寫檔(切換鍵按得很兇),也不發事件(否則每個頁面都會白重整一次)。
+    /// </remarks>
+    public bool ShowSource
+    {
+        get => _showSource.Value;
+        set
+        {
+            if (_showSource.Value == value)
+            {
+                return;
+            }
+
+            _showSource.Value = value;
+            Save("ShowSource");
+            DiagnosticLog.Write($"ShowSource: 切換成 {value}");
+
+            ShowSourceChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     public InklingOptions ToOptions() => new() { NotesDirectory = NotesDirectory };
 

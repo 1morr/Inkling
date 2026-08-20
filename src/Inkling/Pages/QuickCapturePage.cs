@@ -38,6 +38,15 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private readonly ICapturePreviewStore _previewStore;
 
     /// <summary>
+    /// 原始文字模式,這一頁自己不用,是傳給它建出來的兩種頁面 ——
+    /// 「記下並預覽」與底下那幾則相似筆記的預覽頁。全域共用,見 <see cref="ISourceModeStore"/>。
+    ///
+    /// 這一頁**不必**進快取鍵:它自己的每一列(記下、相似筆記)長什麼樣跟這個模式無關,
+    /// 模式只影響那些頁面被打開之後顯示的內容,而那是頁面自己在 <c>GetContent</c> 裡讀的。
+    /// </summary>
+    private readonly ISourceModeStore _sourceMode;
+
+    /// <summary>
     /// 還沒打字時那塊提示。留著參照是為了在分隔符改掉之後就地更新它的副標 ——
     /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
     /// 走這條一定收得到(<c>IDetails</c> 就不行,見 <c>NoteListPage.RefreshDetails</c>)。
@@ -57,11 +66,13 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     public QuickCapturePage(
         INoteRepository repository,
         ICaptureSeparatorStore separatorStore,
-        ICapturePreviewStore previewStore)
+        ICapturePreviewStore previewStore,
+        ISourceModeStore sourceMode)
     {
         _repository = repository;
         _separatorStore = separatorStore;
         _previewStore = previewStore;
+        _sourceMode = sourceMode;
 
         var separator = separatorStore.CaptureSeparator;
 
@@ -185,7 +196,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private ListItem CreateCaptureItem(QuickCaptureDraft draft, bool preview, string subtitle, IconInfo icon)
     {
         ICommand command = preview
-            ? new CapturedNotePage(_repository, draft)
+            ? new CapturedNotePage(_repository, draft, _sourceMode)
             : new QuickCaptureCommand(_repository) { Draft = draft };
 
         return new ListItem(command)
@@ -246,7 +257,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         }
     }
 
-    private ListItem CreateSimilarItem(Note note) => new(new NotePreviewPage(_repository, note))
+    private ListItem CreateSimilarItem(Note note) => new(new NotePreviewPage(_repository, note, _sourceMode))
     {
         Title = note.Title,
         Subtitle = note.Summary,

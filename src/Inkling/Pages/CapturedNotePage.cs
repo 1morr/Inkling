@@ -30,6 +30,7 @@ namespace Inkling.Pages;
 internal sealed partial class CapturedNotePage : ContentPage
 {
     private readonly INoteRepository _repository;
+    private readonly ISourceModeStore _sourceMode;
     private readonly QuickCaptureDraft _draft;
 
     /// <summary>
@@ -48,14 +49,23 @@ internal sealed partial class CapturedNotePage : ContentPage
     /// </summary>
     private readonly CopyNoteBodyCommand _copyBody;
 
+    /// <summary>
+    /// 「顯示原始文字 ↔ 顯示渲染後的預覽」,跟預覽頁、清單頁共用同一個組裝與鍵位。
+    /// 這一頁同樣是短命物件,所以不訂閱 <see cref="ISourceModeStore.ShowSourceChanged"/>,
+    /// 狀態在 <see cref="GetContent"/> 當下讀。
+    /// </summary>
+    private readonly SourceModeToggle _toggleSource;
+
     private Note? _note;
     private string? _error;
     private bool _captured;
 
-    public CapturedNotePage(INoteRepository repository, QuickCaptureDraft draft)
+    public CapturedNotePage(INoteRepository repository, QuickCaptureDraft draft, ISourceModeStore sourceMode)
     {
         _repository = repository;
+        _sourceMode = sourceMode;
         _draft = draft;
+        _toggleSource = new SourceModeToggle(sourceMode, Refresh);
 
         Icon = Icons.Capture;
 
@@ -84,6 +94,9 @@ internal sealed partial class CapturedNotePage : ContentPage
     {
         Capture();
 
+        // 選單上那一項的字講的是「按下去會看到什麼」,狀態可能是在別的畫面上切的。
+        _toggleSource.Sync();
+
         if (_note is not { } captured)
         {
             // 存檔失敗。原文照樣顯示出來,讓使用者至少能把打過的字複製走,
@@ -95,7 +108,8 @@ internal sealed partial class CapturedNotePage : ContentPage
         // 「重查 → 更新 → 渲染」與預覽頁共用同一份,理由見 NotePreviewContent。
         // 重新查而不是用存檔當下的快照:使用者可能剛從這一頁按 Ctrl+E 編輯完回來。
         var note = captured;
-        var content = NotePreviewContent.Reload(_repository, note.Id, ref note, _copyBody);
+        var content = NotePreviewContent.Reload(
+            _repository, note.Id, ref note, _copyBody, _sourceMode.ShowSource);
 
         _note = note;
         Title = note.Title;
@@ -150,18 +164,20 @@ internal sealed partial class CapturedNotePage : ContentPage
     /// 存檔成功後的命令列。第二個項目會被 CmdPal 當成次要命令掛上 Ctrl+Enter,
     /// 所以「編輯」排在「完成」後面 —— 看完覺得要改,不必先繞去清單頁找。
     ///
-    /// 其餘三項與預覽頁、清單頁共用同一份組裝(<see cref="NoteCommands"/>),
+    /// 其餘幾項與預覽頁、清單頁共用同一份組裝(<see cref="NoteCommands"/>),
     /// 鍵位因此自動一致 —— 這一頁是第三個顯示同一則筆記的畫面,手勢要跨頁通用。
     /// </summary>
     private IContextItem[] BuildCommands(Note note) => [
         new CommandContextItem(_done),
         NoteCommands.Edit(_repository, note, Refresh),
+        _toggleSource.CreateItem(Resources.ToggleSourcePageSubtitle),
         NoteCommands.CopyBody(_copyBody),
         NoteCommands.OpenInEditor(note),
     ];
 
     /// <summary>
-    /// 編輯存檔後由表單呼叫。為什麼一定要主動發這個事件,見 <see cref="NotePreviewContent"/>。
+    /// 編輯存檔後由表單呼叫,切換原始文字模式之後也走這裡。
+    /// 為什麼一定要主動發這個事件,見 <see cref="NotePreviewContent"/>。
     /// </summary>
     private void Refresh() => RaiseItemsChanged(1);
 }
