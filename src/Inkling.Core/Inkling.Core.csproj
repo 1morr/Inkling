@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Inkling.Core</RootNamespace>
+    <AssemblyName>Inkling.Core</AssemblyName>
+
+    <!--
+      這一層刻意不引用任何 Command Palette 型別,才能在普通的 net10.0 測試專案裡直接測。
+      IsAotCompatible 讓 trim/AOT 違規在這裡就被分析器攔下,而不是等到擴展的 Release build。
+    -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inkling.Core.Tests" />
+  </ItemGroup>
+</Project>

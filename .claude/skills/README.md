@@ -4,7 +4,7 @@
 
 ## `verify-cmdpal-ui/`(自己寫的)
 
-在真機上驅動 Command Palette 的畫面驗證 Notelet —— 讀 UI Automation 樹、截圖、
+在真機上驅動 Command Palette 的畫面驗證 Inkling —— 讀 UI Automation 樹、截圖、
 打字與按快速鍵,補上 `docs/manual-test-checklist.md` 裡那些「只能靠眼睛」的項目。
 工具是 `tools/cmdpal-ui.ps1`。
 

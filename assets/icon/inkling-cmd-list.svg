@@ -1,0 +1,25 @@
+<!--
+  頂層命令「Inkling」(清單頁)的圖示。24 格線、單色。
+
+  這一組四個檔(inkling-cmd-list / -capture / -new / -delete)是同一個家族:
+  同一道筆畫,右下角換一個修飾符。它們只給**四個頂層命令**用;
+  Ctrl+K 選單裡的編輯 / 複製 / 開啟位置那些維持 Segoe Fluent 字形,不重畫
+  (見 src/Inkling/Icons.cs)。
+
+  為什麼是單色 + currentColor:
+  這幾張要跟著淺 / 深色主題換前景色,而 PNG 不會自己變色 —— 所以每一個命令要出
+  兩張 PNG,再用 IconHelpers.FromRelativePaths(light, dark) 掛上去。
+  tools/render-icons.ps1 渲染時會把外層的 color 分別餵成深色與白色,
+  這裡的 style 只是讓檔案單獨開起來時看得見。
+
+  這一張是家族的基準:筆畫 + 句點,沒有修飾符。
+  其餘三張的句點位置被修飾符徽章取代 —— 徽章就是那一筆的收尾。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="color:#1A1A1A">
+  <g fill="currentColor">
+    <path d="M10.2 3.4c1.8-.45 3.6.65 3.7 2.6.15 2.6-.5 5.6-1.15 8.2-.65 2.6-1.45 4.15-2.1 5
+             -.55.75-1.7.7-2.1-.05-.4-.75.05-1.7.5-3.15.95-2.9 1.6-5.9 1.65-8.25
+             .05-1.35-.4-2-1.15-2.2-.85-.25-.65-1.95.65-2.15Z"/>
+    <circle cx="16.4" cy="17.6" r="2.15"/>
+  </g>
+</svg>

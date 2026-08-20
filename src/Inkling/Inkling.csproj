@@ -1,0 +1,150 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Inkling</RootNamespace>
+    <AssemblyName>Inkling</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <WindowsSdkPackageVersion>10.0.26100.68-preview</WindowsSdkPackageVersion>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+
+    <!-- MSIX 專用,刻意不放進根目錄的 Directory.Build.props -->
+    <Platforms>x64;ARM64</Platforms>
+    <PlatformTarget>$(Platform)</PlatformTarget>
+
+    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+    <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!--
+      [GeneratedComInterface] 的來源產生器產出的封送程式碼是 unsafe 的(vtable 全是 void*)。
+      只有 FolderPicker 那組 shell 介面用得到,我們自己寫的程式碼裡沒有 unsafe。
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!--
+      中性資源是英文。SDK 會把它翻成 [assembly: NeutralResourcesLanguage("en")],
+      ResourceManager 在 CurrentUICulture 是英文時就直接讀主組件,不會多繞一圈
+      去找一個不存在的 en 附屬組件。(屬性名是 NeutralLanguage,不是屬性本身的名字
+      NeutralResourcesLanguage —— 寫錯不會報錯,只會 CA1824 說你沒標。)
+    -->
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <!--
+    介面字串一律走 Properties\Resources.resx,語言跟著使用者的 Windows 顯示語言
+    (CultureInfo.CurrentUICulture)—— 見 docs/design-notes.md〈介面語言跟著 Windows 走〉。
+
+    產生強型別的 Resources 類別。用 StronglyTypedFileName 而不是 Visual Studio 的
+    設計工具,是因為這台機器上的建置全部走 dotnet CLI:交給 GenerateResource 這個
+    MSBuild 工作做,`dotnet build` 與 IDE 產出的東西才會一致。產出的檔案落在 obj\ 底下,
+    不進版控,而且它帶著 GeneratedCodeAttribute,分析器不會唸它。
+
+    zh-Hant / zh-Hans 那兩份不必在這裡列:.NET SDK 會從檔名認出文化,自動編成
+    zh-Hant\Inkling.resources.dll 這種附屬組件。trimmed publish 不會把它們砍掉(驗過)。
+  -->
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>MSBuild:Compile</Generator>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Resources.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>Inkling.Properties</StronglyTypedNamespace>
+      <StronglyTypedClassName>Resources</StronglyTypedClassName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!--
+    套件的圖示。用萬用字元收,新增尺寸時不必回來改這裡 ——
+    那幾張 PNG 是 tools\render-icons.ps1 從 assets\icon\*.svg 產生的,不要手改。
+
+    CopyToOutputDirectory 是必要的:少了它 Content 不會進建置輸出,而我們是以
+    loose file 註冊建置輸出當套件(見 tools\deploy.ps1)。少了它 AppxManifest 裡
+    每一個 Logo 都指向不存在的檔案 —— 套件照樣註冊得起來,只是圖示全部變成
+    Windows 的預設灰方塊,而且 IconHelpers.FromRelativePath 也讀不到檔
+    (它組的是 BaseDirectory 底下的實體路徑,不走 MRT)。踩過一次,查了很久。
+  -->
+  <ItemGroup>
+    <Content Include="Assets\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <!--
+    宣告 "Msix" ProjectCapability,讓 MSIX 打包工具即使在 Windows App SDK
+    套件尚未還原時也能作用。
+  -->
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Inkling.Core\Inkling.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CommandPalette.Extensions" />
+    <PackageReference Include="Microsoft.Windows.CsWinRT" />
+    <PackageReference Include="Shmuelie.WinRTServer" />
+
+    <!-- 產出 MSIX 套件佈局所必需 -->
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      **這個屬性對本專案的產出沒有任何作用**,加上條件純粹是為了不要製造誤導的錯誤訊息。
+
+      兩份 pubxml 都把 PublishSingleFile 設回 False(官方模板自己就是這樣,微軟的
+      Microsoft.CmdPal.Ext.PowerToys 更是直接寫 false),所以 publish 出來的從來不是
+      單一檔案 —— 實測 49 個 dll。模板留著這行無條件的 true,只在一種情況下會被看見:
+      方案層級的 `dotnet build`(Platform=AnyCPU,對不到 win-$(Platform).pubxml,
+      於是 true 沒被覆寫)會報 NETSDK1097「沒有 RID 就不能發佈成單一檔案」——
+      一個完全指不到問題的訊息。
+
+      加了條件之後那個假訊息消失,但**方案層級的 build 仍然建不起來**:MSIX 的打包目標
+      拒絕 ProcessorArchitecture neutral。那是打包專案的本質,不是這裡能解的
+      (`.slnx` 的 Platform 對應試過,它的 schema 不吃)。要建擴展就指定專案 +
+      `-p:Platform=x64`;`dotnet test` 不受影響,它只建測試專案與 Core。
+
+      單一檔案的分析器由下面 Debug 區塊的 EnableSingleFileAnalyzer 獨立控制,不受影響。
+    -->
+    <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
+    <IsAotCompatible>true</IsAotCompatible>
+
+    <CsWinRTAotOptimizerEnabled>true</CsWinRTAotOptimizerEnabled>
+    <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
+    <!-- 抑制 Windows SDK 投影 fallback 路徑上的 DynamicallyAccessedMemberTypes 警告 -->
+    <WarningsNotAsErrors>IL2081;$(WarningsNotAsErrors)</WarningsNotAsErrors>
+
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Debug 不做 trimming,換取較快的內層迴圈;但保留 trim / AOT 分析器,
+    讓違規在 Debug 就以警告現形,而不是等到 Release 才爆。
+  -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <PublishTrimmed>false</PublishTrimmed>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'!='Debug'">
+    <PublishTrimmed>true</PublishTrimmed>
+    <ILLinkTreatWarningsAsErrors>false</ILLinkTreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

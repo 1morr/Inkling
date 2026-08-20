@@ -23,14 +23,14 @@ description: >-
 >      呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 加進 `StatusMessages`,顯示成底部命令列
 >      左邊那個 `InfoBadge`(點開是 flyout 裡的 `InfoBar`),2.5 秒後自己收掉。
 >      擴展跑在自己的進程裡,本來就開不了 CmdPal 的視窗 —— 它能做的只有呼叫 host。
->      本專案的存檔提示走的就是這條(`NoteFormContent`、`NoteletSettingsForm`)。
+>      本專案的存檔提示走的就是這條(`NoteFormContent`、`InklingSettingsForm`)。
 >
 >    要「做完之後留在原地」而且**不想離開清單**,還有第三條路:`ListItem.Tags`
 >    就地改一列的狀態(見 `NoteListPage.FlashTag`)。
 > 2. **`ListItem.Details` 只能整個換掉,不能就地改屬性。** 下面把它寫成一般屬性,但 `IDetails`
 >    在 SDK IDL 裡沒有宣告成可觀察介面,通知跨不過 out-of-process 邊界 —— 值改了畫面不動。
 >    `Details.Size` 更只在初始化時讀一次,不明著寫就是最窄那一檔。
-> 3. **每個頂層命令都要有固定 `Id`**(`src/Notelet/CommandIds.cs`)。下面的範例全都沒設。
+> 3. **每個頂層命令都要有固定 `Id`**(`src/Inkling/CommandIds.cs`)。下面的範例全都沒設。
 >    沒設的話 CmdPal 拿 `ProviderId + DisplayTitle + Title + Subtitle` 算雜湊當身分,
 >    標題改一個字,使用者的 alias / 快速鍵 / 釘選就全部對不上。
 > 4. **`Debug.Write()` 在這個專案沒用。** 它掛著 `[Conditional("DEBUG")]`,而日常安裝的是 Release。
@@ -46,7 +46,7 @@ description: >-
 > 9. **正文 `KeyChordHelpers.FromModifiers` 的範例是舊的 4 參數簽章,照抄編譯不過。**
 >    現行 SDK 是 6 參數:`(ctrl, alt, shift, win, vkey, scanCode)`(另有 `VirtualKey` 多載),
 >    `dotnet run --project tools\ApiDump -- KeyChordHelpers` 可複驗;本專案的用法見
->    `src/Notelet/Shortcuts.cs`(6 參數具名呼叫)。
+>    `src/Inkling/Shortcuts.cs`(6 參數具名呼叫)。
 
 # Command Palette Extension Development
 

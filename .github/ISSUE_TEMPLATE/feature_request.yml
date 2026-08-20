@@ -1,5 +1,5 @@
 name: 功能建議
-description: 希望 Notelet 多出什麼能力
+description: 希望 Inkling 多出什麼能力
 labels: [enhancement]
 body:
   - type: textarea
@@ -22,5 +22,5 @@ body:
   - type: markdown
     attributes:
       value: |
-        提醒:Notelet 的設計目標是「叫出 CmdPal → 打字 → Enter」,
+        提醒:Inkling 的設計目標是「叫出 CmdPal → 打字 → Enter」,
         任何會拖慢主搜尋框的提案大概率不會被採納。

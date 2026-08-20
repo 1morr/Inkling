@@ -8,26 +8,42 @@
 `Package.appxmanifest` 目前是本機側載用的自簽身分:
 
 ```xml
-<Identity Name="Notelet" Publisher="CN=Notelet Development" Version="0.1.0.0" />
+<Identity Name="Inkling" Publisher="CN=Notelet Development" Version="0.1.0.0" />
 ```
+
+`Publisher` 還寫著 `Notelet` 不是漏改的 —— 見下面〈Name 換過一次〉。
 
 為什麼這件事只能做一次:
 
 - `Name` + `Publisher` 決定 package family name(PFN,目前是
-  `Notelet_bf0n0751x5hse`)。換任何一個,PFN 就變。
+  `Inkling_bf0n0751x5hse`)。**後綴那串雜湊只由 `Publisher` 決定**,`Name` 換了
+  只換前半段。
 - Windows 按 PFN 隔離每個套件的 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`。
   PFN 一變,舊的 `settings.json`(筆記資料夾、快速記下的分隔線與預覽開關)
   變成孤兒 —— 等於使用者的設定被重置。
-- CmdPal 端的設定(alias、全域快速鍵、釘選、fallback 規則)也存在它自己的
-  LocalState 裡,**以 PFN 為鍵**。PFN 一變,使用者設過的三個 alias 全部失效。
+- CmdPal 端的設定分兩種鍵,**不要混為一談**(實測 CmdPal 的 settings.json 得到的):
+  - `ProviderSettings` 與 `PinnedCommands` 用 `<PFN>!App!<ProviderId>` 當鍵,PFN 一變就孤兒化。
+  - **`Aliases` 用的是純命令 Id**(`"CommandId": "Notelet.List"`),條目裡沒有 PFN、
+    也沒有 provider 參照 —— 所以只要 `CommandIds.cs` 的字串不動,alias 換身分後還在。
 - 目前只有作者一台機器受影響,這正是換身分的唯一時機;一旦有人公開安裝,
-  再換就是把所有使用者的設定與 alias 一起洗掉。
+  再換就是把所有使用者的設定一起洗掉。
+
+### Name 換過一次(Notelet → Inkling)
+
+改名時只動了 `Identity Name`,`Publisher` 刻意不動:
+
+- 動 `Publisher` 的話 PFN 的雜湊後綴也會變,而且自簽憑證要重發、重新信任。
+  它只是側載用的 CN,對外不可見,留著沒有壞處。
+- `CommandIds.cs` 那六個字串一併保留原值(還叫 `Notelet.*`),換來的是使用者
+  設過的 alias 全部活下來。那些字串使用者看不到,不值得為了整齊清掉他們的設定。
+
+真正該換 `Publisher` 的時機是下面兩條路擇一的時候,一次換完。
 
 兩條路擇一:
 
 ### (a) Microsoft Store 代簽(建議先走這條)
 
-- 註冊 Partner Center(**個人開發者現在免費**),保留 `Notelet` 這個名字,
+- 註冊 Partner Center(**個人開發者現在免費**),保留 `Inkling` 這個名字,
   取得 Partner Center 指派的 `Name` / `Publisher`,改進 manifest。
 - 上傳 `.github/workflows/release.yml` 產出的**未簽章** msixbundle,Store 審核後代簽。
 - 成本:帳號免費;時間成本是審核(首次通常數天)。
@@ -50,19 +66,18 @@
 
 ### 換身分當下必須同步更新的硬編碼 PFN
 
-`Notelet_bf0n0751x5hse` 這個字串目前硬編碼在八處(五個檔案),換 Publisher 後**全部會靜靜失效**
-(讀不到檔案不會報錯,只會讓驗證失明):
+**已經處理掉了。** 那個字串以前硬編碼在八處(五個檔案),換身分後會全部靜靜失效
+(讀不到檔案不會報錯,只會讓驗證失明)。改名那一輪順手全部改成動態查:
 
-- `CLAUDE.md`(兩處:DiagnosticLog 說明、文末的設定檔路徑表)
-- `README.md`(兩處:〈設定存在哪,更新擴展之後還在嗎〉、疑難排解的 DiagnosticLog 段)
-- `docs/manual-test-checklist.md`(§11 讀 diagnostic.log 那條)
-- `.claude/skills/verify-cmdpal-ui/SKILL.md`(兩處:換測試資料夾的腳本、`diagnostic.on` 的路徑)
-- `.github/ISSUE_TEMPLATE/bug_report.yml`(請回報者開診斷日誌的那段)
+```powershell
+(Get-AppxPackage Inkling).PackageFamilyName
+```
 
-文檔類建議統一改寫成「`%LOCALAPPDATA%\Packages\<PFN>\LocalState`,PFN 用
-`(Get-AppxPackage Notelet).PackageFamilyName` 查」,以後就不用再改。
-`tools/cmdpal-ui.ps1` 已經是那樣(開頭用 `Get-AppxPackage -Name Notelet` 動態取 PFN,
-取不到直接中止),不在清單內。
+文檔裡一律寫成 `%LOCALAPPDATA%\Packages\<PFN>\LocalState`,腳本片段直接內插上面那一行。
+`tools/cmdpal-ui.ps1` 本來就是那樣(開頭動態取 PFN,取不到直接中止)。
+
+**新增文檔時別再把 PFN 寫死。** 唯一還留著字面值的是 `Package.appxmanifest` 的註解
+與本節上方 —— 那兩處的重點正是那個字串本身。
 
 ## 2. 版本策略
 
@@ -88,7 +103,7 @@
 - 前提:已簽章的 msix((b) 路線的 CI 產出,或 Store 簽好拿回來的)。
 - 在 microsoft/winget-pkgs 開 manifest:`InstallerUrl` 指向 GitHub Release 的資產,
   `License` / `LicenseUrl` 填 MIT 與 repo 的 LICENSE 連結(已備妥)。
-- `PackageIdentifier` 建議 `<author>.Notelet`,版本與 tag 對齊。
+- `PackageIdentifier` 建議 `<author>.Inkling`,版本與 tag 對齊。
 
 ## 5. CmdPal Extension Gallery 提交
 
@@ -96,7 +111,7 @@
 
 在 microsoft/CmdPal-Extensions 開 PR(需簽 Microsoft CLA):
 
-- 建 `extensions/<author>/notelet/`,id 用 `<author>.notelet`,**必須與資料夾路徑一致**
+- 建 `extensions/<author>/inkling/`,id 用 `<author>.inkling`,**必須與資料夾路徑一致**
   (CI 會驗 schema)。
 - `extension.json`:categories 建議 `productivity`,tags ≤ 5,title **不得含
   "for Command Palette"**。

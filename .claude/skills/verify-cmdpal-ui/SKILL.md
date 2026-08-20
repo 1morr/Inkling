@@ -1,17 +1,17 @@
 ---
 name: verify-cmdpal-ui
 description: >-
-  在真機上驅動 Command Palette 的畫面驗證 Notelet:讀 UI Automation 樹、截圖、
+  在真機上驅動 Command Palette 的畫面驗證 Inkling:讀 UI Automation 樹、截圖、
   打字與按快速鍵,補上 docs/manual-test-checklist.md 裡那些「只能靠眼睛」的項目。
-  改了 src/Notelet 底下的頁面、命令、快速鍵或 .resx 之後要驗證有沒有真的生效時看這份;
+  改了 src/Inkling 底下的頁面、命令、快速鍵或 .resx 之後要驗證有沒有真的生效時看這份;
   要確認 README 對 CmdPal 行為的某條斷言時也看這份。
   Use when verifying Command Palette UI behavior on a real machine, driving CmdPal,
   computer use, UI automation, screenshots, or running the manual test checklist.
 ---
 
-# 在真機上驗證 Notelet 的畫面
+# 在真機上驗證 Inkling 的畫面
 
-`dotnet test` 涵蓋 `Notelet.Core` 的全部行為,但 `src/Notelet` 那一層 —— 頁面長什麼樣、
+`dotnet test` 涵蓋 `Inkling.Core` 的全部行為,但 `src/Inkling` 那一層 —— 頁面長什麼樣、
 按下去有沒有反應、快速鍵有沒有被搶走 —— 一行自動化測試都沒有。這份 skill 補的就是那一半。
 
 工具是 `tools\cmdpal-ui.ps1`。
@@ -41,7 +41,7 @@ orca 的 `list-apps` 也列得出 CmdPal、`list-windows` 回得到那個視窗�
 `tools\cmdpal-ui.ps1` 因此自己走 `EnumWindows` + 比對 pid 與視窗標題,再用 Windows 內建的
 UI Automation 讀畫面。**要驗 CmdPal 就用這個腳本,不要繞回 `orca computer`。**
 
-反過來,**computer-use 在「CmdPal 以外的視窗」上仍然是對的工具**,而 Notelet 有幾條路
+反過來,**computer-use 在「CmdPal 以外的視窗」上仍然是對的工具**,而 Inkling 有幾條路
 正好會跳出去:
 
 | 要驗什麼 | 用什麼 |
@@ -68,18 +68,19 @@ UI Automation 讀畫面。**要驗 CmdPal 就用這個腳本,不要繞回 `orca 
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"
 ```
 
-**這一步不能跳過。** 預設值是 `%OneDrive%\Notelet` —— 也就是使用者真正在用的筆記。
+**這一步不能跳過。** 預設值是 `%OneDrive%\Inkling` —— 也就是使用者真正在用的筆記。
 任何會**新增、編輯或刪除**的驗證都不可以在那裡跑。
 
 要跑寫入類的驗證,先換到測試資料夾,跑完換回去:
 
 ```powershell
-$settings = "$env:LOCALAPPDATA\Packages\Notelet_bf0n0751x5hse\LocalState\settings.json"
+$pfn = (Get-AppxPackage Inkling).PackageFamilyName
+$settings = "$env:LOCALAPPDATA\Packages\$pfn\LocalState\settings.json"
 $backup = Get-Content $settings -Raw -Encoding UTF8      # 先留一份原值
 
 $json = $backup | ConvertFrom-Json
-$json.'Notelet.NotesDirectory' = "$env:TEMP\notelet-verify"
-New-Item -ItemType Directory -Force "$env:TEMP\notelet-verify" | Out-Null
+$json.'Inkling.NotesDirectory' = "$env:TEMP\inkling-verify"
+New-Item -ItemType Directory -Force "$env:TEMP\inkling-verify" | Out-Null
 $json | ConvertTo-Json | Set-Content $settings -Encoding UTF8
 # 換資料夾要 Reload 才會重建 repository
 
@@ -92,7 +93,8 @@ Set-Content $settings -Value $backup -Encoding UTF8      # 一定要換回去
 
 ### 3. 想看擴展內部發生了什麼就開診斷日誌
 
-在 `%LOCALAPPDATA%\Packages\Notelet_bf0n0751x5hse\LocalState\` 建一個空檔 `diagnostic.on`,
+在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` 建一個空檔 `diagnostic.on`
+(`<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查),
 Reload,之後 `-Steps "...|log"` 就讀得到。擴展沒有主控台,`Debug.WriteLine` 在 Release
 被編掉,這是唯一能讓它自己說話的路。
 
@@ -111,7 +113,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 成因也是它)。每啟動一個新的 PowerShell 進程都可能把它打斷 —— 所以是
 
 ```powershell
--Steps "show|type:Notelet|wait:900|tree:6"      # 對
+-Steps "show|type:Inkling|wait:900|tree:6"      # 對
 ```
 
 而不是分成三次呼叫。
@@ -126,7 +128,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 擋下來的時候輸出會直接告訴你當時前景是誰:
 
 ```
-### type Notelet
+### type Inkling
   !! CmdPal 不在前景,'type' **沒有送出**(送了會打進別的視窗)
      目前前景:Orca (pid=7572) 'Orca'
 ```
@@ -197,17 +199,17 @@ popup 不受這個保護,見下面。
 
 ## 判讀 UIA 樹
 
-CmdPal 主頁打 `Notelet` 之後大致長這樣:
+CmdPal 主頁打 `Inkling` 之後大致長這樣:
 
 ```
 Window: 'Command Palette' [FOCUS]
-    Edit: '搜尋應用程式、檔案和命令...' value='Notelet' [FOCUS]
+    Edit: '搜尋應用程式、檔案和命令...' value='Inkling' [FOCUS]
       List: ''
         ListItem: ' ListItemViewModel'
           Text: '結果'                          ← 分節標題
-        ListItem: 'Notelet' [SELECTED]          ← 選取的那一列
-          Group: 'Notelet'
-            Text: 'Notelet'                     ← Title
+        ListItem: 'Inkling' [SELECTED]          ← 選取的那一列
+          Group: 'Inkling'
+            Text: 'Inkling'                     ← Title
             Text: '瀏覽與搜尋筆記'               ← Subtitle
             Custom: '# '                        ← 使用者設的 alias
     Button: 'Open Command Palette settings, shortcut Control plus comma'
@@ -215,7 +217,7 @@ Window: 'Command Palette' [FOCUS]
     Button: 'More'                              ← Ctrl+K 選單
 ```
 
-進了 Notelet 清單頁(`type:# `)之後:
+進了 Inkling 清單頁(`type:# `)之後:
 
 ```
 Window: 'Command Palette' [FOCUS]
@@ -228,7 +230,7 @@ Window: 'Command Palette' [FOCUS]
         Text: 'rime'
         Text: '```⏎當前我認為Rime…(共 3613 字)'      ← 渲染後的內文
         ScrollBar: 'Vertical' [off]
-      Text: 'Notelet'                              ← 左下角的頁面名
+      Text: 'Inkling'                              ← 左下角的頁面名
       Button: '預覽'                                ← 底部命令列,主命令
       Button: '編輯'
       Button: 'More'
@@ -276,7 +278,7 @@ toast 視窗**本來就一直存在**(CmdPal 啟動時就建好了),所以要看
 **頂層命令與圖示(第 1 節)**
 
 ```powershell
-pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Notelet|wait:900|tree:7|shot:$env:TEMP\toplevel.png"
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Inkling|wait:900|tree:7|shot:$env:TEMP\toplevel.png"
 ```
 
 四個頂層命令要都在。**圖示長什麼樣樹裡看不出來,一定要開 `shot` 出來的圖用眼睛確認** ——

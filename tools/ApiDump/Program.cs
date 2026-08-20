@@ -16,7 +16,7 @@ using Microsoft.CommandPalette.Extensions.Toolkit;
 if (args.Length > 0 && args[0] == "--paths")
 {
     Console.WriteLine($"IsPackaged       = {Utilities.IsPackaged()}");
-    Console.WriteLine($"BaseSettingsPath = {Utilities.BaseSettingsPath("Notelet")}");
+    Console.WriteLine($"BaseSettingsPath = {Utilities.BaseSettingsPath("Inkling")}");
     return;
 }
 

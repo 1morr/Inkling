@@ -1,4 +1,4 @@
-# Notelet 設計考證
+# Inkling 設計考證
 
 這份文檔收的是「為什麼」—— 每一個看起來繞路的設計背後的查證過程與取捨。
 讀者是**未來的維護者**(包括半年後的自己)與**其他 CmdPal 擴展作者**:很多結論
@@ -56,7 +56,7 @@ alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 | 觸發時送 `ClearSearchMessage` + `PerformCommandMessage` | 搜尋框被清空、跳進頁面。**所以 alias 觸發的命令拿不到觸發當下那句話** —— 但跳進去之後打的字,是我們自己 `DynamicListPage.UpdateSearchText` 收的,完全掌控。這正是頁面版能成立的原因 |
 
 **哪天 CmdPal 修好了想把 fallback 加回來**:整套實作在 git 歷史裡,
-`git log --diff-filter=D -- src/Notelet/QuickCaptureFallbackItem.cs` 找得到。
+`git log --diff-filter=D -- src/Inkling/QuickCaptureFallbackItem.cs` 找得到。
 判準是打一句不帶前綴的話,結果裡不再多出空列。真要加回來記得:alias 比 fallback
 早一步處理(`MainListPage.UpdateSearchTextCore` 開頭就 `if (aliases.CheckAlias(newSearch)) return;`),
 所以 alias 別跟前綴設成同一個字,否則 alias 會先把搜尋框清掉,fallback 再也看不到那句查詢。
@@ -167,7 +167,7 @@ CmdPal 的搜尋框是單行 `TextBox`,往裡面貼一段多行的 Markdown **�
 
 只動拿去渲染的那份字串,**磁碟上的 `.md` 一個字都不變** —— 用別的編輯器打開仍然是標準
 Markdown。程式碼區塊、表格、縮排程式碼、setext 標題底線這些「換行本來就有意義」的地方
-會避開。規則在 `Notelet.Core/NotePreview.cs`,測試在 `NotePreviewTests.cs`。
+會避開。規則在 `Inkling.Core/NotePreview.cs`,測試在 `NotePreviewTests.cs`。
 
 已知的取捨:貼進來的 Markdown 文件如果有「中途硬換行的段落」,渲染時會固定斷在原本的
 折行處,而不是隨視窗寬度重排。
@@ -269,14 +269,14 @@ CmdPal 的 `ShowEmptyContent` 只看篩完的項目數是不是零,**不看搜�
 空出來的 `Ctrl+D` 後來給了刪除,中間拿掉過,現在又回到刪除身上 ——
 那一段來回見〈清單頁的快速鍵〉。
 
-舊 `settings.json` 裡的 `Notelet.DetailsWidth` 鍵留著不管:`Settings.Update` 只認得
+舊 `settings.json` 裡的 `Inkling.DetailsWidth` 鍵留著不管:`Settings.Update` 只認得
 自己註冊過的鍵,多一個孤兒鍵不會有任何影響,不值得為它寫一次遷移。
 
 <a id="list-shortcuts"></a>
 
 ### 清單頁的快速鍵
 
-鍵位全部收在 `src/Notelet/Shortcuts.cs`(CmdPal 自己的擴展也是這個形狀 ——
+鍵位全部收在 `src/Inkling/Shortcuts.cs`(CmdPal 自己的擴展也是這個形狀 ——
 每個擴展一個 `KeyChords.cs`)。原則是**能少一個修飾鍵就少一個**:這幾個動作每天按,
 `Ctrl+X` 比 `Ctrl+Shift+X` 順得多。但「哪些 `Ctrl+字母` 可以拿」要先看誰已經佔著。
 
@@ -327,13 +327,13 @@ CmdPal 的 `ShowEmptyContent` 只看篩完的項目數是不是零,**不看搜�
 1. **`Ctrl+Delete`** —— 錯的。那是搜尋框的「刪右邊一個詞」,見上面第一條。
 2. **`Ctrl+D`** —— 能用,但後來整個拿掉了。當時的理由是「清單頁是拿來找筆記的,把一個
    不可逆的動作綁在搜尋框上按得到的鍵位上,換來的方便配不上誤觸的代價」,刪除因此只留在
-   `Ctrl+K` 選單裡,連續清理請去 `Notelet：刪除筆記` 那一頁。
+   `Ctrl+K` 選單裡,連續清理請去 `Inkling：刪除筆記` 那一頁。
 3. **`Ctrl+Shift+Delete`** —— 跟三個內建擴展一致、也難誤按,但每次刪都要按三個鍵。
 4. **`Ctrl+D`(現在)** —— 「搜到某一則,順手刪掉」是清單頁上真實存在的動線;為此跑去
    另一頁還得在那裡再搜一次(那一頁只搜標題),繞得比省下來的多。誤觸的顧慮沒有消失,
    而是靠兩道防線扛:**一定會跳確認框**,而且刪掉的檔案**進資源回收筒**。
 
-`Notelet：刪除筆記` 那一頁**沒有**跟著綁 `Ctrl+D`:那裡的 `Enter` 與 `Ctrl+Enter`
+`Inkling：刪除筆記` 那一頁**沒有**跟著綁 `Ctrl+D`:那裡的 `Enter` 與 `Ctrl+Enter`
 本來就是刪除,再多一個鍵只會讓語意打架 —— 清單頁的 `Ctrl+D` 是「會先問一次」,
 那一頁的次要命令卻是「不問」。
 
@@ -381,7 +381,7 @@ CmdPal 的 `ShowEmptyContent` 只看篩完的項目數是不是零,**不看搜�
 | 入口 | CmdPal 怎麼拿 |
 |---|---|
 | 清單頁 `Ctrl+K` → 設定 | 我們放在 `MoreCommands` 裡的頁面,每次導覽進去都重建 viewmodel |
-| 設定 → Extensions → Notelet | `ICommandSettings.SettingsPage`,**整個 CmdPal 生命週期只初始化一次** |
+| 設定 → Extensions → Inkling | `ICommandSettings.SettingsPage`,**整個 CmdPal 生命週期只初始化一次** |
 
 第二條路是這樣寫的(`ProviderSettingsViewModel`):
 
@@ -402,7 +402,7 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 結果就是:表單送出、檔案也存了,那一頁卻停在啟動時的值。
 
 修法是**自己實作 `ICommandSettings`**(整個介面只有 `SettingsPage` 一個成員),
-把 `NoteletSettingsPage` 交出去,發 `ItemsChanged` 的權力就回到我們手上。
+把 `InklingSettingsPage` 交出去,發 `ItemsChanged` 的權力就回到我們手上。
 兩個入口共用同一個頁面實例,所以看到的永遠一致。
 
 那個頁面因此**不能跟著 `ProviderState` 重建** —— CmdPal 在 provider 剛連上時就把
@@ -431,7 +431,7 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 #### 表單也是自己的
 
 頁面的內容不是 toolkit 的 `Settings.ToContent()`,而是自己寫的一張 Adaptive Card
-(`NoteletSettingsForm`)。三個理由:
+(`InklingSettingsForm`)。三個理由:
 
 1. **toolkit 的卡片放不下「瀏覽…」按鈕。** 設定項只能一格一格排下去。
 2. **欄位名根本不會顯示。** 它把 `Label` 塞進卡片的 `title`,而 `Input.Text` 沒有那個屬性;
@@ -512,7 +512,7 @@ if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不
 會觸發的情境本身也沒了。當初每按一次 `Ctrl+D`(那時面板寬度可調)就重讀一次表單,人卻在
 主視窗翻筆記,背景視窗因此一直跳。現在 `Refresh()` 只有兩個呼叫點,都源自使用者在設定
 表單上的操作(按儲存、或按「瀏覽…」選完資料夾)——人本來就在設定頁上。唯一還構得成
-問題的組合是「CmdPal 設定視窗停在 Notelet 那一頁,同時從主搜尋框進設定頁按儲存」,
+問題的組合是「CmdPal 設定視窗停在 Inkling 那一頁,同時從主搜尋框進設定頁按儲存」,
 兩邊共用同一個頁面實例,背景那個會跟著重建。
 
 拿掉之後換回來的是**打開設定頁時游標會自動落在第一個欄位**,不必先點一下或按 Tab ——
@@ -538,13 +538,13 @@ CmdPal 的 `MarkdownThemes` 只設定了字級與 inline code;卡片裡的 `Text
 
 ### 刪除為什麼是一頁
 
-`Notelet：刪除筆記` 按下去不會刪任何東西,它進到一個清單頁,把即將被刪的檔案列出來。
+`Inkling：刪除筆記` 按下去不會刪任何東西,它進到一個清單頁,把即將被刪的檔案列出來。
 
 原因是這個動作的範圍比它的名字大得多。掃描的是筆記資料夾底下(含子資料夾)**所有的
-`.md`**,而且**不分辨檔案是不是 Notelet 寫的** —— 那是列清單時刻意的設計(外來的 `.md`
+`.md`**,而且**不分辨檔案是不是 Inkling 寫的** —— 那是列清單時刻意的設計(外來的 `.md`
 也要看得到),但放到批次刪除上就變成一把沒有握把的刀:資料夾要是被指到既有的
 Obsidian vault、docs 目錄、或任何有 `README.md` 的專案資料夾,一次就全掃走了。
-預設的 `%OneDrive%\Notelet` 是專用資料夾,所以預設設定沒有這個問題 —— 風險是改過路徑
+預設的 `%OneDrive%\Inkling` 是專用資料夾,所以預設設定沒有這個問題 —— 風險是改過路徑
 之後才出現的。
 
 一個確認框放不下這些。它只有一行標題與一行說明,而使用者真正需要看見的是「到底是哪些檔案」。
@@ -552,13 +552,13 @@ Obsidian vault、docs 目錄、或任何有 `README.md` 的專案資料夾,一�
 
 | 區塊 | 內容 |
 |---|---|
-| 動作 | `刪除全部 N 則`(副標是資料夾路徑);有外來檔案時多一列 `只刪 Notelet 建立的 M 則` |
-| 不是 Notelet 建立的 | 排在最前面 —— 那正是最需要先看到的一批,圖示也不一樣 |
-| Notelet 筆記 | 其餘的,副標是相對於筆記資料夾的路徑,子資料夾一眼看得出來 |
+| 動作 | `刪除全部 N 則`(副標是資料夾路徑);有外來檔案時多一列 `只刪 Inkling 建立的 M 則` |
+| 不是 Inkling 建立的 | 排在最前面 —— 那正是最需要先看到的一批,圖示也不一樣 |
+| Inkling 筆記 | 其餘的,副標是相對於筆記資料夾的路徑,子資料夾一眼看得出來 |
 
 清單超過 `MaxResults` 被截斷時,最後一列會明講**沒列出來的一樣會被刪**。
 
-「只刪 Notelet 建立的」那一列是這個做法真正換來的東西 —— 命令的形狀下根本放不下第二個動作。
+「只刪 Inkling 建立的」那一列是這個做法真正換來的東西 —— 命令的形狀下根本放不下第二個動作。
 
 順帶修掉一個小毛病:原本沒有筆記時只能回一個 toast,而 toast 的預設收尾是把整個 CmdPal
 關掉,使用者只看到面板一閃就沒了。頁面有 `EmptyContent`,空的情況本來就有地方講。
@@ -575,7 +575,7 @@ Windows 會直接永久刪除,而我們設的 `FOF_NOCONFIRMATION` 正好把那�
 是因為使用者進到這一頁時的狀態有兩種:一種是心裡有數要清掉哪幾則(連著按 `Ctrl+Enter` 最快),
 另一種是邊看邊決定(每一則都想再確認一次)。底部工具列會把兩條路都寫出來,不必記。
 
-**例外只有一個**:不是 Notelet 建立的檔案,兩條路都跳確認框。那是別的工具寫的、或使用者
+**例外只有一個**:不是 Inkling 建立的檔案,兩條路都跳確認框。那是別的工具寫的、或使用者
 自己丟進資料夾的,誤刪的代價跟自己記的筆記不一樣,不給它「跳過確認」這個選項。那一列的
 `Ctrl+Enter` 因此照實寫成「刪除」而不是「直接刪除」,副標講明為什麼。
 
@@ -649,7 +649,7 @@ CmdPal 那一頭把訊息畫成底部命令列左邊的一個 `InfoBadge`,點開
 反過來 `main` 那套 toast 改寫(`TransparentWindow` / `TransientSurface` / `ToastPosition`)
 安裝版**一個都掃不到** —— 又一個不能照 `main` 寫文檔的例子。
 
-所以存檔提示照樣用它(`NoteFormContent`、`NoteletSettingsForm`),
+所以存檔提示照樣用它(`NoteFormContent`、`InklingSettingsForm`),
 而 `docs/manual-test-checklist.md` 那條「跳出『已儲存』的 toast **並回到上一頁**」
 本身就是證據:面板要是被關掉,那一項當初不會通過。
 
@@ -726,7 +726,7 @@ $u8.Contains('DefaultButton')           # False ← 一次都沒設過
 
 | | `IsPrimaryCommandCritical` | 為什麼 |
 |---|---|---|
-| 刪一則(Notelet 建立的) | **不設** | 有資源回收筒兜底,不值得為此讓每次刪除都多按一次方向鍵 |
+| 刪一則(Inkling 建立的) | **不設** | 有資源回收筒兜底,不值得為此讓每次刪除都多按一次方向鍵 |
 | 刪一則(外來檔案,刪除頁) | **設** | 那是別的工具寫的檔案,誤刪的代價不一樣,值得多那一下 |
 | 批次刪除(兩列都是) | **設** | 一次動幾十個檔案就該多花那一下 |
 
@@ -815,7 +815,8 @@ $d = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8w
 
 ### 命令 Id 為什麼要寫死
 
-`src/Notelet/CommandIds.cs` 裡那幾個字串是對外承諾,跟資料格式一樣不能改。
+`src/Inkling/CommandIds.cs` 裡那幾個字串是對外承諾,跟資料格式一樣不能改。
+**它們現在還叫 `Notelet.*`** —— 那是這個擴展改名前的名字,理由見本節最後。
 
 CmdPal 把使用者對命令做的設定 —— alias、全域快速鍵、釘選、fallback 的顯示規則與排序 ——
 全部存在自己的 settings.json 裡,鍵就是命令的 `Id`。而**命令沒有設 `Id` 時 CmdPal 會現場算一個**:
@@ -827,11 +828,33 @@ CmdPal 把使用者對命令做的設定 —— alias、全域快速鍵、釘選
 「打 `! ` 沒反應」—— 看不出跟改標題有任何關係。
 
 歷史教訓來自已經移除的 fallback,它的標題本來就跟著使用者打的字一直變:CmdPal 的
-settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的雜湊反推回去,正好是標題
+settings.json 裡曾經留下兩個 Inkling fallback 條目,把其中一個的雜湊反推回去,正好是標題
 `記下:你好` —— 某次重新載入時搜尋框裡剛好是那句話。表現出來就是「改了一次設定,
 快速新增就莫名其妙不會出現了,連改回原本的前綴也救不回來」。
 
 (那兩個雜湊條目可能還躺在你的 CmdPal settings.json 裡,無害 —— CmdPal 會忽略對不上的鍵。)
+
+#### 為什麼這些 Id 還叫 `Notelet.*`
+
+這個擴展從 Notelet 改名成 Inkling 時,`CommandIds.cs` 那六個字串**刻意一個都沒改**。
+
+改名前實際打開 CmdPal 的 settings.json 看過,那裡面有兩種鍵:
+
+```json
+"Aliases": {
+  "! ": { "CommandId": "Notelet.QuickCapturePage", "Alias": "!", "IsDirect": false }
+},
+"ProviderSettings": {
+  "Notelet_bf0n0751x5hse!App!Notelet": { "IsEnabled": true }
+}
+```
+
+`Aliases` 的鍵是**純命令 Id** —— 條目裡沒有 PFN、沒有 provider 參照。帶 PFN 的只有
+`ProviderSettings` 與 `PinnedCommands`。所以換套件身分時,只要這些字串不動,
+使用者設過的 alias 就跟著新名字走;動了它們,alias 當場全部失效。
+
+代價只有「新來的人看到 `Notelet.List` 會困惑」,而那用一段註解就解決了。
+使用者永遠看不到這些字串 —— 它們不是介面文字,是設定檔的鍵。
 
 <a id="ui-language"></a>
 
@@ -839,7 +862,7 @@ settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的�
 
 介面有英文、繁體中文、簡體中文三種,**沒有設定項** —— 看到哪一種由 Windows 的顯示語言決定。
 
-字串全部在 `src/Notelet/Properties/` 的三份 `.resx` 裡,程式碼一律經由產生出來的
+字串全部在 `src/Inkling/Properties/` 的三份 `.resx` 裡,程式碼一律經由產生出來的
 `Resources.<鍵>` 取用,語言選擇是 `ResourceManager` 照 `CultureInfo.CurrentUICulture`
 自己處理的,我們沒有寫任何偵測。中性(fallback)那一份是**英文**:系統語言不在這三種裡面時
 (法文、日文……)拿到的就是它。
@@ -861,15 +884,15 @@ settings.json 裡曾經留下兩個 Notelet fallback 條目,把其中一個的�
 
 - **擴展進程拿得到使用者的顯示語言。** 它是 CmdPal 用 COM 拉起來的獨立進程,不是 CmdPal 的
   子視窗,所以這件事不能想當然。`diagnostic.log` 印的是 `UI 語言:zh-TW 抽樣='設定'`。
-- **trimming 不會砍掉附屬組件。** Release 是 trimmed publish,`zh-Hant\Notelet.resources.dll`
-  與 `zh-Hans\Notelet.resources.dll` 都完整進到 MSIX 佈局裡(套件大小沒有可見變化)。
+- **trimming 不會砍掉附屬組件。** Release 是 trimmed publish,`zh-Hant\Inkling.resources.dll`
+  與 `zh-Hans\Inkling.resources.dll` 都完整進到 MSIX 佈局裡(套件大小沒有可見變化)。
 - **回落是乾淨的。** 強制 `fr-FR` 拿到英文,不是空字串也不是例外。
 - **CmdPal 自己沒有語言覆寫。** PowerToys 有些模組會照設定裡的 `language` 去套
   `ManagedCommon.Language.LoadLanguage()`,但 0.11.11762.0 的整個 CmdPal 套件 byte-scan
   `LoadLanguage` 掃不到,`main` 的原始碼裡設 `CurrentUICulture` 的也只有單元測試。
   所以擴展與 CmdPal 本體看到的是同一個語言,不會一半中文一半英文。
 
-**為什麼不加一個語言設定項。** 想要「Windows 是英文、但 Notelet 顯示中文」的話得自己選語言,
+**為什麼不加一個語言設定項。** 想要「Windows 是英文、但 Inkling 顯示中文」的話得自己選語言,
 而那會踩到〈設定頁有兩個入口〉那一節講的限制:CmdPal 手上握著的是使用者當下開著的頁面實例,
 換語言等於每一頁的 `Title` / `Name` / `PlaceholderText` 與每一塊快取都要自己重算,
 `ICaptureSeparatorStore` 那個形狀要再複製一遍。跟隨系統零成本,而真的需要換語言的人
@@ -886,22 +909,60 @@ Reload 或重新登入才會重讀。
 
 ## 圖示
 
-原始檔是 `assets/icon/` 底下的三個 SVG,`src/Notelet/Assets/*.png` 全部由
+原始檔是 `assets/icon/` 底下的七個 SVG,`src/Inkling/Assets/*.png` 全部由
 `tools/render-icons.ps1` 產生 —— **不要手改那些 PNG**,改圖示請改 SVG 再跑一次腳本。
 
-構圖是「一張小卡片 + 一根琥珀色游標」。游標是整張圖唯一的暖色,也是縮小之後最後
-才消失的東西 —— Notelet 的識別點不是「筆記」(那太多人用了),是「打字即存」。
+構圖是「一道有壓感的下筆 + 一顆句點」:起筆重、收筆輕,最後點一下收尾。
+取自 inkling 的字面 —— 一點墨水、一個還沒成形的念頭。句點是整張圖唯一的彩色元素。
 
-兩份方形原始檔的分工是刻意的:
+**刻意避開的東西**:捲角便條紙、鉛筆加紙、記事本。那三個是 Notepad / Sticky Notes /
+OneNote 的符號,而「在 CmdPal 清單裡長得像它們」正是當初要改名換圖示的理由之一。
+
+三個取捨都是實際渲染到 20px 看過才定的:
+
+| 決定 | 為什麼 |
+|---|---|
+| 筆畫直立,不斜 | 第一版起筆帶橫向,縮到 24px 讀成數字「7」 |
+| 句點在右下,不在筆畫正上方 | 放上方會讀成小寫字母 `i` |
+| 滿版圓角磚,不是去背形狀 | `BackgroundColor` 是 `transparent`,連 plated 那一版也沒有系統底板 —— 單色去背的形狀在深色主題會直接消失 |
+
+原始檔的分工:
 
 | 原始檔 | 用在 | 差別 |
 |---|---|---|
-| `notelet-tile.svg` | 150×150 以上 | 兩行文字 + 細游標 |
-| `notelet-tile-small.svg` | 88px 以下(工作列、CmdPal 清單) | 一行文字、筆畫加粗、卡片放大 |
-| `notelet-wide.svg` | 寬磚與啟動畫面 | 卡片縮到 70% 置中在寬底板上 |
+| `inkling-tile.svg` | 150×150 以上 | 標準比例 |
+| `inkling-tile-small.svg` | 88px 以下(工作列、CmdPal 清單) | 筆畫放大約 8%、粗細差拉開,句點從 `r=18` 放大到 `r=25` |
+| `inkling-wide.svg` | 寬磚與啟動畫面 | 標記縮到 70% 置中在寬底板上 |
+| `inkling-cmd-list.svg` 等四個 | 四個頂層命令 | 24 格線單色,見下 |
 
-精細版那兩條文字線在 24px 只剩一像素高,會糊成一片灰;小尺寸版因此重畫過。
-這是圖示設計的常規做法(optical sizing),兩份的顏色與圓角比例一致,並排看得出是同一個。
+精細版的收筆端在 24px 只剩不到一像素,會直接斷掉;句點縮下去也剩不到兩像素。
+小尺寸版因此重畫過 —— 這是圖示設計的常規做法(optical sizing),
+兩份的顏色與圓角比例一致,並排看得出是同一個。
+
+### 四個頂層命令用自訂圖示,Ctrl+K 選單維持字形
+
+`Icons.TopLevelList` / `TopLevelCapture` / `TopLevelNew` / `TopLevelDelete` 是自己畫的
+PNG,其餘全部維持 Segoe Fluent。界線是這樣劃的:
+
+- **頂層命令**出現在 CmdPal 主搜尋框的結果裡,要一眼看得出是同一個產品 —— 走自訂。
+- **`Ctrl+K` 選單與頁面內**跟 CmdPal 內建命令混在一起,字形反而更協調;
+  而且 Segoe 在 16/20px 有專業 hinting,手畫的比不上 —— 走字形。
+
+代價講明白:**刪除那一個變弱了。** 垃圾桶(`0xE74D`)比「筆畫＋叉」一望即知,
+而刪除是四個裡最需要一眼認得的。這是為了家族一致刻意付的,不是疏忽 ——
+覺得誤刪風險比較重要的話,把 `Icons.TopLevelDelete` 改回 `Glyph(0xE74D)` 就好。
+
+**一個命令要兩張 PNG。** 字形是以文字繪製的,前景色自動跟主題走;PNG 不會。
+所以每個命令備了淺色主題(深色前景)與深色主題(白色前景)兩張,交給
+`IconHelpers.FromRelativePaths(light, dark)` 去挑。少了這一層,深色主題下圖示會整片看不見。
+`render-icons.ps1` 用同一份 SVG 渲染兩次,差別只在注入的 `color`。
+那一行的 `!important` 拿不掉:SVG 檔案自己帶 `style="color:..."`(方便單獨開起來看),
+而行內樣式優先權高過選擇器 —— 少了它兩張 PNG 會長得一模一樣,而且不會報錯。
+
+**修飾符的挖空用 `mask`,不是拿底色填。** 右下角那個徽章要跟筆畫分開,
+第一版是畫一個白色圓形蓋上去 —— 那在這裡是錯的:這幾張輸出成去背 PNG 疊在
+CmdPal 的清單列上,而那個背景是 Mica、半透明的,填死的白圓在深色主題會變成一塊亮斑。
+`mask` 才是真的把筆畫挖穿。
 
 渲染器用的是 Chromium(Chrome 或 Edge,哪個在就用哪個):這台機器沒有 ImageMagick /
 Inkscape / rsvg,而 .NET 不會解 SVG。重點是它**以目標尺寸直接向量渲染**,不是先畫大張
@@ -911,7 +972,7 @@ Inkscape / rsvg,而 .NET 不會解 SVG。重點是它**以目標尺寸直接向�
 
 ### `Assets` 一定要 `CopyToOutputDirectory`
 
-`Notelet.csproj` 把圖示收成 `Content` **並且**設了 `CopyToOutputDirectory`。少了後者,
+`Inkling.csproj` 把圖示收成 `Content` **並且**設了 `CopyToOutputDirectory`。少了後者,
 那些 PNG 不會進建置輸出,而我們是以 loose file 註冊建置輸出當套件的 ——
 `AppxManifest.xml` 裡每一個 `Logo` 都會指向不存在的檔案。**症狀很騙人**:套件照樣註冊
 成功、擴展照樣能用,只是所有圖示變成 Windows 的預設灰方塊,看起來像「圖示做壞了」。
@@ -922,7 +983,7 @@ Inkscape / rsvg,而 .NET 不會解 SVG。重點是它**以目標尺寸直接向�
 
 ## 開發考證
 
-### 為什麼 Reload 之後有時會冒出兩個 Notelet
+### 為什麼 Reload 之後有時會冒出兩個 Inkling
 
 CmdPal 那邊的問題,不是擴展的。重新註冊套件會讓 Windows 的套件目錄發出**安裝**事件
 (套件版本從頭到尾都是 0.1.0.0,所以它算是重裝而不是升級 —— 升級走的是「先移除再安裝」,
@@ -961,4 +1022,4 @@ dotnet run --project tools\ApiDump -- --paths     # 設定檔存在哪
 - 清單一次最多送 200 則(每個項目都要跨進程 COM 封送)。被截斷時清單最後會明講
   還有幾則,不會默默少東西。
 
-`tests/Notelet.Core.Tests/PerformanceTests.cs` 是這幾條的防退化警戒線。
+`tests/Inkling.Core.Tests/PerformanceTests.cs` 是這幾條的防退化警戒線。

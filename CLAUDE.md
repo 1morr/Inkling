@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Notelet 是 PowerToys Command Palette(CmdPal)的筆記擴展:MSIX 套件、跑在自己的
+Inkling 是 PowerToys Command Palette(CmdPal)的筆記擴展:MSIX 套件、跑在自己的
 out-of-process COM server 裡,把想法存成資料夾裡的 Markdown 檔。使用者的目標是
 「叫出 CmdPal → 打字 → Enter」,所以任何拖慢主搜尋框的做法都不能接受。
 
@@ -11,7 +11,7 @@ out-of-process COM server 裡,把想法存成資料夾裡的 Markdown 檔。使�
 ```powershell
 dotnet test                                             # Core 全部行為
 dotnet test --filter "FullyQualifiedName~QuickCapture"  # 單一測試類別/方法
-dotnet build src\Notelet\Notelet.csproj -p:Platform=x64 # 只建擴展(進程活著時會鎖輸出,見下方)
+dotnet build src\Inkling\Inkling.csproj -p:Platform=x64 # 只建擴展(進程活著時會鎖輸出,見下方)
 
 .\tools\deploy.ps1 -Configuration Release -Reload       # 日常部署(trimmed + 自動重載)
 .\tools\deploy.ps1                                      # Debug 部署(~106 MB,不 trim)
@@ -27,31 +27,33 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾是不是真資料
 ```
 
-- **方案層級建不了擴展。** `dotnet build Notelet.slnx` 走 AnyCPU,會撞 MSIX 打包目標的
+- **方案層級建不了擴展。** `dotnet build Inkling.slnx` 走 AnyCPU,會撞 MSIX 打包目標的
   「Packaged .NET applications with an app host exe cannot be ProcessorArchitecture neutral」
-  —— 打包專案不吃 AnyCPU,帶 `-p:Platform=x64` 也救不了(`Notelet.slnx` 沒有那個組態,
+  —— 打包專案不吃 AnyCPU,帶 `-p:Platform=x64` 也救不了(`Inkling.slnx` 沒有那個組態,
   帶了直接失敗;`.slnx` 的 Platform 對應語法試過,它的 schema 不吃)。要建擴展就指定專案:
-  `dotnet build src\Notelet\Notelet.csproj -p:Platform=x64`。`dotnet test` 不受影響,
-  它只建測試專案與 Core。完整考證見 `src/Notelet/Notelet.csproj` 的 `PublishSingleFile` 註解。
+  `dotnet build src\Inkling\Inkling.csproj -p:Platform=x64`。`dotnet test` 不受影響,
+  它只建測試專案與 Core。完整考證見 `src/Inkling/Inkling.csproj` 的 `PublishSingleFile` 註解。
 - **「只建擴展」那條在擴展進程活著時會失敗**(MSB3021,輸出檔被佔用)—— CmdPal 平常
-  就把擴展的 COM server 常駐拉起。先 `Stop-Process -Name Notelet`,或直接用
+  就把擴展的 COM server 常駐拉起。先 `Stop-Process -Name Inkling`,或直接用
   `deploy.ps1`(它會先停進程再建)。
 - 部署後**一定要 Reload**,否則 CmdPal 繼續用舊的擴展實例,你會以為改動沒生效。
   `-Reload` 需要 CmdPal 設定 → 一般 → For developers → Enable external reload。
 - 擴展沒有主控台,`Debug.WriteLine` 在 Release 被編掉。要確認某段程式有沒有跑到,
-  用 `DiagnosticLog`:在 `%LOCALAPPDATA%\Packages\Notelet_bf0n0751x5hse\LocalState\`
+  用 `DiagnosticLog`:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`
   建一個空檔 `diagnostic.on`,Reload,然後看同目錄的 `diagnostic.log`。
+  `<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查 —— 不要把它寫死進文檔,
+  換套件身分時那些字串會靜靜失效(讀不到檔案不報錯,只會讓驗證失明)。
 
 ## 架構
 
 兩層,界線是「能不能自動化測試」:
 
-- **`src/Notelet.Core`** — 純 `net10.0`,**不引用任何 CmdPal 型別**。front matter 解析、
+- **`src/Inkling.Core`** — 純 `net10.0`,**不引用任何 CmdPal 型別**。front matter 解析、
   檔名/id 產生、搜索排序、標題/內文切分(`QuickCapture.Split`)、預覽的換行規則,
   全部在這一層,因此全部有單元測試。跨消費者的概念只留一份實作 ——
   「內文的第一行有效文字」收在 `NoteBody`(清單摘要、外來檔案的推導標題、
   預覽判斷「內文是否已含標題」三處共用),曾經各寫一份而且字元集已經漂移過。
-- **`src/Notelet`** — MSIX COM server,只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
+- **`src/Inkling`** — MSIX COM server,只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
   CmdPal 沒有提供 UI 自動化介面,這一層的驗證靠 `docs/manual-test-checklist.md`;
   清單內容、快速鍵、placeholder、有沒有跳 toast 這些**可以**用
   `tools\cmdpal-ui.ps1` 驅動 Windows 的 UI Automation 驗掉(見
@@ -62,7 +64,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
 實作放 UI 層並從外面注入 —— `IFileDeleter` / `RecycleBinFileDeleter` 就是這個形狀,
 測試因此可以用假的實作,不會真的去動使用者的資源回收筒。
 
-`NoteletCommandsProvider` 持有一個 `ProviderState`(資料夾 + repository + 清單頁 +
+`InklingCommandsProvider` 持有一個 `ProviderState`(資料夾 + repository + 清單頁 +
 快速記下頁 + 刪除頁 + 命令陣列)。**只有資料夾變了才整組重建**並釋放舊的 —— 那時 repository
 非換不可。會訂閱 `repository.Changed` 的頁面都要進 `ProviderState` 並在 `Dispose` 裡退訂,
 否則改幾次資料夾之後同一個事件會有好幾個死頁面在聽。
@@ -89,9 +91,12 @@ Version 的症狀)。
 
 這些都是踩過的坑,不是理論。改動前先讀 `docs/design-notes.md` 的對應章節。
 
-1. **每個頂層命令都要有固定 `Id`**(`src/Notelet/CommandIds.cs`)。沒設的話 CmdPal 會拿
+1. **每個頂層命令都要有固定 `Id`**(`src/Inkling/CommandIds.cs`)。沒設的話 CmdPal 會拿
    `ProviderId + DisplayTitle + Title + Subtitle` 做 WyHash64 當身分 —— 標題變一個字,
    使用者的 alias / 快速鍵 / 釘選 / fallback 設定就全部對不上。那幾個字串是對外承諾,不能改。
+   **它們現在還叫 `Notelet.*`,那是改名前的名字,故意留著** —— CmdPal 的 `Aliases` 用純命令 Id
+   當鍵(條目裡沒有 PFN),改了等於把使用者設過的 alias 清掉,而使用者根本看不到這些字串。
+   新增命令時給新 Id,不要為了整齊回頭改舊的。
 2. **`ListItem.Details` 只能整個換掉,不能就地改屬性。** `IDetails` 在 SDK IDL 裡沒有宣告成
    可觀察介面,`DetailsViewModel` 用執行期型別測試決定要不要訂閱,那個 QI 跨不過
    out-of-process 邊界,而通知的例外又被吞掉 —— 表現出來就是「值改了、畫面不動」。
@@ -113,12 +118,12 @@ Version 的症狀)。
    編輯頁「游標放到內文最後」查過,做不到,現在是在卡片底部提示按 `Ctrl+End`)、
    多行輸入框的高度完全不可控(只能靠預填內容撐開)、沒有 `Ctrl+S`(表單值只活在 CmdPal 進程裡)。
    `TextBlock` 不是 `Control`,加幾塊說明文字不會把焦點從輸入框搶走。
-5. **設定頁有兩個入口**(清單頁 `Ctrl+K` → 設定,以及 CmdPal 設定 → Extensions → Notelet)。
+5. **設定頁有兩個入口**(清單頁 `Ctrl+K` → 設定,以及 CmdPal 設定 → Extensions → Inkling)。
    後者 CmdPal **只初始化一次**,而且它拿的是 `ICommandSettings.SettingsPage` ——
-   所以我們自己實作了 `ICommandSettings`(見 `NoteletCommandSettings`),把
-   `NoteletSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
+   所以我們自己實作了 `ICommandSettings`(見 `InklingCommandSettings`),把
+   `InklingSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
    **不能跟著 `ProviderState` 重建**:CmdPal 在 provider 剛連上時就把 `Settings` 讀走了。
-   **表單送出後一定要 `NoteletSettingsPage.Refresh()`**(`OnSettingsApplied` 一進來就做,
+   **表單送出後一定要 `InklingSettingsPage.Refresh()`**(`OnSettingsApplied` 一進來就做,
    排在「資料夾沒變就 return」前面):卡片的值是建構時烤進 `DataJson` 的,而這個入口
    不會因為導覽進去就重新 `GetContent()`。漏掉的話那張卡片永遠停在啟動時的值,
    **而且下一次送出會把那個過期值當成使用者輸入寫回設定** —— 只改資料夾按儲存,
@@ -130,11 +135,11 @@ Version 的症狀)。
    [設計考證〈`Ctrl+D` 兜了一圈回來〉](docs/design-notes.md#ctrl-d-roundtrip)),拿掉還換回了「打開設定頁游標自動落在第一個欄位」。
    說明文字一律寫在卡片裡(那裡才有 `isSubtle`,
    而且區塊之間有 32px 收不掉的間距)。表單本身也不是 toolkit 的 `Settings.ToContent()`
-   而是自己畫的卡片(`NoteletSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
+   而是自己畫的卡片(`InklingSettingsForm`):那張卡片放不下「瀏覽…」按鈕,而且它把
    `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,欄位名等於不會顯示。
    存檔因此走 `SettingsManager.Apply`(toolkit 的 `RaiseSettingsChanged()` 是 internal)。
    細節見 [設計考證〈設定頁有兩個入口,而且只有一個會自己更新〉](docs/design-notes.md#settings-two-entries)。
-6. **重新註冊套件後有時會出現兩個 Notelet** —— CmdPal 在套件安裝事件上沒有去重。再 Reload 一次
+6. **重新註冊套件後有時會出現兩個 Inkling** —— CmdPal 在套件安裝事件上沒有去重。再 Reload 一次
    有時收得回去,但**不保證**(實測兩次都沒有);清不掉就把 `Microsoft.CmdPal.UI`
    進程停掉讓它重啟,PowerToys 本身不用重開。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
    之前開著的設定頁是綁在舊擴展實例上的死物件,按 Save 靜靜地什麼都不做** ——
@@ -169,7 +174,7 @@ Version 的症狀)。
    trimming 只在 `dotnet publish` 生效,所以 trimming 相關的問題只有 Release 部署才驗得到。
    `[GeneratedComInterface]`(shell 的 COM 介面)需要 `AllowUnsafeBlocks`,
    而且**方法的宣告順序就是 vtable 順序** —— 排錯不會有編譯錯誤,只會呼叫到別的函式。
-10. **快速鍵全部收在 `src/Notelet/Shortcuts.cs`,而且不能碰搜尋框的文字編輯鍵。**
+10. **快速鍵全部收在 `src/Inkling/Shortcuts.cs`,而且不能碰搜尋框的文字編輯鍵。**
     清單頁的焦點永遠在搜尋框上,而 CmdPal 在 `ShellPage_OnPreviewKeyDown` 的 tunneling
     階段就把鍵送去比對(`TryCommandKeybindingMessage` → `CheckKeybinding`),比 `TextBox`
     早收到 —— 綁走等於從搜尋框拿掉。**不能用的**:`Ctrl+A` / `C` / `X` / `V` / `Z` / `Y`、
@@ -184,7 +189,7 @@ Version 的症狀)。
 
 ## 慣例
 
-- **介面字串不准寫在程式碼裡**,一律放 `src/Notelet/Properties/` 的三份 `.resx`
+- **介面字串不准寫在程式碼裡**,一律放 `src/Inkling/Properties/` 的三份 `.resx`
   (`Resources.resx` 英文=中性 / `Resources.zh-Hant.resx` / `Resources.zh-Hans.resx`),
   用產生出來的 `Resources.<鍵>` 取。**三份一起改**,註解只寫在中性那一份;
   `ResourceParityTests` 會擋住只改一份、佔位符對不上、值是空的、英文那份混進中文。
@@ -206,9 +211,9 @@ Version 的症狀)。
 - 改了指令、設定項、資料格式或對外行為,同一輪更新 `README.md` 與
   `docs/manual-test-checklist.md`。
 
-- **圖示的原始檔是 `assets/icon/*.svg`**,`src/Notelet/Assets/*.png` 是
+- **圖示的原始檔是 `assets/icon/*.svg`**,`src/Inkling/Assets/*.png` 是
   `tools/render-icons.ps1` 產生的,不要手改 PNG。那些 PNG 必須帶
-  `CopyToOutputDirectory`(見 `Notelet.csproj` 的註解)—— 少了它套件照樣註冊得起來,
+  `CopyToOutputDirectory`(見 `Inkling.csproj` 的註解)—— 少了它套件照樣註冊得起來,
   只是所有圖示變成 Windows 的預設灰方塊,而且 `IconHelpers.FromRelativePath` 讀不到檔。
 
 工具面的地雷:
@@ -311,5 +316,5 @@ byte-scan 不是只拿來否定,拿來確認一樣有用。
 
 | | 位置 |
 |---|---|
-| Notelet 自己的設定 | `%LOCALAPPDATA%\Packages\Notelet_bf0n0751x5hse\LocalState\settings.json` |
+| Inkling 自己的設定 | `%LOCALAPPDATA%\Packages\<PFN>\LocalState\settings.json`(`<PFN>` 見上) |
 | CmdPal 端(啟用、alias、快速鍵、釘選、fallback 規則) | `%LOCALAPPDATA%\Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json` |

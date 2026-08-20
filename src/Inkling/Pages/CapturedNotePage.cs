@@ -1,0 +1,167 @@
+using Microsoft.CommandPalette.Extensions;
+using Microsoft.CommandPalette.Extensions.Toolkit;
+using Inkling.Commands;
+using Inkling.Core;
+using Inkling.Properties;
+
+namespace Inkling.Pages;
+
+/// <summary>
+/// 「記下並預覽」:存檔,然後把剛存下來的那則筆記整篇顯示出來,再按一次 Enter 收起。
+///
+/// **這一頁自己就是那個副作用** —— 它掛在快速記下頁那一列上當命令,而 CmdPal 對
+/// 「命令是一個頁面」的處理是導覽過去,不是 <c>Invoke</c>。也就是說:寫檔發生在
+/// <see cref="GetContent"/> 裡,不是在某個 <c>InvokableCommand</c> 裡。
+///
+/// 為什麼非得這樣不可:<c>CommandResult.GoToPage</c> 是個空殼。SDK 有那個型別,
+/// 但 CmdPal 的 <c>ShellViewModel.UnsafeHandleCommandResult</c> 那個 switch 裡
+/// 根本沒有 <c>GoToPage</c> 這個 case(0.11.11762.0 沒有,連 main 都沒有)——
+/// 所以「存完之後叫 CmdPal 跳到某一頁」用回傳值做不到,唯一還通的路就是讓那一列的
+/// 命令本身是一個頁面。
+///
+/// 「打字打到一半就存檔了」不會發生:清單項的 <c>CommandViewModel.InitializeProperties</c>
+/// 只讀 Id / Name / Icon,不碰 <c>GetContent</c>(查過原始碼)。內容是使用者真的按下
+/// Enter、CmdPal 建出 <c>ContentPageViewModel</c> 時才取的。
+///
+/// 也不會走成 toast:toast 視窗會搶焦點,而 CmdPal 主視窗一失焦就把自己藏起來
+/// (<c>MainWindow_Activated</c> → <c>EndSession("LostFocus")</c>,沒有開關)——
+/// 那正是「記下之後 CmdPal 整個消失」的成因。這一頁要留在畫面上,就一個 toast 都不能發。
+/// </summary>
+internal sealed partial class CapturedNotePage : ContentPage
+{
+    private readonly INoteRepository _repository;
+    private readonly QuickCaptureDraft _draft;
+
+    /// <summary>
+    /// Enter 那一顆。存檔成功是「完成 → 收起 CmdPal」,失敗則改成回上一頁。
+    ///
+    /// 換的是 <see cref="AnonymousCommand.Result"/> 而不是整個命令物件:那個屬性是
+    /// <c>Invoke</c> 當下才讀的,所以在 <see cref="GetContent"/> 裡改一定來得及,
+    /// 也不必指望任何跨進程的變更通知。
+    /// </summary>
+    private readonly AnonymousCommand _done;
+
+    /// <summary>
+    /// 複製內文。刻意用 <see cref="CopyNoteBodyCommand"/> 而不是 toolkit 原生
+    /// <see cref="CopyTextCommand"/>:後者預設回 ShowToast,而這一頁一個 toast 都不能發
+    /// (見上面的型別註解)。實例留著,重新取內容時才能改掉 <c>Text</c>。
+    /// </summary>
+    private readonly CopyNoteBodyCommand _copyBody;
+
+    private Note? _note;
+    private string? _error;
+    private bool _captured;
+
+    public CapturedNotePage(INoteRepository repository, QuickCaptureDraft draft)
+    {
+        _repository = repository;
+        _draft = draft;
+
+        Icon = Icons.Capture;
+
+        // 標題不必等存檔 —— 使用者打的就是它。
+        Title = draft.Title;
+        Name = Resources.CapturedPageName;
+
+        _done = new AnonymousCommand(() => { })
+        {
+            Name = Resources.CommandDone,
+            Icon = Icons.Done,
+
+            // 收起整個 Command Palette,而不是 GoHome:使用者記完這則想法就要回去做原本的事,
+            // 留一個主搜尋框在畫面上只是多一次 Esc。
+            Result = CommandResult.Dismiss(),
+        };
+
+        _copyBody = new CopyNoteBodyCommand(draft.Body);
+
+        // 存檔前只有這一顆:其餘幾個都要拿到存好的 Note 才建得出來(檔案路徑、id)。
+        // 補齊的時機見 Capture()。
+        Commands = [new CommandContextItem(_done)];
+    }
+
+    public override IContent[] GetContent()
+    {
+        Capture();
+
+        if (_note is not { } captured)
+        {
+            // 存檔失敗。原文照樣顯示出來,讓使用者至少能把打過的字複製走,
+            // 而不是連同錯誤訊息一起消失。
+            return [new MarkdownContent(
+                Strings.Format(Resources.CaptureFailedContent, _error, _draft.Title, _draft.Body))];
+        }
+
+        // 「重查 → 更新 → 渲染」與預覽頁共用同一份,理由見 NotePreviewContent。
+        // 重新查而不是用存檔當下的快照:使用者可能剛從這一頁按 Ctrl+E 編輯完回來。
+        var note = captured;
+        var content = NotePreviewContent.Reload(_repository, note.Id, ref note, _copyBody);
+
+        _note = note;
+        Title = note.Title;
+        return [content];
+    }
+
+    /// <summary>
+    /// 真正寫檔的地方,只跑一次。
+    ///
+    /// <see cref="GetContent"/> 不保證只被呼叫一次(編輯完回來、<c>RaiseItemsChanged</c>
+    /// 都會再要一次內容),少了這道旗標,同一則想法會被存成好幾個檔案。
+    /// </summary>
+    private void Capture()
+    {
+        if (_captured)
+        {
+            return;
+        }
+
+        _captured = true;
+
+        try
+        {
+            var note = _repository.Create(_draft.Title, _draft.Body);
+
+            _note = note;
+            _copyBody.Text = note.Body;
+
+            // 這裡才補齊命令列。CmdPal 讀 Commands 的時機比 GetContent 早
+            // (ContentPageViewModel.InitializeProperties:先 BuildCommandViewModels,
+            // 後 FetchContent),所以只能靠換掉整個陣列發出的 PropChanged 讓它重讀 ——
+            // IContentPage 走的是無條件訂閱那條路(IDetails 才是斷的,見 NoteListPage)。
+            Commands = BuildCommands(note);
+
+            DiagnosticLog.Write($"CapturedNotePage.Capture: 已存 id={note.Id} 標題='{note.Title}'");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // 磁碟滿了、資料夾被移走、OneDrive 鎖住檔案。這一頁沒有 toast 可用,
+            // 錯誤就直接畫在頁面上 —— 絕對不能讓使用者以為想法記下來了。
+            _error = ex.Message;
+
+            // Enter 改成回快速記下頁:剛打的那句話還在搜尋框裡,可以直接重試。
+            _done.Name = Resources.CommandGoBack;
+            _done.Result = CommandResult.GoBack();
+
+            DiagnosticLog.Write($"CapturedNotePage.Capture 失敗:{ex}");
+        }
+    }
+
+    /// <summary>
+    /// 存檔成功後的命令列。第二個項目會被 CmdPal 當成次要命令掛上 Ctrl+Enter,
+    /// 所以「編輯」排在「完成」後面 —— 看完覺得要改,不必先繞去清單頁找。
+    ///
+    /// 其餘三項與預覽頁、清單頁共用同一份組裝(<see cref="NoteCommands"/>),
+    /// 鍵位因此自動一致 —— 這一頁是第三個顯示同一則筆記的畫面,手勢要跨頁通用。
+    /// </summary>
+    private IContextItem[] BuildCommands(Note note) => [
+        new CommandContextItem(_done),
+        NoteCommands.Edit(_repository, note, Refresh),
+        NoteCommands.CopyBody(_copyBody),
+        NoteCommands.OpenInEditor(note),
+    ];
+
+    /// <summary>
+    /// 編輯存檔後由表單呼叫。為什麼一定要主動發這個事件,見 <see cref="NotePreviewContent"/>。
+    /// </summary>
+    private void Refresh() => RaiseItemsChanged(1);
+}

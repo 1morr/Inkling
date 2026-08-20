@@ -1,9 +1,9 @@
-# Notelet
+# Inkling
 
 Capture a thought in seconds without leaving the keyboard: summon PowerToys Command Palette,
 type, press Enter — the idea is saved as a plain Markdown file in a folder you choose.
 Sync, mobile access, and editing come from whatever cloud drive and editor you already use;
-Notelet itself contains zero sync code.
+Inkling itself contains zero sync code.
 
 <!-- 上面這段英文是對外的 elevator pitch,日後直接拿去做 Store listing 與 gallery
      extension.json 的 shortDescription(另一處是 Package.appxmanifest 的 Description)。 -->
@@ -19,21 +19,21 @@ Notelet itself contains zero sync code.
 打 `買咖啡機的想法` → Enter。存檔完成,全程不離開鍵盤。
 
 > **`!` 是你自己設的 alias,裝好之後要先設**,上面那條路才成立:CmdPal 設定 →
-> Extensions → Notelet → `Notelet：快速記下` → Alias 填 `!`。
+> Extensions → Inkling → `Inkling：快速記下` → Alias 填 `!`。
 > 挑標點而不是字母:字母會跟真實搜索撞(想搜 `n` 開頭的東西就誤觸),標點不會。
 > 中間那次跳頁不用手動觸發 —— 打完 `!` 空白它自己就跳,所以按鍵數跟一路打在
 > 主搜尋框裡完全一樣。想更快就再給它一個全域快速鍵,連 `!` 都省了。
 
 筆記是資料夾裡的純 Markdown 檔(YAML front matter + 內文),任何編輯器都能直接開。
-多端同步交給雲端硬碟處理,Notelet 本身沒有任何同步程式碼。
+多端同步交給雲端硬碟處理,Inkling 本身沒有任何同步程式碼。
 
 ## 功能
 
 | | |
 |---|---|
-| 快速記下 | `Notelet：快速記下` 打字直接存檔;想連內文一起記就 `<標題>;;<內文>`(分隔符可以在設定裡換掉)。底下會列出標題相近的既有筆記,免得同一件事記兩遍。要貼多行內容時會多給一列「內文取自剪貼簿」,繞過單行搜尋框 |
+| 快速記下 | `Inkling：快速記下` 打字直接存檔;想連內文一起記就 `<標題>;;<內文>`(分隔符可以在設定裡換掉)。底下會列出標題相近的既有筆記,免得同一件事記兩遍。要貼多行內容時會多給一列「內文取自剪貼簿」,繞過單行搜尋框 |
 | 記下後先看一眼 | 存好會停在筆記上,確認沒記錯再按一次 Enter 收起。預設開著,設定裡可以關掉 |
-| 新增(完整) | `Notelet：新增筆記` 開表單,可寫多行內文 |
+| 新增(完整) | `Inkling：新增筆記` 開表單,可寫多行內文 |
 | 瀏覽與搜索 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面;副標是內文的第一行摘要。搜不到時會直說「找不到符合的筆記」(而不是「還沒有任何筆記」),按 Enter 直接進快速記下 |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果 |
 | 原始文字 | 清單頁按 `Ctrl+U`,詳細窗格在渲染與原始 Markdown 之間切換 |
@@ -41,15 +41,15 @@ Notelet itself contains zero sync code.
 | 複製內文 | `Ctrl+Shift+C` 把內文複製到剪貼簿,不含 front matter,**面板不會關掉** |
 | 開啟檔案位置 | `Ctrl+L` 在檔案總管裡選中那個 `.md` |
 | 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**(不是永久刪除) |
-| 連續刪 | `Notelet：刪除筆記` 開一頁,`Enter` 刪除(先問一次),`Ctrl+Enter` 直接刪;不是 Notelet 建立的檔案兩條路都會問 |
-| 清空 | 同一頁的「刪除全部」,**先列出會刪掉哪些檔案**,不是 Notelet 建立的排在最前面 |
+| 連續刪 | `Inkling：刪除筆記` 開一頁,`Enter` 刪除(先問一次),`Ctrl+Enter` 直接刪;不是 Inkling 建立的檔案兩條路都會問 |
+| 清空 | 同一頁的「刪除全部」,**先列出會刪掉哪些檔案**,不是 Inkling 建立的排在最前面 |
 | 介面語言 | 英文、繁體中文、簡體中文,跟著 Windows 的顯示語言走,沒有設定項 |
 
 封存、tag 分類、置頂還沒做。`tags` 欄位讀得懂,但**沒有值就不會寫進檔案**(見〈資料格式〉)。
 
 ### 快速鍵
 
-清單頁(`Notelet`)與預覽頁上,選中一則筆記之後:
+清單頁(`Inkling`)與預覽頁上,選中一則筆記之後:
 
 | 鍵 | 做什麼 | 清單頁 | 預覽頁 |
 |---|---|:-:|:-:|
@@ -64,12 +64,12 @@ Notelet itself contains zero sync code.
 
 「記下並預覽」那一頁(快速記下的 Enter 落點)用同一組手勢:`Ctrl+E` 編輯、
 `Ctrl+Shift+C` 複製、`Ctrl+O` 在編輯器開啟 —— 三個頁面共用同一份命令組裝。
-`Notelet：刪除筆記` 那一頁另有自己的兩個鍵:`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪。
+`Inkling：刪除筆記` 那一頁另有自己的兩個鍵:`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪。
 
 **只有複製帶 Shift**:`Ctrl+C` 是搜尋框自己的複製鍵,拿走就沒辦法複製剛打的字,
 而 `Ctrl+Shift+C` 是 CmdPal 內建擴展的複製慣例。哪些字母不能碰、為什麼刪除是 `Ctrl+D`,
 完整的挑鍵考證見[設計考證〈清單頁的快速鍵〉](docs/design-notes.md#list-shortcuts)與
-`src/Notelet/Shortcuts.cs`。**CmdPal 目前不讓使用者改擴展的快速鍵**,
+`src/Inkling/Shortcuts.cs`。**CmdPal 目前不讓使用者改擴展的快速鍵**,
 能改的只有頂層命令的 alias 與全域快速鍵。
 
 ## 需求
@@ -93,8 +93,8 @@ Notelet itself contains zero sync code.
 ## Build 與本機安裝
 
 ```powershell
-git clone https://github.com/1morr/Notelet.git Notelet   # 換成你的實際位址
-cd Notelet
+git clone https://github.com/1morr/Inkling.git Inkling   # 換成你的實際位址
+cd Inkling
 .\tools\deploy.ps1 -Configuration Release
 ```
 
@@ -119,23 +119,23 @@ trimming 只在 `dotnet publish` 時生效,而 `Add-AppxPackage -Register` 註�
 等於完全沒驗到 trimming 有沒有把東西砍壞。
 
 **loose file 註冊會綁住路徑**:`Add-AppxPackage -Register` 不會複製檔案,Windows 直接引用
-`src\Notelet\bin\` 底下那個佈局,所以**不要在部署後刪掉 `bin\`**(`git clean -xfd` 也會刪),
+`src\Inkling\bin\` 底下那個佈局,所以**不要在部署後刪掉 `bin\`**(`git clean -xfd` 也會刪),
 否則擴展會壞掉,真的刪了就重跑一次 `deploy.ps1`。
 
-**移除**:`Get-AppxPackage -Name Notelet | Remove-AppxPackage`。
+**移除**:`Get-AppxPackage -Name Inkling | Remove-AppxPackage`。
 
 ## 同步設定
 
-Notelet **不做同步**。它只是把 Markdown 檔寫進你指定的資料夾,同步 100% 交給雲端硬碟
+Inkling **不做同步**。它只是把 Markdown 檔寫進你指定的資料夾,同步 100% 交給雲端硬碟
 客戶端 —— 離線可用性、衝突處理、手機端存取全部沿用 OneDrive / Dropbox 既有的能力。
 
-預設資料夾是 `%OneDrive%\Notelet`(找不到 OneDrive 就退回 `文件\Notelet`)。
-要改路徑:Command Palette → Notelet → `Ctrl+K` → 設定。
+預設資料夾是 `%OneDrive%\Inkling`(找不到 OneDrive 就退回 `文件\Inkling`)。
+要改路徑:Command Palette → Inkling → `Ctrl+K` → 設定。
 要在手機上看,裝 OneDrive App 就行;也可以讓 Obsidian 之類的工具指向同一個資料夾。
 
 ### OneDrive 使用者請注意
 
-把 Notelet 資料夾設成「一律保留在此裝置上」(資料夾按右鍵)—— 開啟「檔案隨選」而檔案
+把 Inkling 資料夾設成「一律保留在此裝置上」(資料夾按右鍵)—— 開啟「檔案隨選」而檔案
 只有雲端佔位符時,讀取會觸發下載,搜索就會卡住。多台機器同時編輯同一則筆記時,OneDrive
 會產生 `檔名-電腦名.md` 這種副本;資料不會遺失,副本照樣出現在清單裡,自己決定留哪份。
 
@@ -160,12 +160,12 @@ updated: 2026-08-11T09:15:00+08:00
   但沒有值就整行省略 —— front matter 是手機 App 裡最先看到的純文字,而 `tags` 目前
   沒有任何功能,不值得佔那一行。既有的 `tags: []` 照樣讀得懂,編輯一輪之後那行會自己消失。
 - **不認得的 front matter 欄位會原樣保留。** 你用 Obsidian 之類的工具加的 `aliases`、
-  `cssclass`,經過 Notelet 編輯一輪之後不會被吃掉。
+  `cssclass`,經過 Inkling 編輯一輪之後不會被吃掉。
 - **沒有 front matter 的 `.md` 照樣會出現在清單裡。** 標題取內文的第一行有效文字
   (跳過程式碼圍欄、水平線與表格分隔列,超過 120 字截斷;整篇都沒有就用檔名),
-  時間取檔案時間戳。你可以直接把既有的筆記資料夾指給 Notelet。
+  時間取檔案時間戳。你可以直接把既有的筆記資料夾指給 Inkling。
 - **但它們身上有記號。** front matter 裡沒有 `id` 的檔案,`Note.IsExternal` 是 true ——
-  身分是我們從路徑推出來的,不是 Notelet 寫的。日常瀏覽一視同仁,刪除相關的路才分開處理
+  身分是我們從路徑推出來的,不是 Inkling 寫的。日常瀏覽一視同仁,刪除相關的路才分開處理
   (獨立區塊排最前、兩條刪除路都強制確認,
   見[設計考證〈刪除為什麼是一頁〉](docs/design-notes.md#delete-page))。
 - 會掃子資料夾,新筆記一律寫在根目錄。
@@ -188,7 +188,7 @@ updated: 2026-08-11T09:15:00+08:00
 
 | 設定 | 預設 | 說明 |
 |---|---|---|
-| 筆記資料夾 | `%OneDrive%\Notelet` | 存放 Markdown 檔的位置。只接受**完整路徑**(相對路徑會整筆拒絕、表單留在原地);指向還不存在的資料夾會當場提示,第一次存檔時建立。旁邊的「瀏覽…」開系統的選資料夾對話框,選好就直接存 |
+| 筆記資料夾 | `%OneDrive%\Inkling` | 存放 Markdown 檔的位置。只接受**完整路徑**(相對路徑會整筆拒絕、表單留在原地);指向還不存在的資料夾會當場提示,第一次存檔時建立。旁邊的「瀏覽…」開系統的選資料夾對話框,選好就直接存 |
 | 快速記下的分隔符 | `;;` | 前面是標題、後面是內文。長度不限,半形全形算同一個,清空就回到 `;;`。改完當下開著的快速記下頁就會跟上,不必 Reload。挑選的理由與 `,,` 的建議見[設計考證〈標題與內文用分隔符切開〉](docs/design-notes.md#separator-split) |
 | 記下後先看一眼 | 開啟 | Enter 記下並停在筆記上,再按一次才收起;關掉就是記完直接收起。同一時間只有一條路,見[設計考證〈記下之後要不要先看一眼〉](docs/design-notes.md#capture-preview) |
 
@@ -205,10 +205,12 @@ updated: 2026-08-11T09:15:00+08:00
 ### 設定存在哪,更新擴展之後還在嗎
 
 ```
-%LOCALAPPDATA%\Packages\Notelet_bf0n0751x5hse\LocalState\settings.json
+%LOCALAPPDATA%\Packages\<PFN>\LocalState\settings.json
 ```
 
-一層扁平的 JSON,鍵是 `Notelet.<屬性名>`,值**一律是字串**(布林也是 `"true"` / `"false"`)。
+`<PFN>` 是套件家族名,用 `(Get-AppxPackage Inkling).PackageFamilyName` 查得到。
+
+一層扁平的 JSON,鍵是 `Inkling.<屬性名>`,值**一律是字串**(布林也是 `"true"` / `"false"`)。
 路徑裡那串雜湊是從 `Package.appxmanifest` 的 `Identity` 算出來的套件家族名(MSIX 路徑重導向)。
 CmdPal 自己那份設定(啟用與否、alias、快速鍵、釘選)存在 CmdPal 的套件底下,擴展碰不到。
 
@@ -235,12 +237,13 @@ CmdPal 自己那份設定(啟用與否、alias、快速鍵、釘選)存在 CmdPa
 
 ```
 src/
-  Notelet.Core/      純 net10.0 類別庫,不引用任何 CmdPal 型別 → 100% 可單元測試。
+  Inkling.Core/      純 net10.0 類別庫,不引用任何 CmdPal 型別 → 100% 可單元測試。
                      front matter 讀寫、id/檔名、搜索排序、標題/內文切分、
                      摘要與推導標題(NoteBody)都在這一層
-  Notelet/           CmdPal 擴展(MSIX COM server),只負責把 Core 的結果
+  Inkling/           CmdPal 擴展(MSIX COM server),只負責把 Core 的結果
                      翻譯成 IListItem / IContent
-    CommandIds        頂層命令的固定 Id(改了會清掉使用者的 alias/快速鍵/釘選)
+    CommandIds        頂層命令的固定 Id(還叫 Notelet.*,改名前的名字,故意留著;
+                      改了會清掉使用者的 alias/快速鍵/釘選)
     Properties/       介面字串:英文(中性)+ 繁中 + 簡中,語言跟著 Windows 走
     Shortcuts         鍵位集中在這裡(挑鍵的規則寫在檔案註解裡)
     ICaptureSeparatorStore / ICapturePreviewStore
@@ -250,9 +253,9 @@ src/
     Pages/            快速記下、記下後的預覽、清單、預覽、編輯、新增、刪除、設定
                       (進 Adaptive Cards 的字串一律經 CardText 做 JSON 跳脫;
                       項目快取的形狀三個清單頁共用,見 VersionedItemsCache)
-assets/icon/         圖示的原始檔(SVG);src/Notelet/Assets 的 PNG 全部由
+assets/icon/         圖示的原始檔(SVG);src/Inkling/Assets 的 PNG 全部由
                      tools/render-icons.ps1 產生,不要手改
-tests/               Notelet.Core.Tests(xUnit)
+tests/               Inkling.Core.Tests(xUnit)
 .claude/skills/      CmdPal 官方模板的 API 速查與工作流程,都加了「本專案的例外」;
                      另有自己寫的 verify-cmdpal-ui,見 .claude/skills/README.md
 tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
@@ -261,25 +264,25 @@ tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
 docs/                design-notes.md(設計考證)、manual-test-checklist.md
 ```
 
-分層的重點:`Notelet.Core` 不知道 Command Palette 的存在,容易寫錯的邏輯都在那一層,
+分層的重點:`Inkling.Core` 不知道 Command Palette 的存在,容易寫錯的邏輯都在那一層,
 因此都有單元測試涵蓋。
 
 ## 疑難排解
 
 **改了程式但 CmdPal 沒反應** — 要跑 Reload,而且要選副標題是
-`Reload Command Palette extensions` 的那一個。重新部署後有時會冒出兩個 Notelet
+`Reload Command Palette extensions` 的那一個。重新部署後有時會冒出兩個 Inkling
 (CmdPal 在套件安裝事件上沒去重)。再 Reload 一次有時收得回去,清不掉就把
 `Microsoft.CmdPal.UI` 停掉讓它重啟(PowerToys 本身不用重開),成因見
 [設計考證](docs/design-notes.md#dev-notes)。
 
 **build 失敗說檔案被佔用** — CmdPal 把擴展的 COM server 留著沒關。`deploy.ps1` 會自動
-先停掉它;直接跑 `dotnet build` 的話要自己 `Get-Process Notelet | Stop-Process -Force`。
+先停掉它;直接跑 `dotnet build` 的話要自己 `Get-Process Inkling | Stop-Process -Force`。
 
 **部署說成功,跑的卻還是舊版本** — 同一個 identity + version 已經註冊時,
 `Add-AppxPackage -Register` 會**靜默地什麼都不做**,舊的 `InstallLocation` 原封不動
 (在 Debug 與 Release 之間切換時特別容易中招)。`deploy.ps1` 已經處理:位置不同就先
 `Remove-AppxPackage -PreserveApplicationData` 再註冊,事後還會確認 `InstallLocation`
-真的變了。想確認目前跑的是哪一份:`(Get-AppxPackage -Name Notelet).InstallLocation`。
+真的變了。想確認目前跑的是哪一份:`(Get-AppxPackage -Name Inkling).InstallLocation`。
 
 **設定頁按 Save 什麼都沒發生** — 那個頁面是綁在**某一個擴展實例**上的。中間只要發生過
 Reload 或重新部署,舊的擴展進程就被換掉了,設定頁手上的物件已經死了,按下去靜靜地什麼也不會做:
@@ -299,7 +302,7 @@ Reload 或重新部署,舊的擴展進程就被換掉了,設定頁手上的物�
 
 - 語言不對 → 是 Windows 那邊的顯示語言(不是「地區格式」那個設定),或是剛改完還沒重新登入
 - 語言對、抽樣卻是英文(`Settings`)→ 附屬組件沒進套件。查
-  `src\Notelet\bin\stage-Release\zh-Hant\Notelet.resources.dll` 在不在
+  `src\Inkling\bin\stage-Release\zh-Hant\Inkling.resources.dll` 在不在
 
 **擴展沒出現在 CmdPal 裡** — 跑 `dotnet run --project tools\VerifyRegistration`,它會列出
 Windows 認得的所有 CmdPal 擴展:不在裡面是註冊沒成功;在裡面卻不出現是 CmdPal 端,先試 Reload。
@@ -314,7 +317,7 @@ Windows 認得的所有 CmdPal 擴展:不在裡面是註冊沒成功;在裡面�
 預設關閉。開啟方式是在設定資料夾裡建一個空檔,然後 Reload:
 
 ```powershell
-$ls = "$env:LOCALAPPDATA\Packages\Notelet_bf0n0751x5hse\LocalState"
+$ls = "$env:LOCALAPPDATA\Packages\$((Get-AppxPackage Inkling).PackageFamilyName)\LocalState"
 New-Item -ItemType File "$ls\diagnostic.on"
 Get-Content "$ls\diagnostic.log" -Encoding utf8 -Wait   # 邊操作邊看
 ```

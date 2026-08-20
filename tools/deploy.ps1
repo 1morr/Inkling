@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Build 並把 Notelet 擴展部署到本機 Command Palette,然後驗證註冊確實生效。
+    Build 並把 Inkling 擴展部署到本機 Command Palette,然後驗證註冊確實生效。
 
 .DESCRIPTION
     官方文檔的部署流程是 Visual Studio 的 Build > Deploy。這台機器沒有 Visual Studio,
@@ -32,7 +32,7 @@
     部署完自動叫 CmdPal 重新載入擴展(x-cmdpal://reload),不必手動去執行 Reload。
     需要先在 CmdPal 設定 > 一般 > For developers 打開 "Enable external reload"。
 
-    順帶解掉「Reload 後出現兩個 Notelet」:重新註冊套件會讓 Windows 的套件目錄發出
+    順帶解掉「Reload 後出現兩個 Inkling」:重新註冊套件會讓 Windows 的套件目錄發出
     安裝事件,CmdPal 收到後會為同一個擴展再加一個 provider(它那邊沒有去重)。
     手動 Reload 如果搶在那個事件之前跑完,清空的是舊清單,之後補進來的就變成第二個。
     所以這裡先等事件落地再重新載入。
@@ -61,10 +61,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$extensionProject = Join-Path $repoRoot 'src\Notelet\Notelet.csproj'
+$extensionProject = Join-Path $repoRoot 'src\Inkling\Inkling.csproj'
 $verifyProject = Join-Path $repoRoot 'tools\VerifyRegistration\VerifyRegistration.csproj'
 $targetFramework = 'net10.0-windows10.0.26100.0'
-$packageName = 'Notelet'
+$packageName = 'Inkling'
 
 function Write-Step($message) {
     Write-Host ''
@@ -91,7 +91,7 @@ if ($running) {
     }
 }
 
-$buildLayout = Join-Path $repoRoot "src\Notelet\bin\x64\$Configuration\$targetFramework\win-x64"
+$buildLayout = Join-Path $repoRoot "src\Inkling\bin\x64\$Configuration\$targetFramework\win-x64"
 
 # --- Build / Publish -------------------------------------------------------
 if (-not $SkipBuild) {
@@ -109,8 +109,8 @@ if (-not $SkipBuild) {
 
 # --- 決定要註冊哪個佈局 ----------------------------------------------------
 if ($Configuration -eq 'Release') {
-    $publishOutput = Join-Path $repoRoot "src\Notelet\bin\Release\$targetFramework\win-x64\publish"
-    $layout = Join-Path $repoRoot 'src\Notelet\bin\stage-Release'
+    $publishOutput = Join-Path $repoRoot "src\Inkling\bin\Release\$targetFramework\win-x64\publish"
+    $layout = Join-Path $repoRoot 'src\Inkling\bin\stage-Release'
 
     if (-not (Test-Path $publishOutput)) { throw "找不到 publish 輸出:$publishOutput" }
 

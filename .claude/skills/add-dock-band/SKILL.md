@@ -14,7 +14,7 @@ description: >-
 >
 > 1. SDK 版本夠(需要 ≥ 0.9.260303001,我們釘的是 0.11.260520004)。
 > 2. **dock band 的命令一樣要有固定 `Id`** —— 這份文檔自己也講了「沒有 Id 會被忽略」,
->    而本專案的規矩更嚴:Id 進 `src/Notelet/CommandIds.cs`,而且**進去之後不能改**
+>    而本專案的規矩更嚴:Id 進 `src/Inkling/CommandIds.cs`,而且**進去之後不能改**
 >    (使用者的釘選是用它當鍵的)。
 > 3. **標題走資源檔**,不要像範例那樣寫死字串。
 > 4. 範例裡那個 `System.Timers.Timer` 每分鐘更新的 band,跟 [設計考證〈效能上的規矩〉](../../../docs/design-notes.md#perf-rules) 那一節

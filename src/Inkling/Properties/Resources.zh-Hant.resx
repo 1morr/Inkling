@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    繁體中文。zh-TW / zh-HK / zh-MO 都會回落到這一份(zh-TW 的 parent 就是 zh-Hant)。
+
+    這份檔案由人維護,不是產生出來的。改動時三份要一起改
+    (Resources.resx / Resources.zh-Hant.resx / Resources.zh-Hans.resx),
+    ResourceParityTests 會擋住只改一份的情況。
+
+    key 的命名不含底線 —— 產生出來的是 C# 屬性名。
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="CommandOpen" xml:space="preserve">
+    <value>開啟</value>
+  </data>
+  <data name="CommandNew" xml:space="preserve">
+    <value>新增</value>
+  </data>
+  <data name="CommandEdit" xml:space="preserve">
+    <value>編輯</value>
+  </data>
+  <data name="CommandPreview" xml:space="preserve">
+    <value>預覽</value>
+  </data>
+  <data name="CommandDelete" xml:space="preserve">
+    <value>刪除</value>
+  </data>
+  <data name="CommandDone" xml:space="preserve">
+    <value>完成</value>
+  </data>
+  <data name="CommandGoBack" xml:space="preserve">
+    <value>回上一步</value>
+  </data>
+  <data name="CommandCapture" xml:space="preserve">
+    <value>記下</value>
+  </data>
+  <data name="CommandCopyBody" xml:space="preserve">
+    <value>複製內文</value>
+  </data>
+  <data name="CommandCopyBodySubtitle" xml:space="preserve">
+    <value>不含 front matter</value>
+  </data>
+  <data name="CommandOpenInEditor" xml:space="preserve">
+    <value>在預設編輯器開啟</value>
+  </data>
+  <data name="CommandOpenFileLocation" xml:space="preserve">
+    <value>開啟檔案位置</value>
+  </data>
+  <data name="CommandOpenFileLocationSubtitle" xml:space="preserve">
+    <value>在檔案總管裡選取這個檔案</value>
+  </data>
+  <data name="CommandDeleteSubtitle" xml:space="preserve">
+    <value>移到資源回收筒</value>
+  </data>
+  <data name="ProviderListSubtitle" xml:space="preserve">
+    <value>瀏覽與搜尋筆記</value>
+  </data>
+  <data name="ProviderCaptureSubtitle" xml:space="preserve">
+    <value>打字直接存成筆記,分隔符後面接內文</value>
+  </data>
+  <data name="ProviderNewNoteTitle" xml:space="preserve">
+    <value>Inkling：新增筆記</value>
+  </data>
+  <data name="ProviderNewNoteSubtitle" xml:space="preserve">
+    <value>開表單寫比較長的內容</value>
+  </data>
+  <data name="ProviderDeleteSubtitle" xml:space="preserve">
+    <value>挑幾則刪掉,或整個清空</value>
+  </data>
+  <data name="ListPagePlaceholder" xml:space="preserve">
+    <value>搜尋標題與內文…</value>
+  </data>
+  <data name="ListPageEmptyTitle" xml:space="preserve">
+    <value>還沒有任何筆記</value>
+  </data>
+  <data name="ListPageEmptySubtitle" xml:space="preserve">
+    <value>用「{0}」記下第一則</value>
+  </data>
+  <data name="ListPageNoMatchTitle" xml:space="preserve">
+    <value>找不到符合的筆記</value>
+  </data>
+  <data name="ListPageNoMatchSubtitle" xml:space="preserve">
+    <value>換個關鍵字試試,或按 Enter 去記下新筆記</value>
+  </data>
+  <data name="ListPageMoreResults" xml:space="preserve">
+    <value>還有 {0} 則沒顯示</value>
+  </data>
+  <data name="ListPageMoreResultsSubtitle" xml:space="preserve">
+    <value>再多打幾個字縮小範圍</value>
+  </data>
+  <data name="ToggleSourceShowRaw" xml:space="preserve">
+    <value>顯示原始文字</value>
+  </data>
+  <data name="ToggleSourceShowRendered" xml:space="preserve">
+    <value>顯示渲染後的預覽</value>
+  </data>
+  <data name="ToggleSourceSubtitle" xml:space="preserve">
+    <value>不進預覽頁也能選取、複製原始 Markdown</value>
+  </data>
+  <data name="NoBody" xml:space="preserve">
+    <value>_(沒有內文)_</value>
+  </data>
+  <data name="DeleteConfirmTitle" xml:space="preserve">
+    <value>刪除這則筆記？</value>
+  </data>
+  <data name="DeleteConfirmDescription" xml:space="preserve">
+    <value>「{0}」會被移到資源回收筒。</value>
+  </data>
+  <data name="ProviderCapturePageTitle" xml:space="preserve">
+    <value>Inkling：快速記下</value>
+  </data>
+  <data name="QuickCapturePlaceholder" xml:space="preserve">
+    <value>打字記下想法,{0} 後面接內文…</value>
+  </data>
+  <data name="QuickCaptureHint" xml:space="preserve">
+    <value>「買咖啡機{0}比較過幾台」—— {0} 前面是標題,後面是內文</value>
+  </data>
+  <data name="QuickCaptureEmptyTitle" xml:space="preserve">
+    <value>打字就記下</value>
+  </data>
+  <data name="QuickCaptureSectionSimilar" xml:space="preserve">
+    <value>已經記過的</value>
+  </data>
+  <data name="QuickCaptureItemTitle" xml:space="preserve">
+    <value>記下：{0}</value>
+  </data>
+  <data name="QuickCaptureNewNoteSubtitle" xml:space="preserve">
+    <value>存成新筆記</value>
+  </data>
+  <data name="QuickCaptureBodySubtitle" xml:space="preserve">
+    <value>內文：{0}</value>
+  </data>
+  <data name="QuickCaptureClipboardSubtitle" xml:space="preserve">
+    <value>內文取自剪貼簿({0} 行) —— 搜尋框只吃得下第一行</value>
+  </data>
+  <data name="CaptureSaved" xml:space="preserve">
+    <value>已記下：{0}</value>
+  </data>
+  <data name="CapturedPageName" xml:space="preserve">
+    <value>記下並預覽</value>
+  </data>
+  <data name="CaptureFailedContent" xml:space="preserve">
+    <value># 存檔失敗
+
+{0}
+
+---
+
+## {1}
+
+{2}</value>
+  </data>
+  <data name="ProviderDeletePageTitle" xml:space="preserve">
+    <value>Inkling：刪除筆記</value>
+  </data>
+  <data name="DeletePagePlaceholder" xml:space="preserve">
+    <value>找要刪的筆記…</value>
+  </data>
+  <data name="DeletePageEmptyTitle" xml:space="preserve">
+    <value>沒有筆記可以刪除</value>
+  </data>
+  <data name="DeleteSectionAction" xml:space="preserve">
+    <value>動作</value>
+  </data>
+  <data name="DeleteSectionExternal" xml:space="preserve">
+    <value>不是 Inkling 建立的</value>
+  </data>
+  <data name="DeleteSectionMine" xml:space="preserve">
+    <value>Inkling 筆記</value>
+  </data>
+  <data name="DeleteSectionAll" xml:space="preserve">
+    <value>筆記</value>
+  </data>
+  <data name="DeleteMoreNotes" xml:space="preserve">
+    <value>還有 {0} 則沒列出</value>
+  </data>
+  <data name="DeleteMoreNotesSubtitle" xml:space="preserve">
+    <value>刪除全部仍然會刪掉它們,這裡只是列不下</value>
+  </data>
+  <data name="DeleteExternalConfirmTitle" xml:space="preserve">
+    <value>刪除這個檔案？</value>
+  </data>
+  <data name="DeleteExternalConfirmDescription" xml:space="preserve">
+    <value>「{0}」不是 Inkling 建立的,會被移到資源回收筒。</value>
+  </data>
+  <data name="DeleteQuickTitle" xml:space="preserve">
+    <value>直接刪除</value>
+  </data>
+  <data name="DeleteQuickSubtitle" xml:space="preserve">
+    <value>不問,直接移到資源回收筒</value>
+  </data>
+  <data name="DeleteExternalAlwaysConfirmSubtitle" xml:space="preserve">
+    <value>不是 Inkling 建立的,一律先確認</value>
+  </data>
+  <data name="DeleteAllName" xml:space="preserve">
+    <value>刪除全部</value>
+  </data>
+  <data name="DeleteAllConfirmTitle" xml:space="preserve">
+    <value>刪除全部 {0} 則筆記？</value>
+  </data>
+  <data name="DeleteAllConfirmDescription" xml:space="preserve">
+    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒。</value>
+  </data>
+  <data name="DeleteAllConfirmDescriptionWithExternal" xml:space="preserve">
+    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒,其中 {1} 則不是 Inkling 建立的。</value>
+  </data>
+  <data name="DeleteAllItemTitle" xml:space="preserve">
+    <value>刪除全部 {0} 則</value>
+  </data>
+  <data name="DeleteAllItemSubtitle" xml:space="preserve">
+    <value>{0}(含子資料夾)</value>
+  </data>
+  <data name="DeleteAllScope" xml:space="preserve">
+    <value>底下(含子資料夾)所有的 `.md`,目前 {0} 則,**全部都會刪掉**。</value>
+  </data>
+  <data name="DeleteAllScopeExternalSuffix" xml:space="preserve">
+    <value>
+
+其中 **{0} 則不是 Inkling 建立的** —— front matter 裡沒有 Inkling 的 id,是別的工具寫的、或是直接丟進這個資料夾的檔案。</value>
+  </data>
+  <data name="DeleteMineName" xml:space="preserve">
+    <value>只刪 Inkling 建立的</value>
+  </data>
+  <data name="DeleteMineConfirmTitle" xml:space="preserve">
+    <value>刪除 Inkling 建立的 {0} 則筆記？</value>
+  </data>
+  <data name="DeleteMineConfirmDescription" xml:space="preserve">
+    <value>移到資源回收筒。另外 {0} 則不是 Inkling 建立的,不會動到。</value>
+  </data>
+  <data name="DeleteMineItemTitle" xml:space="preserve">
+    <value>只刪 Inkling 建立的 {0} 則</value>
+  </data>
+  <data name="DeleteMineItemSubtitle" xml:space="preserve">
+    <value>保留 {0} 則不是 Inkling 建立的</value>
+  </data>
+  <data name="DeleteMineScope" xml:space="preserve">
+    <value>底下(含子資料夾)共 {0} 則 `.md`,這個動作只刪其中 **Inkling 建立的 {1} 則**。
+
+另外 {2} 則 front matter 裡沒有 Inkling 的 id(別的工具寫的、或是直接丟進這個資料夾的),留著不動。</value>
+  </data>
+  <data name="DeleteDetailsTitle" xml:space="preserve">
+    <value>會刪掉什麼</value>
+  </data>
+  <data name="DeleteDetailsBody" xml:space="preserve">
+    <value>`{0}`
+
+{1}
+
+刪掉的檔案會進資源回收筒。網路磁碟或沒有回收筒的裝置上則是直接消失,那是 Windows 的行為,不是我們能選的。</value>
+  </data>
+  <data name="DeletePartialFailure" xml:space="preserve">
+    <value>已刪除 {0} 則,{1} 則刪不掉(檔案可能被其他程式開著)</value>
+  </data>
+  <data name="DeleteFailed" xml:space="preserve">
+    <value>刪除失敗：{0} —— 請到設定檢查筆記資料夾</value>
+  </data>
+  <data name="CopyNoBody" xml:space="preserve">
+    <value>沒有內文</value>
+  </data>
+  <data name="CopyDone" xml:space="preserve">
+    <value>已複製</value>
+  </data>
+  <data name="FormTitleLabel" xml:space="preserve">
+    <value>標題</value>
+  </data>
+  <data name="FormTitlePlaceholder" xml:space="preserve">
+    <value>一句話講完這個想法</value>
+  </data>
+  <data name="FormTitleRequired" xml:space="preserve">
+    <value>標題不能空白</value>
+  </data>
+  <data name="FormBodyLabel" xml:space="preserve">
+    <value>內文(Markdown)</value>
+  </data>
+  <data name="FormBodyPlaceholder" xml:space="preserve">
+    <value>細節、連結、待辦…</value>
+  </data>
+  <data name="FormCaretHint" xml:space="preserve">
+    <value>游標落在內文開頭。按 Ctrl+End 跳到最後接著寫。</value>
+  </data>
+  <data name="FormSave" xml:space="preserve">
+    <value>儲存</value>
+  </data>
+  <data name="NoteCreated" xml:space="preserve">
+    <value>已新增：{0}</value>
+  </data>
+  <data name="NoteSaved" xml:space="preserve">
+    <value>已儲存：{0}</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>存檔失敗：{0} —— 請到設定檢查筆記資料夾</value>
+  </data>
+  <data name="EditPageTitle" xml:space="preserve">
+    <value>編輯：{0}</value>
+  </data>
+  <data name="EditOpenExternalTitle" xml:space="preserve">
+    <value>改用預設編輯器開啟</value>
+  </data>
+  <data name="EditOpenExternalSubtitle" xml:space="preserve">
+    <value>內文很長時比表單好用</value>
+  </data>
+  <data name="NewNotePageTitle" xml:space="preserve">
+    <value>新增筆記</value>
+  </data>
+  <data name="SettingsPageName" xml:space="preserve">
+    <value>設定</value>
+  </data>
+  <data name="SettingsPageTitle" xml:space="preserve">
+    <value>Inkling 設定</value>
+  </data>
+  <data name="SettingsBrowse" xml:space="preserve">
+    <value>瀏覽…</value>
+  </data>
+  <data name="SettingsSaved" xml:space="preserve">
+    <value>設定已儲存</value>
+  </data>
+  <data name="SettingsFolderPickerTitle" xml:space="preserve">
+    <value>選擇筆記資料夾</value>
+  </data>
+  <data name="SettingsFolderPicked" xml:space="preserve">
+    <value>筆記資料夾：{0}</value>
+  </data>
+  <data name="SettingsPickerAlreadyOpen" xml:space="preserve">
+    <value>已經有一個「選擇資料夾」的視窗開著了</value>
+  </data>
+  <data name="SettingsFolderPickerFailed" xml:space="preserve">
+    <value>開不了資料夾選擇對話框</value>
+  </data>
+  <data name="SettingsDirectoryRejected" xml:space="preserve">
+    <value>沒有儲存 —— 筆記資料夾要填完整路徑,例如「C:\Notes」</value>
+  </data>
+  <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
+    <value>已儲存 —— 這個資料夾還不存在,第一次存檔時會建立：{0}</value>
+  </data>
+  <data name="SettingNotesDirectoryLabel" xml:space="preserve">
+    <value>筆記資料夾</value>
+  </data>
+  <data name="SettingNotesDirectoryDescription" xml:space="preserve">
+    <value>放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Inkling 自己不做同步。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。要填完整路徑;資料夾還不存在的話,第一次存檔時會建立。清空這個欄位就回到預設資料夾。</value>
+  </data>
+  <data name="SettingSeparatorLabel" xml:space="preserve">
+    <value>快速記下的分隔符</value>
+  </data>
+  <data name="SettingSeparatorDescription" xml:space="preserve">
+    <value>快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號;常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。半形全形算同一個：設定填「;;」、打字打「；；」照樣切得開。</value>
+  </data>
+  <data name="SettingPreviewLabel" xml:space="preserve">
+    <value>記下後先看一眼</value>
+  </data>
+  <data name="SettingPreviewDescription" xml:space="preserve">
+    <value>記下之後停在筆記上,再按一次 Enter 才收起 Command Palette。</value>
+  </data>
+</root>

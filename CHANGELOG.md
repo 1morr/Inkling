@@ -6,6 +6,33 @@
 
 首次公開發佈前的修正輪(內部審查,尚未發版)。
 
+### 重新命名:Notelet → Inkling
+
+專案改名了。趁尚未發版一次改到底 —— 套件身分、namespace、資料夾、腳本、文檔全部跟著換。
+
+- 換名字的原因是搜尋:在 Command Palette 打 `note` 時 Notelet 會排在 Notepad 前面,
+  等於這個擴展在擋使用者要開的東西。`ink` 這一帶乾淨得多。
+- **`%LOCALAPPDATA%\Packages\<PFN>\LocalState` 換了位置**(PFN 從
+  `Notelet_bf0n0751x5hse` 變成 `Inkling_bf0n0751x5hse`),舊的 `settings.json` 成為孤兒 ——
+  筆記資料夾、快速記下分隔符、記下後預覽這三項會回到預設值,重設一次即可。
+- **預設筆記資料夾也跟著改名**,從 `<OneDrive>\Notelet` 變成 `<OneDrive>\Inkling`。
+  升級前用過預設資料夾的話,**把舊資料夾改名,或在設定裡把路徑指回舊的** ——
+  否則筆記檔案都還在,清單卻會是空的。
+- **Command Palette 端設過的 alias 不受影響。** CmdPal 的 `Aliases` 是以純命令 Id 當鍵,
+  而那六個 Id 刻意保留原字串(仍是 `Notelet.*`)。釘選與擴展層級的啟用狀態會回到預設。
+- MSIX 靠套件身分認「同一個套件的新版本」,所以舊的 Notelet 不會被取代。
+  用 `Get-AppxPackage Notelet | Remove-AppxPackage` 移掉,否則兩個並存。
+
+### 變更(圖示)
+
+- 全新的圖示:一道有壓感的下筆加一顆句點,取自 inkling 的字面。
+  刻意避開捲角便條紙 / 鉛筆加紙 / 記事本 —— 那是 Notepad、Sticky Notes、OneNote 的符號。
+- **四個頂層命令改用自訂的單色圖示**(清單 / 快速記下 / 新增筆記 / 刪除筆記),
+  同一個家族,右下角換修飾符。`Ctrl+K` 選單與頁面內維持 Segoe Fluent 字形。
+- 自訂圖示每個備了淺色與深色主題兩張 PNG —— 字形會自動跟主題變色,PNG 不會。
+- 代價講明白:刪除的圖示變成「筆畫＋叉」,不如垃圾桶一望即知。這是為了家族一致
+  刻意付的;改回 `Glyph(0xE74D)` 只是一行的事。
+
 ### 修正
 
 - 筆記資料夾裡有無權限讀取的子目錄時,清單不再整個打不開;讀不到的項目會跳過,
@@ -28,7 +55,7 @@
 - 套件中繼資料的 Description 改為英文(對應 Store / WinGet / gallery 的需求);
   這不是身分欄位,不影響已安裝使用者的設定。
 - 失敗時的錯誤訊息統一補上使用者可以採取的下一步。
-- 快速記下頁的圖示改成與頂層那一列相同的燈泡,不再進了頁面就換成加號。
+- 快速記下頁的圖示改成燈泡,不再進了頁面就換成加號(跟「新增筆記」的加號分開)。
 
 ### 新增(專案治理)
 
@@ -52,6 +79,6 @@
   截出來的圖會缺右邊與下面一整片,而且不會報錯。
 - `tools/cmdpal-ui.ps1` 的 package family name 改為動態取得;遇到不認得的動作或按鍵
   會中止整串並以非零結束(原本印個警告繼續跑,後面的步驟會落在沒預期的地方)。
-- `src/Notelet/Notelet.csproj` 的 `PublishSingleFile` 加上 RuntimeIdentifier 條件 ——
+- `src/Inkling/Inkling.csproj` 的 `PublishSingleFile` 加上 RuntimeIdentifier 條件 ——
   官方模板那行無條件的 `true` 會讓方案層級的 `dotnet build` 報一個完全指不到問題的
   NETSDK1097。(方案層級仍然建不了擴展:MSIX 打包目標不吃 AnyCPU,那是打包專案的本質。)

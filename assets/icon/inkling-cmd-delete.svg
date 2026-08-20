@@ -1,0 +1,26 @@
+<!--
+  頂層命令「Inkling:刪除筆記」的圖示。24 格線、單色。
+  家族說明與渲染方式見 inkling-cmd-list.svg 的註解。
+
+  修飾符:一個叉 —— 這一張刻意不畫垃圾桶,理由見下。
+
+  **右下角那個圓是用 mask 挖掉的,不是拿底色填的。** 填底色在這裡是錯的 ——
+  這幾張會輸出成去背 PNG,疊在 CmdPal 的清單列上,而那個背景是 Mica、半透明的;
+  填死一個白圓在深色主題會變成一塊亮斑。mask 才是真的把筆畫挖穿。
+  刪除是這四個裡最需要一眼認得的,而垃圾桶(Segoe 的 0xE74D)確實比「筆畫＋叉」直觀。
+  這裡仍然自訂,是為了讓四個頂層命令是同一個家族 —— 這是刻意付的代價,不是疏忽。
+  真的覺得誤刪風險高,把 Icons.TopLevelDelete 改回 Glyph(0xE74D) 就行,一行的事。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="color:#1A1A1A">
+  <mask id="badge-cut">
+    <rect width="24" height="24" fill="#FFFFFF"/>
+    <circle cx="18.2" cy="18.2" r="5.9" fill="#000000"/>
+  </mask>
+  <g fill="currentColor" mask="url(#badge-cut)">
+    <path d="M10.2 3.4c1.8-.45 3.6.65 3.7 2.6.15 2.6-.5 5.6-1.15 8.2-.65 2.6-1.45 4.15-2.1 5
+             -.55.75-1.7.7-2.1-.05-.4-.75.05-1.7.5-3.15.95-2.9 1.6-5.9 1.65-8.25
+             .05-1.35-.4-2-1.15-2.2-.85-.25-.65-1.95.65-2.15Z"/>
+    <circle cx="16.4" cy="17.6" r="2.15"/>
+  </g>
+  <path d="M16.3 16.3l3.8 3.8M20.1 16.3l-3.8 3.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>

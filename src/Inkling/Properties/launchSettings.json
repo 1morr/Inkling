@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Inkling (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "Inkling (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

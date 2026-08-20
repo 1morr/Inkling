@@ -1,11 +1,11 @@
 name: Bug 回報
-description: Notelet 的行為與預期不符
+description: Inkling 的行為與預期不符
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        感謝回報。下面的版本與記錄資訊能大幅縮短定位時間 —— Notelet 沒有主控台,
+        感謝回報。下面的版本與記錄資訊能大幅縮短定位時間 —— Inkling 沒有主控台,
         很多問題只有 `diagnostic.log` 看得到。
 
   - type: textarea
@@ -37,10 +37,10 @@ body:
       required: true
 
   - type: input
-    id: notelet-version
+    id: inkling-version
     attributes:
-      label: Notelet 版本
-      description: PowerShell 執行 `(Get-AppxPackage Notelet).Version` 的輸出。
+      label: Inkling 版本
+      description: PowerShell 執行 `(Get-AppxPackage Inkling).Version` 的輸出。
       placeholder: 0.1.0.0
     validations:
       required: true
@@ -58,7 +58,7 @@ body:
       label: diagnostic.log
       description: |
         開啟方式:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` 建一個空檔 `diagnostic.on`
-        (`<PFN>` 用 `(Get-AppxPackage Notelet).PackageFamilyName` 查,目前是
-        `Notelet_bf0n0751x5hse`),在 Command Palette 執行 Reload,重現問題,
+        (`<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查),
+        在 Command Palette 執行 Reload,重現問題,
         然後把同目錄的 `diagnostic.log` 內容貼上來。
       render: text

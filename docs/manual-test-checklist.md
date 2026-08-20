@@ -1,6 +1,6 @@
 # 手動驗證清單
 
-> **預期結果對照:CmdPal 0.11.11762.0 + Notelet `fbf7d40`(含其後未提交的審查修正),
+> **預期結果對照:CmdPal 0.11.11762.0 + Inkling `fbf7d40`(含其後未提交的審查修正),
 > 最後全量驗證:尚未 —— 本輪改動之後還沒全量跑過。**
 > 每次全量跑完就更新這一行。這份清單的預期結果高度依賴 CmdPal **安裝版**的行為
 > (`main` 有、安裝版沒有的前科見 CLAUDE.md〈已知落差〉),CmdPal 更新之後,
@@ -15,7 +15,7 @@ Command Palette 沒有提供 UI 自動化介面,擴展又跑在獨立的 COM 進
 |---|---|
 | 儲存、解析、搜索、標題/內文切分 | `dotnet test` —— 全自動,涵蓋所有非 UI 邏輯 |
 | 套件有沒有真的裝上 | `tools/VerifyRegistration` 探針 —— 全自動,查 Windows 的 AppExtension 目錄 |
-| 存檔結果對不對 | 直接看 `%OneDrive%\Notelet` 底下的檔案內容,可以斷言 |
+| 存檔結果對不對 | 直接看 `%OneDrive%\Inkling` 底下的檔案內容,可以斷言 |
 | 清單內容、快速鍵、placeholder、有沒有跳 toast | `tools\cmdpal-ui.ps1` —— 半自動,驅動 Windows 的 UI Automation |
 | **顏色、圖示長什麼樣、游標落在哪** | **只能靠眼睛,就是這份清單** |
 
@@ -31,7 +31,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
 ```
 
 **跑會寫入的項目之前先確認筆記資料夾。** 它預設指向使用者真正在用的
-`%OneDrive%\Notelet` —— 新增與刪除類的驗證要先把資料夾換成暫存目錄,跑完換回去。
+`%OneDrive%\Inkling` —— 新增與刪除類的驗證要先把資料夾換成暫存目錄,跑完換回去。
 
 ## 標記與時間估計
 
@@ -62,7 +62,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1400|tree:6"
 `Reload Command Palette extensions` 的那一個)。沒跑 Reload 的話 CmdPal 會繼續用舊的
 擴展實例,你會以為改動沒生效。
 
-設定頁的擴展清單出現**兩個 Notelet** 的話,那是 CmdPal 在套件重新註冊時多建了一個
+設定頁的擴展清單出現**兩個 Inkling** 的話,那是 CmdPal 在套件重新註冊時多建了一個
 provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清不掉就把 `Microsoft.CmdPal.UI`
 停掉讓它重啟(PowerToys 本身不用重開)。**驗證前要先確認只有一個**,兩個的話
 後面每一項看到的都可能是舊實例的畫面。
@@ -77,35 +77,36 @@ provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清�
 
 本節 🤖 3 項 / 👀 1 項。
 
-- [ ] 🤖 叫出 Command Palette,往下捲(或按一次 `↑`)能看到 **Notelet**
-- [ ] 🤖 也能看到 **Notelet：快速記下**、**Notelet：新增筆記** 與 **Notelet：刪除筆記**
+- [ ] 🤖 叫出 Command Palette,往下捲(或按一次 `↑`)能看到 **Inkling**
+- [ ] 🤖 也能看到 **Inkling：快速記下**、**Inkling：新增筆記** 與 **Inkling：刪除筆記**
 - [ ] 👀 圖示正常顯示,不是空白方塊(樹裡只有 `Image: ''`,一定要開 `shot` 出來的圖看)
-- [ ] 🤖 印出來的 CommandId 是 `Notelet.QuickCapturePage`,
-      而不是 `Notelet_…!App!Notelet` 後面接一串數字
+- [ ] 🤖 印出來的 CommandId 是 `Notelet.QuickCapturePage`(還是改名前的字串,故意的 ——
+      見 design-notes〈命令 Id 為什麼要寫死〉),
+      而不是 `Inkling_…!App!Inkling` 後面接一串數字
 
 Reload 之後跑這段,確認 CmdPal 載入的是你剛部署的那一份 —— 不是某個舊佈局:
 
 ```powershell
-(Get-AppxPackage -Name Notelet).InstallLocation
-(Get-Process Notelet -ErrorAction SilentlyContinue).Path
+(Get-AppxPackage -Name Inkling).InstallLocation
+(Get-Process Inkling -ErrorAction SilentlyContinue).Path
 ```
 
 兩者應該指向同一個資料夾。第二行沒有輸出代表 CmdPal 還沒把擴展的 COM server 拉起來,
-先進一次 Notelet 頁面再看。
+先進一次 Inkling 頁面再看。
 
 設好 alias 之後跑這段,確認 CmdPal 記的是我們寫死的 Id,而不是它自己拿標題算出來的雜湊
 —— 這是快速記下唯一入口的生死線:
 
 ```powershell
 $s = Get-Content "$env:LOCALAPPDATA\Packages\Microsoft.CommandPalette_8wekyb3d8bbwe\LocalState\settings.json" -Raw | ConvertFrom-Json
-$s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notelet*' } | ForEach-Object { "$($_.Name) -> $($_.Value.CommandId)" }
+$s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inkling*' } | ForEach-Object { "$($_.Name) -> $($_.Value.CommandId)" }
 ```
 
 ## 2. 快速記下(需求 1)
 
 本節 🤖 22 項 / 👀 1 項。
 
-先設好入口:設定 → Extensions → Notelet → `Notelet：快速記下` → Alias 填 `!`。
+先設好入口:設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 填 `!`。
 
 - [ ] 🤖 主搜尋框打 `!` 空白 —— 搜尋框被清空,**直接進到快速記下頁**
       (indirect alias 存的鍵是「alias + 空白」,所以是打完空白那一刻觸發)
@@ -117,7 +118,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 - [ ] 🤖 按 Enter,跳出「已記下：測試想法一」的 toast,**而且不會留在快速記下頁**
       (toast 視窗會搶焦點,CmdPal 主視窗一失焦就把自己藏起來,所以看起來是整個收掉。
       要改成「存完停在筆記上」見 2c)
-- [ ] 🤖 `%OneDrive%\Notelet` 底下出現 `<日期>-<時間>-測試想法一.md`
+- [ ] 🤖 `%OneDrive%\Inkling` 底下出現 `<日期>-<時間>-測試想法一.md`
 - [ ] 🤖 打開該檔案,front matter 的 `id` / `title` / `created` / `updated` 都在,內文是空的
       (Core 測試已涵蓋 —— `NoteFileTests.RoundTrip_PreservesAllKnownFields`;
       這裡是端到端確認,走過整條 UI → 磁碟的路)
@@ -125,7 +126,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
       Markdown,front matter 是最先看到的東西,沒功能的欄位不佔那一行。
       Core 測試:`NoteFileTests.Serialize_OmitsEmptyTags`)
 - [ ] 🤖 **不吵人檢查**:主搜尋框打一般查詢(`notepad`、`note about x`、`chrome`),
-      清單裡**不應該**出現任何 Notelet 的記下項目,也不應該有點不動的空列
+      清單裡**不應該**出現任何 Inkling 的記下項目,也不應該有點不動的空列
 
 相似筆記提醒(換成頁面才做得到的 —— fallback 只有一列):
 
@@ -157,7 +158,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 **這一段的重點是「不必 Reload」**:CmdPal 握著的是使用者當下開著的那個頁面實例,
 靠 provider 重建是換不掉它的(見 [設計考證〈標題與內文用分隔符切開〉](design-notes.md#separator-split))。
 
-- [ ] 🤖 **先把快速記下頁開著**,另外從 CmdPal 設定 → Extensions → Notelet 把分隔符改成 `,,`,存檔
+- [ ] 🤖 **先把快速記下頁開著**,另外從 CmdPal 設定 → Extensions → Inkling 把分隔符改成 `,,`,存檔
 - [ ] 🤖 回到那個**還開著的**快速記下頁(不要 Reload、不要重進):placeholder 已經變成
       **…`,,` 後面接內文…**,空白提示的例子也換成 `買咖啡機,,比較過幾台`
 - [ ] 🤖 打 `測試想法三,,這是內文` → 切得開,標題是「測試想法三」
@@ -187,7 +188,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 
 全域快速鍵(可選,設了就連 `!` 都省):
 
-- [ ] 👀 給 `Notelet：快速記下` 設一個全域快速鍵,按下去直接進頁面,打字、Enter 一樣可用
+- [ ] 👀 給 `Inkling：快速記下` 設一個全域快速鍵,按下去直接進頁面,打字、Enter 一樣可用
       (要從 CmdPal 以外的視窗按才算數,腳本叫出來的面板本身就佔著前景)
 
 ### 2b. alias 不會失效(Id 的回歸測試)
@@ -200,7 +201,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 - [ ] 🤖 重新部署(`deploy.ps1`)之後 alias 也還在
       (曾經有 bug:命令沒有設 `Id`,CmdPal 就拿 `ProviderId + DisplayTitle + Title + Subtitle`
       算一個雜湊當 Id。標題變一個字,使用者設過的 alias / 快速鍵 / 釘選就全部對不上。
-      修法是寫死 `Id`,見 `src/Notelet/CommandIds.cs`)
+      修法是寫死 `Id`,見 `src/Inkling/CommandIds.cs`)
 
 ### 2c. 記下後先看一眼(設定 → 記下後先看一眼)
 
@@ -230,12 +231,12 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
       看到的是**完整的多行內文**
 - [ ] 🤖 **只存一次**:預覽頁上按 `Ctrl+E` 進編輯再退回來、或讓頁面重新整理,
       資料夾裡**只有一個**檔案(存檔那一段有只跑一次的旗標,少了它會存成好幾則)
-- [ ] 🤖 存檔失敗的路(把筆記資料夾改成一個不存在的磁碟機代號如 `Z:\Notelet`,驗完改回):
+- [ ] 🤖 存檔失敗的路(把筆記資料夾改成一個不存在的磁碟機代號如 `Z:\Inkling`,驗完改回):
       Enter 之後那一頁的標題是 **存檔失敗**、下面接原因(英文例外訊息,預期的),
       `---` 之後還留著剛打的標題與內文;按 Enter 是**回上一步**
       (回快速記下頁,搜尋框裡的字還在),不是收起 Command Palette
 
-設定**關閉**之後(從 CmdPal 設定 → Extensions → Notelet 取消勾選存檔):
+設定**關閉**之後(從 CmdPal 設定 → Extensions → Inkling 取消勾選存檔):
 
 - [ ] 🤖 快速記下頁打一個標題按 Enter:toast「已記下：…」+ Command Palette 消失
 - [ ] 🤖 `Ctrl+K` 打開選單,**只有**「記下」一項 —— 沒有另一個「先看一眼」的變體
@@ -260,14 +261,14 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Notele
 - [ ] 🤖 **新增後立刻回到清單,新筆記就在裡面**(曾經有 bug:清單頁的項目快取只以查詢字串
       為鍵,新增之後回來拿到的還是舊結果,畫面顯示「還沒有任何筆記」。
       修法是把 repository 的 `Version` 一起納入快取的鍵)
-- [ ] 🤖 進入 Notelet,列出所有筆記,最新的在最上面
+- [ ] 🤖 進入 Inkling,列出所有筆記,最新的在最上面
 - [ ] 🤖 右側詳細窗格顯示該則筆記的內容
 - [ ] 🤖 **搜索端到端冒煙**:打標題裡的關鍵字找得到;打**只出現在內文**的關鍵字也找得到;
       標題命中的排在只有內文命中的前面
       (細粒度規則 —— 多關鍵字 AND、全形空白、大小寫不敏感 —— 是 Core 的 `NoteSearch`,
       `NoteSearchTests` 已涵蓋;這裡只確認 UI 那條直通管線沒斷,不逐條重驗)
 - [ ] 👀 **手感檢查**:連續快速輸入,清單跟得上,沒有可感的延遲或卡頓
-- [ ] 🤖 一則筆記都沒有時,顯示「還沒有任何筆記」,副標是 **用「Notelet：快速記下」記下第一則**
+- [ ] 🤖 一則筆記都沒有時,顯示「還沒有任何筆記」,副標是 **用「Inkling：快速記下」記下第一則**
       —— 而且**那一列按 Enter 會直接導覽進快速記下頁**(列上掛的命令就是那個頁面本身,
       不是給了指示卻按了沒反應)
 - [ ] 🤖 **有筆記但搜不到**時,提示換成「找不到符合的筆記」,副標是
@@ -368,7 +369,7 @@ var x = 1;
 - [ ] 👀 標題渲染成 H1,而且**沒有重複出現兩次**
 - [ ] 👀 二級標題、清單、表格、程式碼區塊、粗體、連結都正確渲染
 - [ ] 👀 **打三行看到三行**:內文打 `111` / `222` / `333` 三行,預覽顯示三行而不是
-      `111 222 333`(標準 Markdown 會併成一行,Notelet 只在渲染時把單換行當成換行,
+      `111 222 333`(標準 Markdown 會併成一行,Inkling 只在渲染時把單換行當成換行,
       磁碟上的檔案不變)
 - [ ] 🤖 程式碼區塊裡的內容**沒有**被加上多餘的行尾空白(對照原檔)
 - [ ] 👀 清單頁右側詳細窗格的換行行為跟預覽頁一致
@@ -405,7 +406,7 @@ var x = 1;
 - [ ] 🤖 **檔名沒有跟著標題改變**
 - [ ] 🤖 把標題清空後儲存 → 底部出現 InfoBadge **「標題不能空白」**,
       **表單留在原地、打過的內文還在**,什麼都沒存
-- [ ] 🤖 編輯表單上按 `Ctrl+K` → **選單裡沒有任何 Notelet 的命令**(這一頁本來就沒有
+- [ ] 🤖 編輯表單上按 `Ctrl+K` → **選單裡沒有任何 Inkling 的命令**(這一頁本來就沒有
       選單項;回歸的話會多出「刪除」之類的列 —— 在表單上刪掉正在編的東西沒有道理)
 
 **不吃掉別人的欄位**(這條最重要;Core 的 `NoteFileTests.RoundTrip_PreservesUnknownFrontMatterFields`
@@ -418,7 +419,7 @@ var x = 1;
         - 別名一
       ```
 - [ ] 🤖 同一則筆記的 `tags` 也手動填上值(沒有那一行就自己加 `tags: [idea, 咖啡]`)
-- [ ] 🤖 回到 Notelet 編輯這則筆記並儲存
+- [ ] 🤖 回到 Inkling 編輯這則筆記並儲存
 - [ ] 🤖 重新打開檔案,`cssclass` 與 `aliases` **仍然在**
 - [ ] 🤖 `tags: [idea, 咖啡]` **也仍然在**(省略只針對空值,有值的標籤不能被吃掉)
 
@@ -426,7 +427,7 @@ var x = 1;
 
 本節 🤖 6 項 / 👀 2 項。
 
-- [ ] 🤖 執行 `Notelet：新增筆記`,出現空白表單
+- [ ] 🤖 執行 `Inkling：新增筆記`,出現空白表單
 - [ ] 🤖 **欄位順序是「標題在上、內文在下」**,而且**一進來焦點就在標題框**
 - [ ] 🤖 **沒有** `Ctrl+End` 那行提示(新增時內文本來就是空的,游標在哪都一樣)
 - [ ] 👀 **內文框一看就是五行高**,不是一行(這是預填空行撐出來的 —— 卡片沒有「幾行高」
@@ -466,11 +467,11 @@ var x = 1;
 - [ ] 🤖 **面板還開著,而且留在清單頁** —— 這一條是重點。以前這裡會發一個
       「已移到資源回收筒」的 toast,而 toast 一搶焦點主視窗就自我隱藏,
       刪一則等於把整個面板關掉一次(見 [設計考證〈刪除成功時一個 toast 都不發〉](design-notes.md#delete-no-toast))
-- [ ] 🤖 `%OneDrive%\Notelet` 底下那個 `.md` 不見了
+- [ ] 🤖 `%OneDrive%\Inkling` 底下那個 `.md` 不見了
 - [ ] 👀 **打開 Windows 資源回收筒 —— 那個檔案在裡面**,而且能還原
       (這是刪除功能唯一不可回頭的部分,務必實際確認一次。實作走的是
       `SHFileOperationW` 的 `FOF_ALLOWUNDO`,少了那個旗標就是永久刪除)
-- [ ] 🤖 還原之後回到 Notelet,那則筆記重新出現在清單裡
+- [ ] 🤖 還原之後回到 Inkling,那則筆記重新出現在清單裡
 - [ ] 🤖 另一則沒被選中的筆記完全沒受影響
 
 ### 7c. 刪除筆記(是一頁,不是一個動作)
@@ -484,14 +485,14 @@ var x = 1;
 
 先看那一頁本身 —— 打開它不該刪掉任何東西:
 
-- [ ] 🤖 執行 `Notelet：刪除筆記`,**進到一個清單頁,什麼都沒被刪**
+- [ ] 🤖 執行 `Inkling：刪除筆記`,**進到一個清單頁,什麼都沒被刪**
 - [ ] 🤖 頂層那一列的副標是「挑幾則刪掉,或整個清空」,動作標籤是「開啟」
 - [ ] 🤖 頁面的 placeholder 是 **找要刪的筆記…**
 - [ ] 🤖 打幾個字 → 清單**當場過濾**到只剩標題/副標命中的列,清空查詢就回來
       (這一頁不是 `DynamicListPage`,過濾是 CmdPal 端做的 —— 這條是確認那條路沒被弄斷)
 - [ ] 🤖 第一區「動作」有兩列:**刪除全部 4 則**(副標是筆記資料夾路徑)與
-      **只刪 Notelet 建立的 3 則**(副標「保留 1 則不是 Notelet 建立的」)
-- [ ] 🤖 下一區「不是 Notelet 建立的」排在 Notelet 筆記**前面**,圖示不一樣(警告 ——
+      **只刪 Inkling 建立的 3 則**(副標「保留 1 則不是 Inkling 建立的」)
+- [ ] 🤖 下一區「不是 Inkling 建立的」排在 Inkling 筆記**前面**,圖示不一樣(警告 ——
       分節與副標樹裡讀得到,圖示的長相要開 `shot` 看),副標是相對路徑,
       看得出它在子資料夾裡
 - [ ] 🤖 選中動作那兩列時,詳細窗格寫著資料夾路徑、總則數、外來幾則、以及資源回收筒那段
@@ -524,14 +525,14 @@ var x = 1;
 外來檔案不給跳過確認:
 
 - [ ] 🤖 選中那則**外來的** `.md`,`Ctrl+K` 選單裡第一項寫的是 **刪除**(不是「直接刪除」),
-      副標是「不是 Notelet 建立的,一律先確認」
-- [ ] 🤖 按 `Ctrl+Enter` → **一樣跳確認框**,寫著「刪除這個檔案？」與「不是 Notelet 建立的」
+      副標是「不是 Inkling 建立的,一律先確認」
+- [ ] 🤖 按 `Ctrl+Enter` → **一樣跳確認框**,寫著「刪除這個檔案？」與「不是 Inkling 建立的」
 - [ ] 🤖 按 `Enter` → 同一個確認框
 - [ ] 🤖 取消 → 檔案還在;確認 → 檔案進資源回收筒,面板還開著
 
 只刪自己建的:
 
-- [ ] 🤖 按「只刪 Notelet 建立的 3 則」→ 確認框寫著「刪除 Notelet 建立的 3 則筆記？」,
+- [ ] 🤖 按「只刪 Inkling 建立的 3 則」→ 確認框寫著「刪除 Inkling 建立的 3 則筆記？」,
       說明提到另外 1 則不會動到
 - [ ] 🤖 **焦點一樣落在主要按鈕上** ⚠版本敏感(批次刪除有設 `IsPrimaryCommandCritical`,
       但 0.11 的 CmdPal 不理它,所以看起來跟單則刪除一樣 —— 哪天焦點變成落在「取消」,
@@ -542,20 +543,20 @@ var x = 1;
 - [ ] 🤖 **面板還開著、留在這一頁**,而且清單當場刷新成只剩那則外來檔案
       (這條走的是 `CommandResult.KeepOpen()`,而且是從確認框回來的路徑 ——
       要是實際上跳回了主畫面,就把它改成 `GoHome()` 並更新這一行)
-- [ ] 🤖 只剩外來檔案時,「只刪 Notelet 建立的」那一列**消失了**(刪了等於什麼都不做)
+- [ ] 🤖 只剩外來檔案時,「只刪 Inkling 建立的」那一列**消失了**(刪了等於什麼都不做)
 - [ ] 🤖 那個 `.txt` 還在
 
 全部刪掉:
 
 - [ ] 🤖 補回三則筆記,選中**第一列**「刪除全部 4 則」→ 確認框標題是「刪除全部 4 則筆記？」,
-      說明裡有**資料夾路徑**與「含子資料夾」,並提到其中 1 則不是 Notelet 建立的
+      說明裡有**資料夾路徑**與「含子資料夾」,並提到其中 1 則不是 Inkling 建立的
 - [ ] 🤖 確認 → **沒有 toast**,頁面當場變成 **「沒有筆記可以刪除」**,副標是筆記資料夾路徑
 - [ ] 👀 資源回收筒裡有那四個檔案,還原後四則都回來
 - [ ] 🤖 `readme.txt` 與空的子資料夾都還在(只刪 `.md`,不動資料夾)
 
 空資料夾(這是原本會把 CmdPal 整個關掉的那條路):
 
-- [ ] 🤖 資料夾一則筆記都沒有時執行 `Notelet：刪除筆記`
+- [ ] 🤖 資料夾一則筆記都沒有時執行 `Inkling：刪除筆記`
 - [ ] 🤖 **面板不會關掉**,頁面顯示「沒有筆記可以刪除」與資料夾路徑,沒有 toast
 
 ### 7d. 大量筆記(超過 `MaxResults` = 200 的截斷)
@@ -570,7 +571,7 @@ var x = 1;
 在測試資料夾產生 210 則(id 手刻成 `20260819-0000-xxxx` 的格式,不會跟任何真筆記撞):
 
 ```powershell
-$dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
+$dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
 1..210 | ForEach-Object {
     $n = $_.ToString('D3')
     Set-Content -Path (Join-Path $dir "bulk-$n.md") -Encoding utf8 -Value (
@@ -591,7 +592,7 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
 
 本節 🤖 25 項 / 👀 4 項。
 
-- [ ] 🤖 在 Notelet 上按 `Ctrl+K` → 設定,設定頁打開
+- [ ] 🤖 在 Inkling 上按 `Ctrl+K` → 設定,設定頁打開
 - [ ] 🤖 有三個設定項,由上到下:筆記資料夾、快速記下的分隔符、記下後先看一眼
       (`QuickCaptureEnabled` / `QuickCapturePrefix` 隨 fallback 一起移除,
       `DetailsWidth` 隨面板寬度寫死一起移除。舊的 settings.json 裡可能還留著這幾個鍵,
@@ -605,7 +606,7 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
       會照字面印出來 —— 所以那段字用的是「」)
 - [ ] 👀 三個設定項之間都有分隔線
 - [ ] 🤖 把資料夾改到另一個路徑,清單改讀新資料夾,新筆記寫進新資料夾
-- [ ] 🤖 改完設定之後 `Notelet：快速記下` 照樣能用(整組 provider 會重建,頁面是新的那一個)
+- [ ] 🤖 改完設定之後 `Inkling：快速記下` 照樣能用(整組 provider 會重建,頁面是新的那一個)
 - [ ] 🤖 在資料夾輸入框裡按 Enter → **什麼都不會發生**:不送出、也不跳「瀏覽」對話框。
       CmdPal 的 `main` 有一條「單行框按 Enter = 送第一顆 action」的路
       (`ContentFormControl.OnFormKeyDown`),但 **0.11.11762.0 沒有那段程式碼**
@@ -621,15 +622,15 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
       **「沒有儲存 —— 筆記資料夾要填完整路徑,例如「C:\Notes」」**,**表單留在原地、
       打過的值還在**,`settings.json` 完全沒被改寫(連分隔符與開關也沒存 ——
       相對路徑會對著擴展進程的 CWD 解析,存下去看起來就像「舊筆記全部消失」)
-- [ ] 🤖 資料夾欄位填**不存在但完整**的路徑(例如 `C:\NoteletTest\Sub`)→ **照樣存**,
+- [ ] 🤖 資料夾欄位填**不存在但完整**的路徑(例如 `C:\InklingTest\Sub`)→ **照樣存**,
       但 InfoBadge 是 **「已儲存 —— 這個資料夾還不存在,第一次存檔時會建立：<路徑>」**
       (打錯一個字就靜靜換了家,所以要當場講);之後真的記一則,那個資料夾被建出來
-- [ ] 🤖 資料夾欄位**整個清空**存檔 → 回到預設的 `%OneDrive%\Notelet`,
+- [ ] 🤖 資料夾欄位**整個清空**存檔 → 回到預設的 `%OneDrive%\Inkling`,
       設定頁再打開時顯示的就是那個路徑
 
 **存完之後卡片不能停在舊值**(這條漏掉不會報錯,只會安靜地顯示舊值):
 
-- [ ] 🤖 走 **設定 → Extensions → Notelet** 這個入口(另一個入口每次都重建,驗不到這條),
+- [ ] 🤖 走 **設定 → Extensions → Inkling** 這個入口(另一個入口每次都重建,驗不到這條),
       把分隔符改成 `##` 存檔
 - [ ] 🤖 離開這一頁(點左邊的 Installed)再回來 → 輸入框顯示的是 `##`,**不是**舊值
 - [ ] 🤖 `settings.json` 裡也是 `##`,兩邊一致
@@ -643,12 +644,12 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
 - [ ] 🤖 打開設定頁,**焦點自動落在「筆記資料夾」輸入框**,不必先點一下或按 Tab
       (這正是拿掉那塊空白換來的。之前它擋著自動聚焦)
 - [ ] 👀 設定頁上看不到多餘的空白區塊,說明文字全部貼在自己的欄位底下
-- [ ] 🤖 對照組:`Notelet：新增筆記` 的表單焦點一樣自動落在第一格
+- [ ] 🤖 對照組:`Inkling：新增筆記` 的表單焦點一樣自動落在第一格
 
 **觀察項,不是回歸**(那塊空白原本要擋的就是這個,但它依賴的 `OnlyControlOnPage`
 在安裝版裡不存在 —— 見 [設計考證〈表單後面那塊空白已經拿掉了(而且它八成從來沒生效過)〉](design-notes.md#blank-markdown-removed)):
 
-- [ ] 👀 設定 → Extensions → Notelet 那一頁開著 → 切回 CmdPal 主視窗 → `Ctrl+K` → 設定 →
+- [ ] 👀 設定 → Extensions → Inkling 那一頁開著 → 切回 CmdPal 主視窗 → `Ctrl+K` → 設定 →
       改點東西按儲存 → 背景那個設定視窗**有沒有**跳到前面來?
       有的話記到下面的「記錄」裡:兩個入口共用同一個頁面實例,存檔後一律叫 CmdPal 重讀
       表單 = 控件重建 + 再一次 `Loaded`,而 `ContentFormControl` 載入後會自動聚焦。
@@ -659,15 +660,15 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
 路徑見 README〈設定存在哪,更新擴展之後還在嗎〉):
 
 - [ ] 🤖 「記下後先看一眼」一開就是**勾著的**
-- [ ] 🤖 筆記資料夾是 `%OneDrive%\Notelet`,分隔符是 `;;`
+- [ ] 🤖 筆記資料夾是 `%OneDrive%\Inkling`,分隔符是 `;;`
 - [ ] 🤖 詳細面板一開就是**寬**(1:1)
 
 **舊設定不會被更新洗掉**(改預設值那次的回歸驗證):
 
 - [ ] 🤖 設定頁把分隔符改成 `,,` 存檔 → 重新部署 + Reload → 還是 `,,`
       (預設值只對「檔案裡沒有那個鍵」的情況生效)
-- [ ] 🤖 `settings.json` 裡的孤兒鍵(`Notelet.QuickCapturePrefix`、`Notelet.DetailsWidth` 之類)
-      存過檔之後**還在**,而且沒有影響任何設定項
+- [ ] 🤖 `settings.json` 裡的孤兒鍵存過檔之後**還在**,而且沒有影響任何設定項
+      (現在的檔案裡不會自然出現孤兒鍵 —— 手動加一個 `"Inkling.NoSuchSetting": "x"` 進去再測)
 
 ### 8b. 「瀏覽…」按鈕
 
@@ -678,7 +679,7 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
       (那是一般的 Win32 對話框,用 `orca computer` 讀得到;拉不到前景是 Windows 的
       前景權限限制,見 [設計考證〈資料夾旁邊的「瀏覽…」〉](design-notes.md#browse-button))
 - [ ] 👀 工作列上多一顆對話框自己的按鈕 —— **這是刻意的**,它是拉前景失敗時的退路。
-      按鈕的圖示是 **Notelet 的圖示**(跟頂層清單那個同一套),不是 Windows 預設的灰方塊
+      按鈕的圖示是 **Inkling 的圖示**(跟頂層清單那個同一套),不是 Windows 預設的灰方塊
 - [ ] 🤖 對話框一開始停在**目前設定的那個資料夾**(`orca computer` 讀它的位址列)
 - [ ] 🤖 選一個資料夾按確定 → **不必再按儲存**,設定當場寫入。回饋走的是 InfoBadge
       「筆記資料夾：<路徑>」,但對話框一搶焦點主視窗就自我隱藏(沒有開關),
@@ -692,7 +693,7 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
 - [ ] 🤖 按取消 → 什麼都不變,設定檔沒有被改寫
 - [ ] 🤖 **快速連按兩次「瀏覽…」** → 只開得起一個對話框;第二次在設定頁底部出現
       InfoBadge **已經有一個「選擇資料夾」的視窗開著了**,面板不關
-- [ ] 🤖 兩個入口都要驗(`Ctrl+K` → 設定,以及設定 → Extensions → Notelet)
+- [ ] 🤖 兩個入口都要驗(`Ctrl+K` → 設定,以及設定 → Extensions → Inkling)
 
 ## 9. 外來檔案與同步
 
@@ -700,14 +701,14 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
 
 - [ ] 🤖 用文字編輯器在筆記資料夾放一個**沒有 front matter** 的 `.md`
       (第一行寫 `# 外面來的標題`)
-- [ ] 🤖 它出現在 Notelet 清單裡,標題是「外面來的標題」
+- [ ] 🤖 它出現在 Inkling 清單裡,標題是「外面來的標題」
 - [ ] 🤖 在子資料夾裡放一個 `.md`,它也出現在清單裡
 - [ ] 🤖 放一個**以程式碼圍欄開頭**的外來 `.md`(第一行就是 ```` ``` ````,第二行
       `some code`)→ 標題是 **圍欄裡的第一行**(`some code`),不是三個反引號
       (推導規則在 Core 的 `NoteBody.FirstContentLine`,有測試;這裡是端到端確認)
 - [ ] 🤖 放一個**整則只有裝飾行**的外來 `.md`(只有空行、```、`---`)→
       標題退回**檔名**(去掉 `.md`)
-- [ ] 🤖 **即時更新**:Notelet 清單開著的時候,用編輯器改某則筆記的標題並存檔,
+- [ ] 🤖 **即時更新**:Inkling 清單開著的時候,用編輯器改某則筆記的標題並存檔,
       清單在一兩秒內自己更新(這就是別台機器經 OneDrive 同步下來時會發生的事)
 
 ## 10. 錯誤處理
@@ -738,7 +739,7 @@ $dir = "$env:TEMP\notelet-verify"   # 換成目前設定指向的測試資料夾
 - [ ] 🤖 **表單存檔失敗**:編輯表單開著,先用檔案總管把資料夾改名(或鎖住那個檔案),
       按儲存 → 底部出現 **InfoBadge**「存檔失敗：… —— 請到設定檢查筆記資料夾」,
       **表單留在原地、打過的字還在**(壓著沒存下的輸入時不走 toast),不會假裝存好
-- [ ] 🤖 **快速記下存檔失敗(預覽關閉的路)**:把資料夾指向 `Z:\Notelet`,快速記下頁
+- [ ] 🤖 **快速記下存檔失敗(預覽關閉的路)**:把資料夾指向 `Z:\Inkling`,快速記下頁
       打一個標題按 Enter → **InfoBadge**「存檔失敗：… —— 請到設定檢查筆記資料夾」,
       **面板不關、搜尋框裡那句話還在**;修好資料夾之後直接再按一次 Enter 就是重試。
       驗完把資料夾改回來
@@ -769,7 +770,8 @@ COM 層失敗才走得到,真機上沒有穩定的觸發方式 —— 靠程式�
 先確認擴展進程拿到的是哪一種語言(需要 `diagnostic.on`,見 README〈排錯:讓擴展自己說話(DiagnosticLog)〉):
 
 ```powershell
-Get-Content "$env:LOCALAPPDATA\Packages\Notelet_bf0n0751x5hse\LocalState\diagnostic.log" -Encoding utf8 |
+$ls = "$env:LOCALAPPDATA\Packages\$((Get-AppxPackage Inkling).PackageFamilyName)\LocalState"
+Get-Content "$ls\diagnostic.log" -Encoding utf8 |
   Select-String "UI 語言"
 ```
 
@@ -778,8 +780,8 @@ Get-Content "$env:LOCALAPPDATA\Packages\Notelet_bf0n0751x5hse\LocalState\diagnos
 **換一種語言實測**(改 Windows 設定 → 時間與語言 → 語言與地區 → Windows 顯示語言,
 要重新登入;測完記得改回來):
 
-- [ ] 🤖 改成英文之後,頂層四個命令變成 `Notelet` / `Notelet: Quick capture` /
-      `Notelet: New note` / `Notelet: Delete notes`
+- [ ] 🤖 改成英文之後,頂層四個命令變成 `Inkling` / `Inkling: Quick capture` /
+      `Inkling: New note` / `Inkling: Delete notes`
 - [ ] 🤖 **alias 還在、還能用** —— 這是命令 Id 寫死的回歸測試,換語言不該讓使用者的
       alias 失效(標題變了,`Id` 沒變)
 - [ ] 🤖 快速記下頁的提示句裡,分隔符還是使用者設的那個(不是寫死的 `;;`)
@@ -794,7 +796,7 @@ Get-Content "$env:LOCALAPPDATA\Packages\Notelet_bf0n0751x5hse\LocalState\diagnos
 字長相近,「長字串塞不下」的主要風險英文已涵蓋,所以抽查最小範圍即可):
 
 - [ ] 🤖 Windows 顯示語言切到**簡體中文**(重新登入),頂層四個命令是簡體
-      (`Notelet：快速记下` / `Notelet：新建笔记` / `Notelet：删除笔记`)
+      (`Inkling：快速记下` / `Inkling：新建笔记` / `Inkling：删除笔记`)
 - [ ] 🤖 設定頁三個欄位的標籤與說明都是簡體,沒有截斷
 - [ ] 🤖 快速記下頁的提示句是簡體,分隔符還是使用者設的那個
 

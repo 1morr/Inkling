@@ -24,7 +24,7 @@ description: >-
 >    `windows-commandpalette-extension` —— CmdPal 內建的擴展瀏覽靠這個 tag 過濾,
 >    有帶的套件從 gallery 安裝時還會被設 `SkipDependencies`(見下一點)。
 > 3. **同一份還說 manifest 必須宣告 `Microsoft.WindowsAppRuntime` 依賴 —— 對本專案也是錯的。**
->    Notelet 沒有引用 WindowsAppSDK(pubxml 是 self-contained),在架的 ProcessKiller
+>    Inkling 沒有引用 WindowsAppSDK(pubxml 是 self-contained),在架的 ProcessKiller
 >    manifest 也沒有 Dependencies 區段。而且 CmdPal 對帶 `windows-commandpalette-extension`
 >    tag 的套件設 `SkipDependencies = true`,宣告了從 gallery 安裝也會被跳過,
 >    只有走 winget CLI 的人會被多裝幾百 MB 的執行期。**什麼時候才要宣告:專案真的

@@ -9,7 +9,7 @@ using Windows.ApplicationModel.AppExtensions;
 // 用法: VerifyRegistration [預期的套件名稱]
 // 結束碼: 0 = 找到, 1 = 沒找到
 
-var expected = args.Length > 0 ? args[0] : "Notelet";
+var expected = args.Length > 0 ? args[0] : "Inkling";
 
 var catalog = AppExtensionCatalog.Open("com.microsoft.commandpalette");
 var extensions = await catalog.FindAllAsync().AsTask();

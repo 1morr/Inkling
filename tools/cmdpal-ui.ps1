@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    驅動 Command Palette 的 UI,做 Notelet 的實機驗證。
+    驅動 Command Palette 的 UI,做 Inkling 的實機驗證。
 
 .DESCRIPTION
     CmdPal 沒有 UI 自動化介面,擴展又跑在獨立的 COM 進程裡 —— 這個腳本用 Windows
@@ -33,7 +33,7 @@
       toast           列出 CmdPal 的 toast 視窗狀態 —— 驗證「一個 toast 都不發」
       notes           列出目前設定的筆記資料夾內容
       log[:<行數>]    diagnostic.log 的尾巴(預設 20 行)
-      state           兩份 settings.json 的摘要(Notelet 自己的 + CmdPal 那邊的)
+      state           兩份 settings.json 的摘要(Inkling 自己的 + CmdPal 那邊的)
 
 .PARAMETER Retries
     整串動作最多嘗試幾次(含第一次),只有在 CmdPal 中途失焦時才會重跑。預設 4。
@@ -42,7 +42,7 @@
     全部試完還是沒跑完的話,腳本以**非零結束**。
 
 .EXAMPLE
-    pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Notelet|wait:800|tree:6"
+    pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Inkling|wait:800|tree:6"
 
 .EXAMPLE
     # 快速記下:打字 → Enter → 確認檔案真的落地,而且沒有跳 toast
@@ -152,15 +152,15 @@ $CmdPalLocalState = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.CommandPalet
 # Package family name 不寫死:它由套件身分( Name + Publisher )推出,換身分之一個字
 # 就全變。寫死的話換完身分之後這裡會指向不存在的目錄,而 notes / log / state 讀不到
 # 檔案只會安靜跳過 —— 「看起來沒壞」比報錯更糟,所以動態取、取不到就直接中止。
-$NoteletLocalState = $null
-$noteletPackage = @(Get-AppxPackage -Name Notelet -ErrorAction SilentlyContinue)
-if ($noteletPackage.Count -gt 1) {
-    throw "找到不只一個 Notelet 套件($($noteletPackage.PackageFamilyName -join ', ')),請先清掉重複的。"
+$InklingLocalState = $null
+$inklingPackage = @(Get-AppxPackage -Name Inkling -ErrorAction SilentlyContinue)
+if ($inklingPackage.Count -gt 1) {
+    throw "找到不只一個 Inkling 套件($($inklingPackage.PackageFamilyName -join ', ')),請先清掉重複的。"
 }
-if ($noteletPackage.Count -eq 1) {
-    $NoteletLocalState = Join-Path $env:LOCALAPPDATA "Packages\$($noteletPackage[0].PackageFamilyName)\LocalState"
+if ($inklingPackage.Count -eq 1) {
+    $InklingLocalState = Join-Path $env:LOCALAPPDATA "Packages\$($inklingPackage[0].PackageFamilyName)\LocalState"
 } else {
-    Write-Output '  !! 找不到已註冊的 Notelet 套件(Get-AppxPackage -Name Notelet 是空的)——'
+    Write-Output '  !! 找不到已註冊的 Inkling 套件(Get-AppxPackage -Name Inkling 是空的)——'
     Write-Output '     notes / log / state 會讀不到東西。先跑 tools\deploy.ps1 註冊再來。'
 }
 
@@ -648,12 +648,12 @@ function Write-ToastState {
 }
 
 function Get-NotesDirectory {
-    if (-not $NoteletLocalState) { return $null }
-    $settingsPath = Join-Path $NoteletLocalState 'settings.json'
+    if (-not $InklingLocalState) { return $null }
+    $settingsPath = Join-Path $InklingLocalState 'settings.json'
     if (-not (Test-Path $settingsPath)) { return $null }
     try {
         $json = Get-Content $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        return $json.'Notelet.NotesDirectory'
+        return $json.'Inkling.NotesDirectory'
     } catch { return $null }
 }
 
@@ -675,9 +675,9 @@ function Write-NotesFolder {
 function Write-DiagnosticLog {
     param([int]$Lines = 20)
 
-    if (-not $NoteletLocalState) { Write-Output '  !! Notelet 套件沒註冊,讀不到 diagnostic.log'; return }
-    $logPath = Join-Path $NoteletLocalState 'diagnostic.log'
-    $switchPath = Join-Path $NoteletLocalState 'diagnostic.on'
+    if (-not $InklingLocalState) { Write-Output '  !! Inkling 套件沒註冊,讀不到 diagnostic.log'; return }
+    $logPath = Join-Path $InklingLocalState 'diagnostic.log'
+    $switchPath = Join-Path $InklingLocalState 'diagnostic.on'
     if (-not (Test-Path $switchPath)) {
         Write-Output "  !! 診斷日誌沒開。建一個空檔 $switchPath 再 Reload。"
     }
@@ -688,19 +688,19 @@ function Write-DiagnosticLog {
 }
 
 function Write-SettingsState {
-    Write-Output '  -- Notelet --'
-    if (-not $NoteletLocalState) {
-        Write-Output '    !! Notelet 套件沒註冊,讀不到設定'
+    Write-Output '  -- Inkling --'
+    if (-not $InklingLocalState) {
+        Write-Output '    !! Inkling 套件沒註冊,讀不到設定'
     } else {
-        $noteletSettings = Join-Path $NoteletLocalState 'settings.json'
-        if (Test-Path $noteletSettings) {
-            Get-Content $noteletSettings -Raw -Encoding UTF8 | ForEach-Object { "    $_" }
+        $inklingSettings = Join-Path $InklingLocalState 'settings.json'
+        if (Test-Path $inklingSettings) {
+            Get-Content $inklingSettings -Raw -Encoding UTF8 | ForEach-Object { "    $_" }
         } else {
             Write-Output '    (還沒有 settings.json —— 擴展從來沒存過設定)'
         }
     }
 
-    Write-Output '  -- CmdPal(只挑跟 Notelet 有關的)--'
+    Write-Output '  -- CmdPal(只挑跟 Inkling 有關的)--'
     $cmdPalSettings = Join-Path $CmdPalLocalState 'settings.json'
     if (-not (Test-Path $cmdPalSettings)) { Write-Output '    (找不到 CmdPal 的 settings.json)'; return }
 
@@ -709,12 +709,12 @@ function Write-SettingsState {
 
         Write-Output '    aliases:'
         $json.Aliases.PSObject.Properties |
-            Where-Object { $_.Value.CommandId -like 'Notelet*' } |
+            Where-Object { $_.Value.CommandId -like 'Inkling*' } |
             ForEach-Object { "      '$($_.Name)' -> $($_.Value.CommandId)" }
 
         Write-Output '    provider settings:'
         $json.ProviderSettings.PSObject.Properties |
-            Where-Object { $_.Name -like '*Notelet*' } |
+            Where-Object { $_.Name -like '*Inkling*' } |
             ForEach-Object {
                 "      $($_.Name)"
                 "        IsEnabled = $($_.Value.IsEnabled)"

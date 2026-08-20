@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Platform 的大小寫要跟 Notelet.csproj 的 <Platforms>x64;ARM64</Platforms> 一致。
+          # Platform 的大小寫要跟 Inkling.csproj 的 <Platforms>x64;ARM64</Platforms> 一致。
           - { arch: x64, platform: x64, profile: win-x64 }
           - { arch: arm64, platform: ARM64, profile: win-arm64 }
     env:
@@ -48,13 +48,13 @@ jobs:
           # AppxManifest.xml 仍是 manifest 裡的 0.1.0.0),所以直接改 manifest 的
           # Version 屬性。身分欄位(Name / Publisher)不碰 —— 見 docs/release-checklist.md。
           # 這個改動只發生在 CI 的 checkout 上,不會 commit 回去。
-          $path = 'src/Notelet/Package.appxmanifest'
+          $path = 'src/Inkling/Package.appxmanifest'
           [xml]$m = Get-Content $path
           $m.Package.Identity.Version = '${{ steps.ver.outputs.appx_version }}'
           $m.Save((Resolve-Path $path).Path)
 
       - name: Publish (Release, trimmed)
-        run: dotnet publish src/Notelet/Notelet.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishProfile=${{ matrix.profile }}
+        run: dotnet publish src/Inkling/Inkling.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishProfile=${{ matrix.profile }}
 
       - name: Stage package layout
         shell: pwsh
@@ -62,8 +62,8 @@ jobs:
           # 與 tools/deploy.ps1 相同的佈局邏輯:publish 輸出 + build 佈局才會產生的
           # AppxManifest.xml。resources.pri 與 Assets 已在 publish 輸出裡。
           $tfm = 'net10.0-windows10.0.26100.0'
-          $publish = "src/Notelet/bin/Release/$tfm/win-${{ matrix.arch }}/publish"
-          $buildLayout = "src/Notelet/bin/${{ matrix.platform }}/Release/$tfm/win-${{ matrix.arch }}"
+          $publish = "src/Inkling/bin/Release/$tfm/win-${{ matrix.arch }}/publish"
+          $buildLayout = "src/Inkling/bin/${{ matrix.platform }}/Release/$tfm/win-${{ matrix.arch }}"
           $stage = "artifacts/stage-${{ matrix.arch }}"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item "$publish/*" $stage -Recurse -Force
@@ -79,7 +79,7 @@ jobs:
           # 不加 /nv:讓 makeappx 做完整的套件驗證,清單或資產有問題在這裡就擋下。
           & $makeappx pack /o `
             /d "artifacts/stage-${{ matrix.arch }}" `
-            /p "artifacts/out/Notelet_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
+            /p "artifacts/out/Inkling_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
           if ($LASTEXITCODE -ne 0) { throw "makeappx pack 失敗($LASTEXITCODE)" }
 
       - name: Sign .msix
@@ -96,7 +96,7 @@ jobs:
               Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
             & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
               /f $pfx.FullName /p $env:SIGNING_CERT_PASSWORD `
-              "artifacts/out/Notelet_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
+              "artifacts/out/Inkling_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
             if ($LASTEXITCODE -ne 0) { throw "signtool sign 失敗($LASTEXITCODE)" }
           }
           finally {
@@ -124,7 +124,7 @@ jobs:
         run: |
           $makeappx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
             Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-          & $makeappx bundle /o /d artifacts/msix /p "artifacts/Notelet_${{ github.ref_name }}.msixbundle"
+          & $makeappx bundle /o /d artifacts/msix /p "artifacts/Inkling_${{ github.ref_name }}.msixbundle"
           if ($LASTEXITCODE -ne 0) { throw "makeappx bundle 失敗($LASTEXITCODE)" }
 
       - name: Create GitHub Release
@@ -136,7 +136,7 @@ jobs:
           # 要給使用者側載,必須先完成簽章(見 build job 的 Sign 步驟註解)。
           # PowerShell 不會對原生指令展開萬用字元,資產路徑要自己展開再傳。
           $assets = Get-ChildItem artifacts/msix/*.msix | ForEach-Object FullName
-          $bundle = (Resolve-Path "artifacts/Notelet_${{ github.ref_name }}.msixbundle").Path
+          $bundle = (Resolve-Path "artifacts/Inkling_${{ github.ref_name }}.msixbundle").Path
           gh release create '${{ github.ref_name }}' `
             --title '${{ github.ref_name }}' `
             --generate-notes `

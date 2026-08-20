@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 rescap">
+
+  <!--
+    Publisher 是本機側載用的自簽身分。要上架 Store 時才需要換成 Partner Center 的身分。
+
+    **它刻意還寫著 Notelet(改名前的名字),不要順手改掉。** package family name 是
+    `<Name>_<Publisher 的雜湊>`,那個雜湊只由 Publisher 這個字串決定 —— Name 從 Notelet
+    換成 Inkling 之後 PFN 是 `Inkling_bf0n0751x5hse`,後綴沒變,正因為 Publisher 沒動。
+    動它的代價是自簽憑證要重發並重新信任,而它只是個側載用的 CN,對外不可見。
+    真正該換的時機是上架時一併換成 Partner Center 指派的身分(見 docs/release-checklist.md)。
+  -->
+  <Identity
+    Name="Inkling"
+    Publisher="CN=Notelet Development"
+    Version="0.1.0.0" />
+
+  <Properties>
+    <DisplayName>Inkling</DisplayName>
+    <PublisherDisplayName>Inkling</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate"/>
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+      Executable="$targetnametoken$.exe"
+      EntryPoint="$targetentrypoint$">
+      <!-- Description 用英文:NeutralLanguage 是 en,這段會出現在 Windows「應用程式」
+           清單與 gallery 的中繼資料裡;不是身分欄位,改它不影響已安裝的使用者。 -->
+      <uap:VisualElements
+        DisplayName="Inkling"
+        Description="Capture thoughts in seconds, right in Command Palette"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <!--
+          下面的 CLSID 必須與三處完全一致:
+            1. InklingExtension.cs 的 [Guid(...)]
+            2. 這裡的 com:Class Id
+            3. 下面的 CreateInstance ClassId
+          不一致的話 CmdPal 會找到套件但無法實例化擴展。
+        -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="Inkling.exe" Arguments="-RegisterProcessAsComServer" DisplayName="Inkling">
+              <com:Class Id="4D628A0F-6610-4043-9E1E-D696EADCB6BB" DisplayName="Inkling" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <uap3:Extension Category="windows.appExtension">
+          <uap3:AppExtension Name="com.microsoft.commandpalette"
+            Id="Inkling"
+            PublicFolder="Public"
+            DisplayName="Inkling"
+            Description="Capture thoughts in seconds, right in Command Palette">
+            <uap3:Properties>
+              <CmdPalProvider>
+                <Activation>
+                  <CreateInstance ClassId="4D628A0F-6610-4043-9E1E-D696EADCB6BB" />
+                </Activation>
+                <SupportedInterfaces>
+                  <Commands/>
+                </SupportedInterfaces>
+              </CmdPalProvider>
+            </uap3:Properties>
+          </uap3:AppExtension>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
