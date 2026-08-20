@@ -73,15 +73,9 @@ internal sealed partial class CapturedNotePage : ContentPage
         Title = draft.Title;
         Name = Resources.CapturedPageName;
 
-        _done = new AnonymousCommand(() => { })
-        {
-            Name = Resources.CommandDone,
-            Icon = Icons.Done,
-
-            // 收起整個 Command Palette,而不是 GoHome:使用者記完這則想法就要回去做原本的事,
-            // 留一個主搜尋框在畫面上只是多一次 Esc。
-            Result = CommandResult.Dismiss(),
-        };
+        // 跟預覽頁共用同一份組裝(收起面板,不是 GoHome —— 理由寫在 NoteCommands.Done)。
+        // 存檔失敗時這一顆會就地被改成「返回」,所以留著實例,見 Capture()。
+        _done = NoteCommands.Done();
 
         _copyBody = new CopyNoteBodyCommand(draft.Body);
 
@@ -161,8 +155,10 @@ internal sealed partial class CapturedNotePage : ContentPage
     }
 
     /// <summary>
-    /// 存檔成功後的命令列。第二個項目會被 CmdPal 當成次要命令掛上 Ctrl+Enter,
-    /// 所以「編輯」排在「完成」後面 —— 看完覺得要改,不必先繞去清單頁找。
+    /// 存檔成功後的命令列。**前兩項的位置是有語意的,不要插隊**:第一項掛 <c>Enter</c>
+    /// (完成,收起面板),第二項掛 <c>Ctrl+Enter</c>(編輯)—— 三個顯示筆記的畫面
+    /// <c>Ctrl+Enter</c> 一律是編輯,算法與理由見 <see cref="NoteCommands"/> 與
+    /// <see cref="NotePreviewPage"/>。
     ///
     /// 其餘幾項與預覽頁、清單頁共用同一份組裝(<see cref="NoteCommands"/>),
     /// 鍵位因此自動一致 —— 這一頁是第三個顯示同一則筆記的畫面,手勢要跨頁通用。

@@ -15,8 +15,23 @@ namespace Inkling.Commands;
 /// (預設 ShowToast,toast 一搶焦點主視窗就自我隱藏,整頁消失)、編輯鍵就地寫死
 /// 沒走 <see cref="Shortcuts"/>。收在這裡之後,加命令、改鍵、改圖示只有一個地方要動。
 ///
-/// 各頁專屬的項(清單頁的新增筆記與刪除、記下頁的「完成」)仍由各頁自己插,
-/// 順序也由各頁決定 —— 第一項會被 CmdPal 當成次要命令放上底部工具列,那是有語意的位置。
+/// 各頁專屬的項(清單頁的新增筆記與刪除)仍由各頁自己插,順序也由各頁決定。
+///
+/// <para><b>順序有語意,而且兩種頁面的規則不一樣 —— 這裡踩過坑。</b></para>
+///
+/// 底部工具列有兩顆按鈕:主命令(<c>Enter</c>)與次命令(<c>Ctrl+Enter</c>),坐上去的是誰
+/// **只看順序**,跟那個命令自己綁的 <c>RequestedShortcut</c> 無關(所以同一個命令可能同時
+/// 有兩個鍵能觸發)。但「第幾個」的算法兩種頁面不同:
+///
+/// <list type="bullet">
+/// <item><c>ListPage</c> 的一列:主命令是那一列自己的命令,<b><c>MoreCommands[0]</c> 才是次命令</b>。</item>
+/// <item><c>ContentPage</c>:<b><c>Commands[0]</c> 是主命令,<c>Commands[1]</c> 是次命令</b>。</item>
+/// </list>
+///
+/// 三個畫面刻意讓 <b><c>Ctrl+Enter</c> 一律是「編輯」</b>,所以兩個 <c>ContentPage</c>
+/// (預覽頁、記下並預覽頁)的第一項都是 <see cref="Done"/>、第二項都是 <see cref="Edit"/>。
+/// 加新項目時**不要插進前兩個位置**,那會把編輯從 <c>Ctrl+Enter</c> 上擠掉
+/// (真的發生過:切換原始文字排到第二個,複製內文就被頂掉了)。
 /// </summary>
 internal static class NoteCommands
 {
@@ -75,4 +90,21 @@ internal static class NoteCommands
             RequestedShortcut = Shortcuts.OpenFileLocation,
         };
 
+    /// <summary>
+    /// 「完成」:看完了,收起整個 Command Palette。**兩個 <c>ContentPage</c> 的 <c>Enter</c>
+    /// 都是它**(預覽頁、記下並預覽頁),為的是讓 <c>Ctrl+Enter</c> 空出來給編輯 ——
+    /// 理由見 <see cref="Pages.NotePreviewPage"/> 上那段「兩個位置鍵」的說明。
+    ///
+    /// 回傳的是命令本身而不是選單項:記下並預覽頁在存檔失敗時要就地把它改成「返回」
+    /// (換 <c>Name</c> 與 <c>Result</c>),所以呼叫端得拿得到實例。
+    ///
+    /// 收起而不是 <c>GoHome</c>:看完筆記的下一步是回去做原本的事,
+    /// 留一個主搜尋框在畫面上只是多一次 <c>Esc</c>。
+    /// </summary>
+    public static AnonymousCommand Done() => new(() => { })
+    {
+        Name = Resources.CommandDone,
+        Icon = Icons.Done,
+        Result = CommandResult.Dismiss(),
+    };
 }

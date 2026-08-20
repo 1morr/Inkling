@@ -335,7 +335,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
       那邊是逃脫式 Markdown,縮排會被正規化)
 - [ ] 👀 在內容上按**右鍵**,CmdPal 自己的選單有「複製 / 全選 / 自動換行 / 等寬字 /
       縮放」(那是 `PlainTextContent` 附帶的,不是我們畫的)
-- [ ] 🤖 底部工具列的次要命令(`Ctrl+Enter`)還是**複製內文**,沒有被切換那一項擠掉
+- [ ] 🤖 底部工具列的次要命令(`Ctrl+Enter`)還是**編輯**,沒有被切換那一項擠掉
       (`ContentPage` 的第二個命令才是 `Ctrl+Enter`,順序踩過這個坑)
 - [ ] 🤖 `Ctrl+K` 選單裡那一項的字跟著狀態變,鍵位是 `Ctrl+U`
 - [ ] 🤖 再按一次 `Ctrl+U` 切回渲染結果
@@ -387,7 +387,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
 
 ## 5. Markdown 預覽(需求 3)
 
-本節 🤖 5 項 / 👀 4 項。
+本節 🤖 11 項 / 👀 4 項。
 
 先建一則內文含各種語法的筆記(可以直接用編輯器寫進檔案):
 
@@ -421,6 +421,18 @@ var x = 1;
 - [ ] 🤖 `Ctrl+K` 能看到「編輯」與「在預設編輯器開啟」
 - [ ] 🤖 「在預設編輯器開啟」真的用系統預設程式打開了那個 `.md`
 - [ ] 🤖 「複製內文」之後貼上,內容正確
+
+底部工具列那兩顆按鈕(位置鍵,見
+[設計考證〈`Ctrl+Enter` 三頁一律是「編輯」〉](design-notes.md#secondary-command)):
+
+- [ ] 🤖 預覽頁底部第一顆是**完成**(`Enter`)、第二顆是**編輯**(`Ctrl+Enter`)
+- [ ] 🤖 在預覽頁按 `Ctrl+Enter` 進的是編輯表單(不是複製、也不是切換原文)
+- [ ] 🤖 在預覽頁按 `Enter` 面板整個收起(這是刻意的取捨:換來 `Ctrl+Enter` 三頁同義)
+- [ ] 🤖 清單頁選中一列時底部第二顆也是**編輯**;「記下並預覽」那一頁同樣是
+      第一顆完成、第二顆編輯 —— 三頁一致
+- [ ] 🤖 `Ctrl+Shift+C` 在三頁都能複製內文(它是命令自己的鍵,跟位置無關)
+- [ ] 🤖 `Inkling：刪除筆記` 那一頁**刻意不跟**:`Enter` 是刪除(先問一次)、
+      `Ctrl+Enter` 是直接刪
 
 ## 6. 編輯(需求 4)
 

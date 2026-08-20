@@ -53,7 +53,8 @@ Inkling itself contains zero sync code.
 
 | 鍵 | 做什麼 | 清單頁 | 預覽頁 |
 |---|---|:-:|:-:|
-| `Enter` | 打開預覽 | ✅ | — |
+| `Enter` | 清單頁:打開預覽;預覽頁:完成(收起面板) | ✅ | ✅ |
+| `Ctrl+Enter` | 編輯 —— 底部工具列的次要命令,**三個畫面一律是它** | ✅ | ✅ |
 | `Ctrl+E` | 編輯(表單) | ✅ | ✅ |
 | `Ctrl+N` | 新增筆記(開表單) | ✅ | — |
 | `Ctrl+U` | 切換渲染結果 / 原始文字(全域,記得住) | ✅ | ✅ |
@@ -65,12 +66,28 @@ Inkling itself contains zero sync code.
 
 「記下並預覽」那一頁(快速記下的 Enter 落點)用同一組手勢:`Ctrl+E` 編輯、
 `Ctrl+U` 切原文、`Ctrl+Shift+C` 複製、`Ctrl+O` 在編輯器開啟 —— 三個頁面共用同一份命令組裝。
-`Inkling：刪除筆記` 那一頁另有自己的兩個鍵:`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪。
+`Inkling：刪除筆記` 那一頁另有自己的兩個鍵:`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪
+(那一頁刻意是例外,兩種心情各一個鍵)。
+
+**`Enter` 與 `Ctrl+Enter` 是「位置鍵」,不是綁在命令上的。** 底部工具列固定有主命令
+(`Enter`)與次命令(`Ctrl+Enter`)兩顆按鈕,坐上去的是誰只看命令的排序。所以同一個命令
+可能同時有兩個鍵能觸發(例如預覽頁的編輯:`Ctrl+E` 與 `Ctrl+Enter`)。三個顯示筆記的畫面
+刻意讓**次命令一律是「編輯」**:
+
+| | `Enter` | `Ctrl+Enter` |
+|---|---|---|
+| 清單頁(選中一列) | 打開預覽 | 編輯 |
+| 預覽頁 | 完成(收起面板) | 編輯 |
+| 記下並預覽頁 | 完成(收起面板) | 編輯 |
+
+代價是預覽頁的 `Enter` 不是編輯(以前是),而複製內文只剩自己的 `Ctrl+Shift+C` ——
+換來的是 `Ctrl+Enter` 在三個畫面上意思相同。
 
 **只有複製帶 Shift**:`Ctrl+C` 是搜尋框自己的複製鍵,拿走就沒辦法複製剛打的字,
 而 `Ctrl+Shift+C` 是 CmdPal 內建擴展的複製慣例。哪些字母不能碰、為什麼刪除是 `Ctrl+D`,
 完整的挑鍵考證見[設計考證〈清單頁的快速鍵〉](docs/design-notes.md#list-shortcuts)與
-`src/Inkling/Shortcuts.cs`。**CmdPal 目前不讓使用者改擴展的快速鍵**,
+`src/Inkling/Shortcuts.cs`;`Ctrl+Enter` 為什麼三頁統一成編輯、代價是什麼,見
+[設計考證〈`Ctrl+Enter` 三頁一律是「編輯」〉](docs/design-notes.md#secondary-command)。**CmdPal 目前不讓使用者改擴展的快速鍵**,
 能改的只有頂層命令的 alias 與全域快速鍵。
 
 ## 需求

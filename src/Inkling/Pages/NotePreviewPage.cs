@@ -13,6 +13,16 @@ namespace Inkling.Pages;
 /// 鍵位見 <see cref="Shortcuts"/>):這一頁是從清單頁按 <c>Enter</c> 進來的,
 /// 同一則筆記在兩個畫面上要能用同一組手勢。
 /// 少的只有「刪除」—— 刪掉正在看的東西沒有道理,而且刪完停在一個空的預覽頁上更奇怪。
+///
+/// <para><b>兩個位置鍵:<c>Enter</c> 是「完成」,<c>Ctrl+Enter</c> 是「編輯」。</b></para>
+///
+/// 那兩顆按鈕坐的是誰只看順序,不看命令自己綁的鍵(算法見 <see cref="NoteCommands"/>)。
+/// 這一頁的 <c>Enter</c> 曾經是編輯,而 <c>Ctrl+Enter</c> 就順位落在複製內文上 ——
+/// 於是同一個 <c>Ctrl+Enter</c> 在清單頁是編輯、在這一頁是複製,使用者得記兩套。
+/// 現在三個畫面**一律** <c>Ctrl+Enter</c> = 編輯,代價是這一頁的 <c>Enter</c> 讓給
+/// <see cref="NoteCommands.Done"/>(收起面板,跟記下並預覽頁同形):看完了就收工,
+/// 要改的話 <c>Ctrl+E</c> 或 <c>Ctrl+Enter</c> 都到得了。
+/// 複製內文因此只剩自己的 <c>Ctrl+Shift+C</c> —— 那個鍵本來就跨三頁一致。
 /// </summary>
 internal sealed partial class NotePreviewPage : ContentPage
 {
@@ -48,23 +58,24 @@ internal sealed partial class NotePreviewPage : ContentPage
         // 靠 GetContent 每次重讀來收(導覽過去一定會取內容)。
         _toggleSource = new SourceModeToggle(_sourceMode, Refresh);
 
+        // **前兩項的位置是有語意的,不要插隊**:第一項掛 Enter、第二項掛 Ctrl+Enter
+        // (見類別註解與 NoteCommands)。第三項之後才是純選單。
         Commands = [
+            new CommandContextItem(NoteCommands.Done()),
+
             // 編輯頁存檔後會回呼 Refresh。
             //
             // 這裡刻意用回呼而不是訂閱 repository 的 Changed 事件:預覽頁是清單裡
             // 每個項目各建一個的,而清單每次搜索就重建一次。長壽事件抓著這些短命物件
             // 會一路累積訂閱,不只是記憶體洩漏,一次改動還會打出上百個刷新。
             NoteCommands.Edit(repository, note, Refresh),
+
+            _toggleSource.CreateItem(Resources.ToggleSourcePageSubtitle),
+
             // 複製完留在這一頁,而且沒有回饋 —— 這一頁沒有清單列可以掛標籤
             // (清單頁的做法見 NoteListPage.FlashTag),而 toast 會把整個面板關掉。
             // 可以接受:使用者正看著的就是剛複製走的那段內容。
             NoteCommands.CopyBody(_copyBody),
-
-            // **切換原始文字排在複製後面,跟清單頁的選單順序不一樣,是刻意的。**
-            // 這一頁是 ContentPage:第一個命令是底部工具列的主按鈕,**第二個掛 Ctrl+Enter**
-            // (清單頁那邊的第一個才是 Ctrl+Enter)。排到第二個就等於把複製內文從
-            // Ctrl+Enter 上擠掉 —— 那是使用者早就在用的鍵位,而這一項本來就有 Ctrl+U。
-            _toggleSource.CreateItem(Resources.ToggleSourcePageSubtitle),
             NoteCommands.OpenInEditor(note),
             NoteCommands.OpenFileLocation(note),
         ];

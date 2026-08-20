@@ -93,7 +93,15 @@ Version 的症狀)。
 同一則筆記的 `Ctrl+K` 選單項(編輯 / 複製內文 / 在編輯器開啟 / 開啟檔案位置)收在
 `NoteCommands`,清單頁、預覽頁、記下並預覽頁三個畫面共用 —— 鍵位與圖示跨頁要一致,
 曾經各頁各刻一份而且已經漂移過(其中一份用了預設 `ShowToast` 的 `CopyTextCommand`,
-一複製整個面板消失)。各頁專屬的項仍由各頁自己插,順序也是:第一項會被放上底部工具列。
+一複製整個面板消失)。各頁專屬的項仍由各頁自己插。
+
+**順序有語意,而且兩種頁面的算法不一樣。** 底部工具列的主命令(`Enter`)與次命令
+(`Ctrl+Enter`)坐的是誰**只看排序**,跟命令自己的 `RequestedShortcut` 無關:
+`ListPage` 的一列是「那一列自己的命令 + `MoreCommands[0]`」,`ContentPage` 是
+「`Commands[0]` + `Commands[1]`」。三頁刻意讓 **`Ctrl+Enter` 一律是編輯**,所以兩個
+`ContentPage` 的前兩項固定是「完成」與「編輯」——**加新項目不要插進前兩個位置**
+(踩過:切換原始文字排到第二個,複製內文就被擠掉了)。考證見
+[設計考證〈`Ctrl+Enter` 三頁一律是「編輯」〉](docs/design-notes.md#secondary-command)。
 
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
 
