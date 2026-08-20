@@ -141,7 +141,13 @@ Version 的症狀)。
    細節見 [設計考證〈設定頁有兩個入口,而且只有一個會自己更新〉](docs/design-notes.md#settings-two-entries)。
 6. **重新註冊套件後有時會出現兩個 Inkling** —— CmdPal 在套件安裝事件上沒有去重。再 Reload 一次
    有時收得回去,但**不保證**(實測兩次都沒有);清不掉就把 `Microsoft.CmdPal.UI`
-   進程停掉讓它重啟,PowerToys 本身不用重開。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
+   進程停掉讓它重啟,PowerToys 本身不用重開。
+   **有另一種長得很像但成因完全不同的「多一列 Inkling」**:Windows 的應用程式清單項
+   被 CmdPal 內建的應用程式搜索列進結果,按 Enter 沒反應(exe 是純 COM server)。
+   副標是 manifest 的英文 `Description` 而不是我們的資源字串,而且只多一列不是多四列。
+   `Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }` 有輸出就是這一種 ——
+   manifest 的 `AppListEntry="none"` 掉了,那一行**不要拿掉**,考證見
+   [設計考證〈套件刻意不出現在開始功能表〉](docs/design-notes.md#app-list-entry)。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
    之前開著的設定頁是綁在舊擴展實例上的死物件,按 Save 靜靜地什麼都不做** ——
    不寫檔、不重建、不報錯。查這種「改設定沒反應」之前,先把設定頁關掉重開。
 7. **擴展進程沒有視窗,也不是前景進程。** 要開系統對話框(目前只有設定頁的「瀏覽…」,

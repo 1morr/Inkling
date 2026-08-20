@@ -275,6 +275,23 @@ docs/                design-notes.md(設計考證)、manual-test-checklist.md
 `Microsoft.CmdPal.UI` 停掉讓它重啟(PowerToys 本身不用重開),成因見
 [設計考證](docs/design-notes.md#dev-notes)。
 
+**搜尋結果裡多出一列 Inkling,按 Enter 沒反應** — 那不是重複的 provider,是 Windows
+的應用程式清單項被 CmdPal 內建的應用程式搜索列了進來(副標會是英文的
+`Capture thoughts in seconds…`,圖示也不是命令那一套)。套件的 exe 是純 COM server,
+使用者「啟動」它本來就不會有任何事發生。分辨方式:
+
+```powershell
+Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }
+```
+
+有輸出就是這一種 —— manifest 的 `AppListEntry="none"` 掉了,見
+[設計考證〈套件刻意不出現在開始功能表〉](docs/design-notes.md#app-list-entry)。
+沒有輸出就是上一條那個重複的 provider。
+
+**改了 `Package.appxmanifest` 之後部署失敗說 `0x80073CFB`** — 位置與版本都沒變、
+但 manifest 內容變了就會這樣。**不要照它建議的去遞增版本號**;`deploy.ps1` 會自己接住
+這個錯誤,先 `Remove-AppxPackage -PreserveApplicationData` 再重新註冊。
+
 **build 失敗說檔案被佔用** — CmdPal 把擴展的 COM server 留著沒關。`deploy.ps1` 會自動
 先停掉它;直接跑 `dotnet build` 的話要自己 `Get-Process Inkling | Stop-Process -Force`。
 

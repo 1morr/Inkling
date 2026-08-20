@@ -75,7 +75,7 @@ provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清�
 
 ## 1. 擴展載入
 
-本節 🤖 3 項 / 👀 1 項。
+本節 🤖 5 項 / 👀 1 項。
 
 - [ ] 🤖 叫出 Command Palette,往下捲(或按一次 `↑`)能看到 **Inkling**
 - [ ] 🤖 也能看到 **Inkling：快速記下**、**Inkling：新增筆記** 與 **Inkling：刪除筆記**
@@ -83,6 +83,16 @@ provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清�
 - [ ] 🤖 印出來的 CommandId 是 `Notelet.QuickCapturePage`(還是改名前的字串,故意的 ——
       見 design-notes〈命令 Id 為什麼要寫死〉),
       而不是 `Inkling_…!App!Inkling` 後面接一串數字
+- [ ] 🤖 **總共只有這四列**,四列以外沒有第五個 Inkling。多出來的話先分辨是哪一種:
+
+      ```powershell
+      Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }
+      ```
+
+      有輸出 → manifest 的 `AppListEntry="none"` 掉了,那一列是 Windows 的應用程式清單項
+      (副標是英文的 `Capture thoughts in seconds…`,按 Enter 沒反應)。
+      沒有輸出 → 是重複的 provider,停掉 `Microsoft.CmdPal.UI` 讓它重啟。
+      兩者的考證見 design-notes〈套件刻意不出現在開始功能表〉。
 
 Reload 之後跑這段,確認 CmdPal 載入的是你剛部署的那一份 —— 不是某個舊佈局:
 

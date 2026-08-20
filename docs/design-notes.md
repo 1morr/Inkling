@@ -856,6 +856,46 @@ settings.json 裡曾經留下兩個 Inkling fallback 條目,把其中一個的�
 代價只有「新來的人看到 `Notelet.List` 會困惑」,而那用一段註解就解決了。
 使用者永遠看不到這些字串 —— 它們不是介面文字,是設定檔的鍵。
 
+**改完之後實地驗過,不是只從設定檔推論的。** 換完套件身分(PFN 從
+`Notelet_bf0n0751x5hse` 變成 `Inkling_bf0n0751x5hse`)並重新註冊,三個 alias 全部還在:
+`!` 進得了快速記下頁(placeholder 是「打字記下想法,`;;` 後面接內文…」)、
+`@` 進得了新增筆記、`#` 進得了清單頁而且列得出筆記。CmdPal 主搜尋框裡那三列右邊
+也照樣掛著 `#` `!` `@` 的徽章。`ProviderSettings` 的鍵帶 PFN,那一項確實跟著失效
+(擴展被當成新的,預設啟用,所以看不出差別);`Aliases` 不帶,所以活下來了。
+
+<a id="app-list-entry"></a>
+
+### 套件刻意不出現在開始功能表
+
+`Package.appxmanifest` 的 `uap:VisualElements` 上有一個 `AppListEntry="none"`,
+**不要拿掉**。少了它,CmdPal 的結果裡會多出第五列「Inkling / Capture thoughts in
+seconds, right in Command Palette」,按 Enter 完全沒有反應。
+
+成因跟擴展沒有關係:這個套件對 Windows 來說是一個正常的已安裝應用程式,於是進了
+開始功能表的應用程式清單,而 CmdPal 內建的應用程式搜索把清單裡的東西也列進結果。
+按下去它就去啟動 `Inkling.exe` —— 而那支 exe 是純 COM server,`Program.cs` 沒收到
+`-RegisterProcessAsComServer` 就只 `Console.WriteLine` 一行然後結束,擴展進程又沒有
+主控台,所以畫面上什麼都不會發生。
+
+**這一列跟〈為什麼 Reload 之後有時會冒出兩個 Inkling〉是兩回事**,查的時候別搞混:
+
+| | 多出來的那一列 |
+|---|---|
+| 應用程式清單項 | 副標是 manifest 的 `Description`(英文),圖示是 Windows 從 `Square44x44Logo` 挑的,按 Enter 沒反應 |
+| 重複的 provider | 副標是我們自己的資源字串(跟著介面語言),四個命令整組重複 |
+
+驗法:`Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }`,有東西就是前者。
+
+微軟自己的〈[Packaging a CLI Executable as MSIX](https://learn.microsoft.com/windows/apps/dev-tools/winapp-cli/guides/packaging-cli)〉
+對同樣形狀的套件(exe 不是給人點的)開的就是這個處方。屬性在基底 `uap` 命名空間裡,
+最低版本 Windows 10 1511,我們的 `MinVersion` 是 19041,不用多加命名空間。
+
+代價與不是代價的:Inkling 不再出現在開始功能表 —— 反正點了也沒用。**解安裝不受影響**,
+設定 → 應用程式 → 已安裝的應用程式 照樣列得到,`Remove-AppxPackage` 也照樣能用。
+**擴展的探索也不受影響**:CmdPal 走的是 `AppExtensionCatalog`,認的是
+`windows.appExtension` 註冊,跟應用程式清單可見性無關 —— 加上這一行之後重新部署,
+`tools/VerifyRegistration` 照樣列得到 Inkling,四個命令也照樣在。
+
 <a id="ui-language"></a>
 
 ### 介面語言跟著 Windows 走
@@ -939,6 +979,26 @@ OneNote 的符號,而「在 CmdPal 清單裡長得像它們」正是當初要改
 小尺寸版因此重畫過 —— 這是圖示設計的常規做法(optical sizing),
 兩份的顏色與圓角比例一致,並排看得出是同一個。
 
+#### `Square44x44Logo` 的兩條候選階梯要各自補齊
+
+Windows 用 MRT 從檔名的限定詞挑圖,而 `Square44x44Logo` 有**兩條分開挑的**階梯:
+沒帶 `altform` 的請求走 `.scale-*`,要 unplated 的地方(應用程式清單、工作列按鈕)
+走 `.targetsize-*_altform-unplated`。**一條裡有大圖救不了另一條。**
+
+Visual Studio 模板只給兩張:`scale-200`(88px)與 `targetsize-24_altform-unplated`(24px)。
+於是要 unplated 的地方永遠只有 24px 可挑 —— 這台是 150% DPI,清單列上要 30px,
+它就把 24 放大,看起來是糊的。**同一個畫面上四個命令的圖示卻很銳利**,因為那些的
+來源是 48px 往下縮。兩張圖並排就看得出來,而這不是渲染器或 SVG 的問題。
+
+所以兩條都補齊:`scale-100/125/150/200/400` 與
+`targetsize-16/24/32/48/256_altform-unplated`,全部由 `render-icons.ps1` 產生。
+沒有再另外出「plated」(不帶 `altform`)的 `targetsize` 變體 —— `BackgroundColor` 是
+`transparent`,Windows 不會畫底板,兩者長得一樣,而沒帶 `altform` 的請求本來就落在
+`scale-*` 那條上。
+
+(套件加了 `AppListEntry="none"` 之後應用程式清單那條路不會再被走到,
+但工作列按鈕還在 —— 設定頁的「瀏覽…」對話框刻意不掛 owner,靠的就是那顆按鈕。)
+
 ### 四個頂層命令用自訂圖示,Ctrl+K 選單維持字形
 
 `Icons.TopLevelList` / `TopLevelCapture` / `TopLevelNew` / `TopLevelDelete` 是自己畫的
@@ -998,6 +1058,20 @@ CmdPal 那邊的問題,不是擴展的。重新註冊套件會讓 Windows 的套
 同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,之前開著的設定頁是綁在
 舊擴展實例上的死物件**,按 Save 靜靜地什麼都不做 —— 不寫檔、不重建、不報錯。
 查「改設定沒反應」之前,先把設定頁關掉重開(README 疑難排解也有這條)。
+
+### 改了 manifest 之後部署會撞 `0x80073CFB`
+
+`Add-AppxPackage -Register` 在「同一個位置、同一個版本、但 `AppxManifest.xml` 的內容
+變了」時會失敗:`0x80073CFB —— 已安裝過提供的套件,不允許重新安裝`。
+`deploy.ps1` 本來只處理「位置不同」(Debug ↔ Release 互換)那一種,所以第一次在
+manifest 上加屬性時就撞上了。
+
+錯誤訊息建議「遞增要安裝之套件的版本號碼」—— **不要照做**,版本號是對外的東西,
+不該為了本機部署動它。移除註冊再登錄一次就好,`-PreserveApplicationData` 保住
+`LocalState` 裡的設定。`deploy.ps1` 現在會接住這個 HRESULT 自己重試一次。
+
+代價是這條路一定會經過「移除 → 重新安裝」,也就是上面那個重複 provider 的觸發條件,
+所以改完 manifest 的那一次部署要多留意有沒有變成兩個。
 
 ### 查 SDK 的實際簽章
 

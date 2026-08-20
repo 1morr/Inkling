@@ -152,7 +152,23 @@ if ($existing -and $existing.InstallLocation -ne $targetLocation) {
 
 Write-Step "註冊套件"
 Write-Host "    $manifest" -ForegroundColor DarkGray
-Add-AppxPackage -Register $manifest
+
+try {
+    Add-AppxPackage -Register $manifest -ErrorAction Stop
+}
+catch {
+    # 0x80073CFB:「已安裝過提供的套件,不允許重新安裝」。位置與版本都沒變、但
+    # **AppxManifest.xml 的內容變了**就會這樣 —— 上面那段只處理「位置不同」,
+    # 同一個位置改 manifest(加一個屬性、動一個 Extension)照樣會撞。
+    # 訊息叫人「遞增版本號碼」,但版本號是對外承諾,不該為了本機部署動它;
+    # 移除註冊再登錄一次就好,-PreserveApplicationData 保住 LocalState 裡的設定。
+    if ($_.Exception.Message -notmatch '0x80073CFB') { throw }
+
+    Write-Host "    manifest 變了,先移除註冊再登錄一次" -ForegroundColor DarkGray
+    $stale = Get-AppxPackage -Name $packageName
+    if ($stale) { Remove-AppxPackage -Package $stale.PackageFullName -PreserveApplicationData }
+    Add-AppxPackage -Register $manifest
+}
 
 # 明確確認註冊真的指到我們要的佈局,別再讓靜默的 no-op 混過去。
 $registered = (Get-AppxPackage -Name $packageName).InstallLocation

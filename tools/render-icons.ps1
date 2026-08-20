@@ -54,8 +54,24 @@ Write-Host "渲染器: $browser" -ForegroundColor DarkGray
 # 換掉檔案內容但不動檔名 —— Package.appxmanifest 與 csproj 都是照名字引用的。
 # Dir 不設就是 $outDir(套件資產);MaxKB 是 gallery 投稿的 100 KB 上限。
 $targets = @(
-    @{ Name = 'Square44x44Logo.scale-200.png';                      Svg = 'inkling-tile-small.svg'; W = 88;   H = 88 }
-    @{ Name = 'Square44x44Logo.targetsize-24_altform-unplated.png'; Svg = 'inkling-tile-small.svg'; W = 24;   H = 24 }
+    # Square44x44Logo 的兩條候選階梯。Windows 用 MRT 從檔名的限定詞挑,
+    # **兩條是分開挑的**:沒帶 altform 的走 scale-*,unplated 走 targetsize-*。
+    # 模板只給了 scale-200 與 targetsize-24_altform-unplated 兩張,而要 unplated 的
+    # 那些地方(應用程式清單、工作列按鈕)只有 24 可挑 —— 這台 150% DPI 要 30px,
+    # 於是把 24 放大,看起來就是糊的;同一畫面上 48px 來源的命令圖示卻很銳利。
+    # 兩條階梯都補齊,讓它每次都挑得到不必縮放或只需縮小的那一張。
+    @{ Name = 'Square44x44Logo.scale-100.png';                       Svg = 'inkling-tile-small.svg'; W = 44;  H = 44 }
+    @{ Name = 'Square44x44Logo.scale-125.png';                       Svg = 'inkling-tile-small.svg'; W = 55;  H = 55 }
+    @{ Name = 'Square44x44Logo.scale-150.png';                       Svg = 'inkling-tile-small.svg'; W = 66;  H = 66 }
+    @{ Name = 'Square44x44Logo.scale-200.png';                       Svg = 'inkling-tile-small.svg'; W = 88;  H = 88 }
+    @{ Name = 'Square44x44Logo.scale-400.png';                       Svg = 'inkling-tile.svg';       W = 176; H = 176 }
+    @{ Name = 'Square44x44Logo.targetsize-16_altform-unplated.png';  Svg = 'inkling-tile-small.svg'; W = 16;  H = 16 }
+    @{ Name = 'Square44x44Logo.targetsize-24_altform-unplated.png';  Svg = 'inkling-tile-small.svg'; W = 24;  H = 24 }
+    @{ Name = 'Square44x44Logo.targetsize-32_altform-unplated.png';  Svg = 'inkling-tile-small.svg'; W = 32;  H = 32 }
+    @{ Name = 'Square44x44Logo.targetsize-48_altform-unplated.png';  Svg = 'inkling-tile-small.svg'; W = 48;  H = 48 }
+    @{ Name = 'Square44x44Logo.targetsize-256_altform-unplated.png'; Svg = 'inkling-tile.svg';       W = 256; H = 256 }
+    # 不另外出「plated」(不帶 altform)的 targetsize 變體:BackgroundColor 是 transparent,
+    # Windows 不會畫底板,兩者長得一樣,而沒帶 altform 的請求本來就落在上面的 scale-* 階梯上。
     @{ Name = 'StoreLogo.png';                                      Svg = 'inkling-tile-small.svg'; W = 50;   H = 50 }
     @{ Name = 'LockScreenLogo.scale-200.png';                       Svg = 'inkling-tile-small.svg'; W = 48;   H = 48 }
     @{ Name = 'Square150x150Logo.scale-200.png';                    Svg = 'inkling-tile.svg';       W = 300;  H = 300 }
