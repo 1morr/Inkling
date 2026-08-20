@@ -73,6 +73,9 @@
   <data name="CommandNew" xml:space="preserve">
     <value>新增</value>
   </data>
+  <data name="CommandNewNote" xml:space="preserve">
+    <value>新增筆記</value>
+  </data>
   <data name="CommandEdit" xml:space="preserve">
     <value>編輯</value>
   </data>

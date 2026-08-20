@@ -69,9 +69,12 @@ public sealed partial class InklingCommandsProvider : CommandProvider
         var repository = new FileSystemNoteRepository(options, fileDeleter: new RecycleBinFileDeleter());
         var capturePage = new QuickCapturePage(repository, _settingsManager, _settingsManager);
 
+        // 新增筆記頁同樣是兩個地方掛同一個實例:頂層命令那一列,以及清單頁的 Ctrl+N。
+        var newNotePage = new NewNotePage(repository);
+
         // 清單頁的空狀態會拿 capturePage 當那一列的命令(按 Enter 直接導覽過去),
         // 所以要先建。兩個地方掛同一個實例 —— 跟設定頁同一個做法。
-        var listPage = new NoteListPage(repository, options, capturePage);
+        var listPage = new NoteListPage(repository, options, capturePage, newNotePage);
         var deletePage = new DeleteNotesPage(repository, options);
 
         ICommandItem[] commands = [
@@ -96,7 +99,7 @@ public sealed partial class InklingCommandsProvider : CommandProvider
                 Subtitle = Resources.ProviderCaptureSubtitle,
                 Icon = Icons.TopLevelCapture,
             },
-            new CommandItem(new NewNotePage(repository))
+            new CommandItem(newNotePage)
             {
                 Title = Resources.ProviderNewNoteTitle,
                 Subtitle = Resources.ProviderNewNoteSubtitle,

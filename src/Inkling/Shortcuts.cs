@@ -31,6 +31,7 @@ namespace Inkling;
 /// | 動作 | 鍵位 | 為什麼是它 |
 /// |---|---|---|
 /// | 編輯 | <c>Ctrl+E</c> | E = Edit |
+/// | 新增筆記 | <c>Ctrl+N</c> | N = New,而且是各家編輯器共通的手勢 |
 /// | 原始文字 | <c>Ctrl+U</c> | 見 README〈原始文字模式〉 |
 /// | 在預設編輯器開啟 | <c>Ctrl+O</c> | O = Open,剪貼簿記錄擴展的 <c>KeyChords.OpenUrl</c> 也是它 |
 /// | 開啟檔案位置 | <c>Ctrl+L</c> | L = Location。CmdPal 的慣例是 <c>Ctrl+Shift+E</c>
@@ -66,6 +67,18 @@ internal static class Shortcuts
 {
     /// <summary>編輯筆記(表單)。</summary>
     public static KeyChord Edit { get; } = Ctrl(VirtualKey.E);
+
+    /// <summary>
+    /// 開新增筆記的表單頁。清單頁專用 —— 它是這一組裡唯一跟「選中的那一則」無關的動作,
+    /// 掛在每一則筆記的選單上只是因為 <b>CmdPal 的快速鍵只能掛在項目的命令上</b>
+    /// (<c>CommandBarViewModel.CheckKeybinding</c> 比對的是當下選中項的那幾個命令),
+    /// 頁面層級沒有掛鍵的地方。
+    ///
+    /// <c>Ctrl+N</c> 是安全的:<c>TextBox</c> 沒有拿它做編輯動作,CmdPal 自己的
+    /// <c>ShellPage_OnPreviewKeyDown</c> 與所有 XAML 的 <c>KeyboardAccelerator</c> 裡
+    /// 也都沒有 <c>VirtualKey.N</c>(對 PowerToys <c>main</c> 全文查過)。
+    /// </summary>
+    public static KeyChord NewNote { get; } = Ctrl(VirtualKey.N);
 
     /// <summary>詳細窗格在渲染與原始 Markdown 之間切換。</summary>
     public static KeyChord ToggleSource { get; } = Ctrl(VirtualKey.U);

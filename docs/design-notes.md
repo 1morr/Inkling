@@ -295,11 +295,22 @@ CmdPal 的 `ShowEmptyContent` 只看篩完的項目數是不是零,**不看搜�
 | 動作 | 鍵位 | 為什麼是它 |
 |---|---|---|
 | 編輯 | `Ctrl+E` | E = Edit |
+| 新增筆記 | `Ctrl+N` | N = New,各家編輯器共通的手勢;見下面 |
 | 原始文字 | `Ctrl+U` | 見〈原始文字模式〉 |
 | 在預設編輯器開啟 | `Ctrl+O` | O = Open;剪貼簿記錄擴展的 `KeyChords.OpenUrl` 也是它 |
 | 開啟檔案位置 | `Ctrl+L` | L = Location |
 | 複製內文 | `Ctrl+Shift+C` | **唯一還帶 Shift 的**,見下面 |
 | 刪除 | `Ctrl+D` | D = Delete |
+
+**`Ctrl+N` 是全清單裡唯一跟「選中的那一則」無關的動作**,卻掛在每一則筆記的 `Ctrl+K` 選單上 ——
+因為 CmdPal 的快速鍵只認**當下選中項的命令**(`CommandBarViewModel.CheckKeybinding`),
+頁面層級沒有掛鍵的地方。代價是選單多一列;換來的是在瀏覽筆記時不必退回主搜尋框才能新增。
+它排在筆記自己的動作後面、刪除前面:前面那幾項講的是「這一則」,它講的是「下一則」,
+而刪除永遠留在最後。**清單是空的時候按不到**(那時沒有選中項),但那個情境的 `Enter`
+本來就會帶去快速記下頁。
+
+鍵位本身查證過:`TextBox` 沒有拿 `Ctrl+N` 做任何編輯動作,而 PowerToys `main` 的整個
+`cmdpal` 目錄裡搜不到 `VirtualKey.N`,XAML 的 `KeyboardAccelerator` 也沒有 `Key="N"`。
 
 **跟 CmdPal 慣例不一致的兩個,是刻意的。** 內建擴展把「開啟檔案位置」放在 `Ctrl+Shift+E`
 (`WellKnownKeyChords.OpenFileLocation`,書籤與檔案索引都用它)、把刪除放在

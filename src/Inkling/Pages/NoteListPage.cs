@@ -21,6 +21,15 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private readonly InklingOptions _options;
 
     /// <summary>
+    /// 「新增筆記」那一頁,跟頂層命令同一個實例(<see cref="InklingCommandsProvider"/> 建的)。
+    ///
+    /// 掛在這裡是為了 <c>Ctrl+N</c>:CmdPal 的快速鍵只能掛在**當下選中那一列**的命令上
+    /// (<c>CommandBarViewModel.CheckKeybinding</c>),頁面層級沒有掛鍵的地方,
+    /// 所以這一項會出現在每一則筆記的 <c>Ctrl+K</c> 選單裡。
+    /// </summary>
+    private readonly NewNotePage _newNotePage;
+
+    /// <summary>
     /// 詳細窗格的「渲染 / 原始文字」切換鈕。
     ///
     /// 全部項目共用同一個實例,所以改一次 <see cref="Command.Name"/>,
@@ -72,10 +81,15 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private bool _showSource;
     private bool _disposed;
 
-    public NoteListPage(INoteRepository repository, InklingOptions options, QuickCapturePage capturePage)
+    public NoteListPage(
+        INoteRepository repository,
+        InklingOptions options,
+        QuickCapturePage capturePage,
+        NewNotePage newNotePage)
     {
         _repository = repository;
         _options = options;
+        _newNotePage = newNotePage;
 
         _tagTimer = new System.Threading.Timer(_ => ClearTag(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
@@ -225,6 +239,22 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         NoteCommands.CopyBody(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.Id, message))),
         NoteCommands.OpenInEditor(note),
         NoteCommands.OpenFileLocation(note),
+
+        // **這一項跟選中的那一則筆記無關**,但只能掛在這裡:CmdPal 的快速鍵是拿
+        // 當下選中項的命令去比對的(CommandBarViewModel.CheckKeybinding),
+        // 頁面層級沒有掛鍵的地方。排在筆記自己的動作後面、刪除前面 ——
+        // 前面那幾項講的是「這一則」,它講的是「下一則」,而刪除永遠留在最後。
+        //
+        // 命令是一個 IPage,CmdPal 對頁面的處理是導覽,所以按下去真的會開表單。
+        // 清單是空的時候按不到(那時沒有選中項),但那個情境的 Enter 本來就會帶去
+        // 快速記下頁,見 _emptyContent。
+        new CommandContextItem(_newNotePage)
+        {
+            Title = Resources.CommandNewNote,
+            Subtitle = Resources.ProviderNewNoteSubtitle,
+            Icon = Icons.Add,
+            RequestedShortcut = Shortcuts.NewNote,
+        },
 
         // **刪除的鍵位是 `Ctrl+D`,不是 `Delete` 也不是 `Ctrl+Delete`。**
         // 後兩個是搜尋框的標準編輯鍵(刪右邊一個字 / 刪右邊一個詞),而快速鍵比 TextBox

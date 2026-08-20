@@ -186,6 +186,8 @@ Version 的症狀)。
     早收到 —— 綁走等於從搜尋框拿掉。**不能用的**:`Ctrl+A` / `C` / `X` / `V` / `Z` / `Y`、
     `Ctrl+Backspace`、`Delete`、`Ctrl+Delete`、`Ctrl+方向鍵`(以上 `TextBox` 的),
     以及 `Ctrl+K` / `Ctrl+Enter` / `Ctrl+,` / `Ctrl+I`(CmdPal 自己的)。
+    已經用掉的:`Ctrl+E` 編輯、`Ctrl+N` 新增筆記(清單頁,開新增表單)、`Ctrl+U` 原始文字、
+    `Ctrl+O` 外部開啟、`Ctrl+L` 檔案位置、`Ctrl+D` 刪除、`Ctrl+Shift+C` 複製。
     **偏好 `Ctrl+` 一個字母**,少一個修飾鍵就少一個;CmdPal 的 `WellKnownKeyChords`
     與各內建擴展的 `KeyChords.cs` 只當參考,跟「好按」衝突時以好按為準
     (現在的 `Ctrl+L` / `Ctrl+D` 就是這樣壓過 `Ctrl+Shift+E` / `Ctrl+Shift+Delete` 的;

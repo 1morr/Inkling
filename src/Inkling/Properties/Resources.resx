@@ -74,6 +74,10 @@
   <data name="CommandNew" xml:space="preserve">
     <value>New</value>
   </data>
+  <data name="CommandNewNote" xml:space="preserve">
+    <value>New note</value>
+    <comment>清單頁 Ctrl+K 選單裡的「新增筆記」(Ctrl+N)。不帶「Inkling:」前綴 —— 那是頂層命令用來自報家門的,在自己的選單裡是雜訊。</comment>
+  </data>
   <data name="CommandEdit" xml:space="preserve">
     <value>Edit</value>
   </data>
