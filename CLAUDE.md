@@ -42,7 +42,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   換了,但舊的 `Inkling.exe` 還活著,CmdPal 一路用它,畫面上看到的是上一版的行為
   (那次是選單順序,查了很久才發現不是程式碼的問題)。一行就驗得掉:
   `Get-Process Inkling | Select-Object StartTime` 要**晚於**
-  `bin\stage-Release\Inkling.dll` 的 `LastWriteTime`;不是的話 `Stop-Process -Name Inkling`,
+  `src\Inkling\bin\stage-Release\Inkling.dll` 的 `LastWriteTime`;不是的話 `Stop-Process -Name Inkling`,
   再不行就連 `Microsoft.CmdPal.UI` 一起停掉重來。
 - 擴展沒有主控台,`Debug.WriteLine` 在 Release 被編掉。要確認某段程式有沒有跑到,
   用 `DiagnosticLog`:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`
@@ -110,6 +110,10 @@ Version 的症狀)。
 
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
 
+建置、部署與排錯全部在 [`docs/development.md`](docs/development.md) ——
+[建置與本機部署](docs/development.md#build)、[專案結構](docs/development.md#structure)、
+[CI 覆蓋到哪裡](docs/development.md#workflows)。
+
 ## 跟 CmdPal 打交道的硬規則
 
 這些都是踩過的坑,不是理論。改動前先讀 `docs/design-notes.md` 的對應章節。
@@ -119,7 +123,8 @@ Version 的症狀)。
    使用者的 alias / 快速鍵 / 釘選 / fallback 設定就全部對不上。那幾個字串是對外承諾,不能改。
    **它們現在還叫 `Notelet.*`,那是改名前的名字,故意留著** —— CmdPal 的 `Aliases` 用純命令 Id
    當鍵(條目裡沒有 PFN),改了等於把使用者設過的 alias 清掉,而使用者根本看不到這些字串。
-   新增命令時給新 Id,不要為了整齊回頭改舊的。
+   新增命令時給新 Id,不要為了整齊回頭改舊的。考證見
+   [設計考證〈命令 Id 為什麼要寫死〉](docs/design-notes.md#command-ids)。
 2. **`ListItem.Details` 只能整個換掉,不能就地改屬性。** `IDetails` 在 SDK IDL 裡沒有宣告成
    可觀察介面,`DetailsViewModel` 用執行期型別測試決定要不要訂閱,那個 QI 跨不過
    out-of-process 邊界,而通知的例外又被吞掉 —— 表現出來就是「值改了、畫面不動」。

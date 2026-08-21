@@ -941,7 +941,7 @@ Get-Content "$ls\diagnostic.log" -Encoding utf8 |
 要重新登入;測完記得改回來):
 
 - [ ] 🤖 改成英文之後,頂層五個命令變成 `Inkling` / `Inkling: Quick capture` /
-      `Inkling: New note` / `Inkling: Delete notes`
+      `Inkling: New note` / `Inkling: Scratchpad` / `Inkling: Delete notes`
 - [ ] 🤖 **alias 還在、還能用** —— 這是命令 Id 寫死的回歸測試,換語言不該讓使用者的
       alias 失效(標題變了,`Id` 沒變)
 - [ ] 🤖 快速記下頁的提示句裡,分隔符還是使用者設的那個(不是寫死的 `;;`)

@@ -1,37 +1,44 @@
-name: Bug 回報
-description: Inkling 的行為與預期不符
+name: Bug report
+description: Inkling behaves differently from what you expected
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        感謝回報。下面的版本與記錄資訊能大幅縮短定位時間 —— Inkling 沒有主控台,
-        很多問題只有 `diagnostic.log` 看得到。
+        Thanks for reporting. The version and log fields below cut the time to track
+        something down a lot — Inkling has no console, so plenty of problems are only
+        visible in `diagnostic.log`.
+
+        Write in English or Traditional Chinese, whichever you prefer.
+        繁體中文也可以,不必翻成英文。
+
+        Found something with security or data-loss impact? Please do not open a public
+        issue — see [SECURITY.md](../blob/master/SECURITY.md).
 
   - type: textarea
     id: what-happened
     attributes:
-      label: 發生了什麼事
-      description: 實際看到的行為,以及你預期的行為。
-      placeholder: 我在清單頁按 Ctrl+D 刪除一則筆記,確認之後……
+      label: What happened
+      description: What you actually saw, and what you expected instead.
+      placeholder: I pressed Ctrl+D on the list page to delete a note, and after confirming…
     validations:
       required: true
 
   - type: textarea
     id: repro
     attributes:
-      label: 重現步驟
+      label: Steps to reproduce
       placeholder: |
-        1. 叫出 Command Palette
-        2. ……
+        1. Summon Command Palette
+        2. …
     validations:
       required: true
 
   - type: input
     id: cmdpal-version
     attributes:
-      label: Command Palette 版本
-      description: PowerShell 執行 `(Get-AppxPackage Microsoft.CommandPalette).Version` 的輸出。
+      label: Command Palette version
+      description: Output of `(Get-AppxPackage Microsoft.CommandPalette).Version` in PowerShell.
       placeholder: 0.11.11762.0
     validations:
       required: true
@@ -39,8 +46,8 @@ body:
   - type: input
     id: inkling-version
     attributes:
-      label: Inkling 版本
-      description: PowerShell 執行 `(Get-AppxPackage Inkling).Version` 的輸出。
+      label: Inkling version
+      description: Output of `(Get-AppxPackage Inkling).Version` in PowerShell.
       placeholder: 0.1.0.0
     validations:
       required: true
@@ -48,8 +55,8 @@ body:
   - type: input
     id: notes-folder
     attributes:
-      label: 筆記資料夾位置
-      description: 設定頁裡填的那個路徑。跟問題無關可以留空。
+      label: Notes folder
+      description: The path set in Settings. Leave it blank if it has nothing to do with the problem.
       placeholder: C:\Users\me\Documents\Notes
 
   - type: textarea
@@ -57,13 +64,16 @@ body:
     attributes:
       label: diagnostic.log
       description: |
-        ⚠️ **貼上來之前先看過一遍,把不想公開的字換掉。** 這是一個公開、會被搜尋引擎索引的
-        頁面,而這份 log 會逐字記下你的**筆記標題**、**搜尋字串**與**筆記資料夾的完整路徑**
-        (裡面通常有你的 Windows 使用者名稱)。內文本身不會被記下來(只記字數),
-        但標題往往已經足夠說明一件私事。換成 `note-1`、`aaa` 之類的佔位字不影響排錯。
+        ⚠️ **Read it through and redact before pasting.** This is a public page that
+        search engines index, and the log records your **note titles**, **search
+        strings**, and the **full path of your notes folder** (which usually contains
+        your Windows username) verbatim. Note bodies are not recorded — only their
+        length — but a title alone is often enough to give something away. Replacing
+        them with `note-1`, `aaa` and the like does not hurt the diagnosis.
 
-        開啟方式:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` 建一個空檔 `diagnostic.on`
-        (`<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查),
-        在 Command Palette 執行 Reload,重現問題,
-        然後把同目錄的 `diagnostic.log` 內容貼上來。
+        To turn it on: create an empty file `diagnostic.on` in
+        `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` (get `<PFN>` from
+        `(Get-AppxPackage Inkling).PackageFamilyName`), run Reload in Command Palette,
+        reproduce the problem, then paste the contents of `diagnostic.log` from the
+        same folder.
       render: text

@@ -28,7 +28,8 @@ description: >-
 >    manifest 也沒有 Dependencies 區段。而且 CmdPal 對帶 `windows-commandpalette-extension`
 >    tag 的套件設 `SkipDependencies = true`,宣告了從 gallery 安裝也會被跳過,
 >    只有走 winget CLI 的人會被多裝幾百 MB 的執行期。**什麼時候才要宣告:專案真的
->    參考 `Microsoft.WindowsAppSDK` 的時候。**
+>    參考 `Microsoft.WindowsAppSDK` 的時候。**(正文〈Important Notes〉那條
+>    「WindowsAppSdk must be listed as a dependency」講的是同一件事,對本專案同樣不成立。)
 > 4. **gallery 的條目只是指到 Store 或 WinGet。** CmdPal 內建的擴展瀏覽讀的 feed 是
 >    `aka.ms/CmdPal-ExtensionsJson`,內容來自 `github.com/microsoft/CmdPal-Extensions`
 >    的 `extensions.json` —— 要進 gallery 是對那個 repo 送 PR,而前提是擴展已經先在
@@ -37,6 +38,15 @@ description: >-
 >    (`ms-resource:` + `.resw` + MakePri)。目前是單語,而介面本身已經有三種語言,
 >    見 [設計考證〈介面語言跟著 Windows 走〉](../../../docs/design-notes.md#ui-language)。
 > 6. `APPX1707` 警告官方模板也有,無害。
+> 7. **`references/store-publishing.md` 叫你在 csproj 設 `AppxPackageVersion` —— 對本專案
+>    沒有作用。** 本機實測過:設了之後產生出來的 `AppxManifest.xml` 仍然是
+>    `Package.appxmanifest` 裡的值。這套單專案 MSIX 目標不吃那個屬性,所以
+>    `.github/workflows/release.yml` 是直接改 manifest 檔的 `Version`。
+>    同一段的 `AppxPackageIdentityName` / `AppxPackagePublisher` 沒有驗證過,別假設它們有效。
+> 8. **`references/winget-publishing.md` 的 schema 版本已經落後。** 那份範例寫死
+>    `ManifestVersion: 1.6.0`(與對應的 `$schema` URL),而 winget-pkgs 的 schema 一路在動。
+>    送 manifest 時查當下收的最新版,或直接用 `winget-create` 產 —— 別照抄那個數字。
+>    本專案要填的 MSIX 欄位整理在 `docs/release-checklist.md`〈WinGet 上架〉。
 
 # Publish Your Command Palette Extension
 

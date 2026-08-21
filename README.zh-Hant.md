@@ -10,8 +10,19 @@
 <p align="center"><a href="README.md">English</a> · <b>繁體中文</b></p>
 
 <!-- 這一份與 README.md 是同一份文檔的兩個語言版本,改一份就要改另一份
-     (結構、章節、表格的列都要對得上)。對外的 elevator pitch 以 README.md 的英文為準,
-     Store listing 與 gallery 的 shortDescription 從那裡拿。
+     (結構、章節、表格的列都要對得上)。
+
+     對外的 elevator pitch 以 README.md 的英文為準,但**沒有任何一處是照抄的**:
+     同一件事要在三個長度不同的欄位裡講,各自被裁過,句子刻意不一樣 ——
+
+       1. README.md 頂部那一句(一行,破折號,放得下「Markdown 檔」);
+       2. docs/gallery/extension.json 的 shortDescription(兩短句,要能在 gallery
+          的卡片上獨立成立);
+       3. Package.appxmanifest 的 uap:VisualElements/@Description(最短;Windows 的
+          應用程式清單會顯示它,所以必須經得起被截斷)。
+
+     改的是「產品宣稱什麼」就三處一起動;只是換個說法,其他兩處可以不動。
+
      頂部的圖示直接引用 assets/gallery/icon.png —— 它是 render-icons.ps1 的產出,
      改 SVG 重跑腳本這裡就跟著更新,不要另外放一份。 -->
 
@@ -40,12 +51,16 @@ Inkling 自己沒有一行同步程式碼。
 
 **還沒有發佈安裝包。** 目前沒有 GitHub Release、沒上 WinGet,也還沒進 Microsoft Store ——
 套件身分與簽章還在定案(見 [docs/release-checklist.md](docs/release-checklist.md))。
-預計依這個順序開通,開通一條這一節就補上那一條的安裝方式:
 
-1. **GitHub Releases** —— 下載 `.msixbundle` 直接安裝(release workflow 已就緒,等第一個 `v*` tag)。
-2. **WinGet** —— `winget install <id>`;套件帶 `windows-commandpalette-extension` tag,
-   之後在 Command Palette 裡直接搜也找得到。
-3. **Microsoft Store** 與 CmdPal Extension Gallery。
+**順序是簽章決定的**:沒簽章的 MSIX Windows 不讓側載。所以先走 Store —— 它會代簽,
+而那份簽好的套件才餵得動後面兩條路。開通一條,這一節就補上那一條的安裝方式:
+
+1. **Microsoft Store**,再從那裡進 CmdPal Extension Gallery(gallery 必填一個
+   Store 或 WinGet 的 id)。
+2. **WinGet** —— `winget install <id>`,指向那份簽好的套件;它帶
+   `windows-commandpalette-extension` tag,之後在 Command Palette 裡直接搜也找得到。
+3. **GitHub Releases** —— release workflow 每推一個 `v*` tag 就會產出 `.msixbundle`,
+   但**在拿到憑證之前那些資產是未簽章的**:它們是拿去 Store 送審用的,不能側載。
 
 現在要用的話從原始碼建:[開發與部署](docs/development.md),`tools\deploy.ps1` 一條指令部署到本機。
 
@@ -67,18 +82,18 @@ CmdPal 設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 
 
 | | |
 |---|---|
-| 快速記下 | 打字直接存檔;想連內文一起記就 `<標題>;;<內文>`(分隔符可換)。底下會列出標題相近的既有筆記,免得同一件事記兩遍。要貼多行內容時會多給一列「內文取自剪貼簿」,繞過單行搜尋框 |
+| 快速記下 | 打字直接存檔;想連內文一起記就 `<標題>;;<內文>`(分隔符可換)。底下會列出標題相近的既有筆記,免得同一件事記兩遍。要貼多行內容時會多給一列「內文取自剪貼簿」,繞過單行搜尋框([為什麼](docs/design-notes.md#paste-multiline)) |
 | 記下後先看一眼 | 存好會停在筆記上,確認沒記錯再按一次 Enter 收起 —— 收起那一下跳「已記下：標題」,跟關掉這個開關時是同一句話。預設開著,設定裡可以關掉 |
 | 新增(完整) | `Inkling：新增筆記` 開表單,可寫多行內文;在清單頁按 `Ctrl+N` 也能直接開 |
-| 瀏覽與搜尋 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面;副標是內文的第一行摘要。搜不到時會直說「找不到符合的筆記」,按 Enter 直接進快速記下 |
+| 瀏覽與搜尋 | 標題與內文都能搜,多個關鍵字是 AND,標題命中排前面;副標是內文的第一行摘要。搜不到時會直說「找不到符合的筆記」,按 Enter 直接進快速記下([空白提示有兩種](docs/design-notes.md#empty-content)) |
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果。**隨手打的單一換行會照樣顯示成換行**,而磁碟上的 `.md` 一個字都不變([為什麼](docs/design-notes.md#preview-line-breaks)) |
 | 原始文字 | `Ctrl+U` 在渲染結果與原文之間切換,**狀態全域共用而且記得住**。貼進來的 HTML / SVG 渲染完會整段消失,這個模式看得到([細節](docs/design-notes.md#source-mode)) |
 | 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」(`Ctrl+O`)跳出去改 |
-| 複製內文 / 開啟檔案位置 | `Ctrl+Shift+C` 複製內文(不含 front matter,**面板不會關掉**);`Ctrl+L` 在檔案總管裡選中那個 `.md` |
-| 跳出去之後 | `Ctrl+O` 與 `Ctrl+L` 跳到外部程式之後,面板只是讓開 —— 熱鍵叫回來**還停在原本那一頁**([為什麼](docs/design-notes.md#open-external-return))。**編輯表單與隨手草稿這兩頁是例外**,它們會把面板收起來:那兩頁畫面上有一份你還能按儲存的副本,留著就可能蓋掉你剛跳出去改的東西。檔案被改名、移走,或 `.md` 根本沒有預設程式時,會在底部說明原因,不會靜靜地什麼都不做 |
+| 複製內文 / 開啟檔案位置 | `Ctrl+Shift+C` 複製內文(不含 front matter,**面板不會關掉** —— [為什麼這件事重要](docs/design-notes.md#copy-feedback));`Ctrl+L` 在檔案總管裡選中那個 `.md` |
+| 跳出去之後 | `Ctrl+O` 與 `Ctrl+L` 跳到外部程式之後,面板只是讓開 —— 熱鍵叫回來**還停在原本那一頁**([為什麼](docs/design-notes.md#open-external-return))。**編輯表單與隨手草稿這兩頁是例外**,它們會把面板收起來:那兩頁畫面上有一份你還能按儲存的副本,留著就可能蓋掉你剛跳出去改的東西。檔案被改名、移走,或 `.md` 根本沒有預設程式時,會在底部說明原因,[不會靜靜地什麼都不做](docs/design-notes.md#open-external-silent) |
 | 隨手草稿 | `Inkling：隨手草稿` 開一塊永久的便條紙,打開就是上次留下的東西,不必取標題。**沒有自動儲存**(CmdPal 做不到,[為什麼](docs/design-notes.md#scratchpad-no-autosave)):`Tab` → `Enter` 存檔,**跳一句「已存到隨手草稿」再自己收起面板**(捨棄變更也會說一聲);`Ctrl+O` 跳到系統預設編輯器,自動儲存在那邊 |
-| 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**(不是永久刪除) |
-| 連續刪 / 清空 | `Inkling：刪除筆記` 開一頁,`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪;同一頁的「刪除全部」會先列出會刪掉哪些檔案。不是 Inkling 建立的檔案兩條路都會問 |
+| 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**。網路磁碟、或沒有資源回收筒的裝置上,Windows 會直接永久刪除 —— 確認框會講明白 |
+| 連續刪 / 清空 | `Inkling：刪除筆記` 開一頁,`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪;同一頁的「刪除全部」會先列出會刪掉哪些檔案。不是 Inkling 建立的檔案兩條路都會問([這兩個鍵為什麼這樣配](docs/design-notes.md#delete-keys)) |
 | 介面語言 | 英文、繁體中文、簡體中文,跟著 Windows 的顯示語言走,[沒有設定項](docs/design-notes.md#ui-language) |
 
 封存、tag 分類、置頂還沒做。`tags` 欄位讀得懂,但沒有值就不會寫進檔案。

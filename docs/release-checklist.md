@@ -103,10 +103,34 @@
 
 ## 4. WinGet 上架
 
-- 前提:已簽章的 msix((b) 路線的 CI 產出,或 Store 簽好拿回來的)。
-- 在 microsoft/winget-pkgs 開 manifest:`InstallerUrl` 指向 GitHub Release 的資產,
-  `License` / `LicenseUrl` 填 MIT 與 repo 的 LICENSE 連結(已備妥)。
+- 前提:**已簽章**的 msix((b) 路線的 CI 產出,或 Store 簽好拿回來的)。
+  winget-pkgs 不收未簽章的 MSIX。
 - `PackageIdentifier` 建議 `<author>.Inkling`,版本與 tag 對齊。
+- `License` / `LicenseUrl` 填 MIT 與 repo 的 LICENSE 連結(已備妥)。
+
+MSIX 專屬的欄位別漏(用 `winget-create` 產 manifest 的話它會問,手寫容易漏):
+
+| 欄位 | 值 | 漏了會怎樣 |
+|---|---|---|
+| `InstallerType` | `msix` | 型別錯了驗證直接擋下 |
+| `PackageFamilyName` | `(Get-AppxPackage Inkling).PackageFamilyName` | WinGet 對不上「這台機器已經裝了」,升級與解安裝會失準 |
+| `SignatureSha256` | `AppxSignature.p7x` 的 SHA256 | 少了它沒有串流安裝;而 MSIX 本來就必須簽章才收 |
+| `InstallerSha256` | 資產本身的 SHA256 | 必填 |
+| `Platform` | `Windows.Desktop` | —— |
+| `MinimumOSVersion` | `10.0.19041.0`,跟 `Package.appxmanifest` 的 `TargetDeviceFamily/@MinVersion` 一致 | 兩邊不一致會裝到不支援的機器上 |
+| `Tags` | 要含 **`windows-commandpalette-extension`** | CmdPal 自己的擴展搜索是靠這個 tag 找套件的 —— 少了它,使用者在 Command Palette 裡搜不到 |
+
+`SignatureSha256` 從 msixbundle 裡取(bundle 是 zip):
+
+```powershell
+$bundle = 'artifacts\Inkling_v0.2.0.msixbundle'
+$tmp = Join-Path $env:TEMP 'inkling-sig'
+Expand-Archive $bundle $tmp -Force
+(Get-FileHash "$tmp\AppxSignature.p7x" -Algorithm SHA256).Hash
+```
+
+`ManifestVersion` 用當下 winget-pkgs 收的最新 schema —— **不要照抄這份文檔裡的版本號**,
+schema 一路在動(`.claude/skills/publish-extension` 底下那份參考也已經落後過一次)。
 
 ## 5. CmdPal Extension Gallery 提交
 

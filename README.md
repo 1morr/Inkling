@@ -10,9 +10,21 @@
 <p align="center"><b>English</b> · <a href="README.zh-Hant.md">繁體中文</a></p>
 
 <!-- This file and README.zh-Hant.md are the same document in two languages: change one,
-     change the other (same sections, same table rows). The English pitch above is the
-     source for the Store listing and the gallery extension.json shortDescription
-     (the other copy is Package.appxmanifest's Description).
+     change the other (same sections, same table rows).
+
+     The English pitch above is the reference wording. It is NOT copied verbatim anywhere:
+     three slots say the same thing at three lengths, each cut to fit, and they are
+     deliberately different sentences —
+
+       1. this pitch (one line, em dash, room to name the file format);
+       2. docs/gallery/extension.json  shortDescription (two short sentences, reads
+          standalone on a gallery card);
+       3. Package.appxmanifest  uap:VisualElements/@Description (shortest; Windows shows
+          it in the app list, so it has to survive being truncated).
+
+     Change what the product claims and all three move together. Change the phrasing of
+     one and the others can stay.
+
      The icon at the top is assets/gallery/icon.png straight from render-icons.ps1 —
      edit the SVG and rerun the script and this picks it up; do not add a second copy. -->
 
@@ -44,13 +56,19 @@ the screenshots here were taken on a Traditional Chinese system.
 **Not published yet.** There is no GitHub Release, no WinGet package, and no Microsoft Store
 listing so far — the package identity and code signing are still being settled
 (see [docs/release-checklist.md](docs/release-checklist.md), Traditional Chinese).
-The plan is to open these channels in this order; each one gets its instructions here as it lands:
 
-1. **GitHub Releases** — download the `.msixbundle` and install it (the release workflow is
-   ready and waits for the first `v*` tag).
-2. **WinGet** — `winget install <id>`; the package carries the `windows-commandpalette-extension`
-   tag, so it will also show up when you search from inside Command Palette.
-3. **Microsoft Store** and the CmdPal Extension Gallery.
+**Signing decides the order**, because Windows will not sideload an unsigned MSIX. The plan
+is Store first: it signs the package for you, which is what makes the other channels possible.
+Each one gets its instructions here as it lands:
+
+1. **Microsoft Store**, and from there the CmdPal Extension Gallery (the gallery needs a
+   Store or WinGet id).
+2. **WinGet** — `winget install <id>`, pointing at the signed package; it carries the
+   `windows-commandpalette-extension` tag, so it will also show up when you search from
+   inside Command Palette.
+3. **GitHub Releases** — the release workflow already builds a `.msixbundle` on every `v*`
+   tag, but **until there is a certificate those assets are unsigned**: they exist for Store
+   submission, not for sideloading.
 
 To use it today, build from source: [docs/development.md](docs/development.md)
 (Traditional Chinese) — `tools\deploy.ps1` builds, registers, and reloads in one command.
@@ -74,18 +92,18 @@ type `coffee machine idea` → Enter. Saved, hands never left the keyboard.
 
 | | |
 |---|---|
-| Quick capture | Type and it is saved. To add a body in the same breath, type `<title>;;<body>` (the separator is configurable). Existing notes with similar titles are listed underneath so the same thing is not captured twice. When the clipboard holds multi-line text an extra row, "Body from the clipboard", gets around the single-line search box |
+| Quick capture | Type and it is saved. To add a body in the same breath, type `<title>;;<body>` (the separator is configurable). Existing notes with similar titles are listed underneath so the same thing is not captured twice. When the clipboard holds multi-line text an extra row, "Body from the clipboard", gets around the single-line search box ([why](docs/design-notes.md#paste-multiline)) |
 | Preview after capture | After saving, stay on the note to check it, then press Enter once more to dismiss — that dismissal shows "Captured: title", the same message you get with this option turned off. On by default; switch it off in Settings |
 | New note (full form) | `Inkling: New note` opens a form with a multi-line body; `Ctrl+N` on the list page opens it too |
-| Browse and search | Titles and bodies are both searched, multiple words are AND-ed, title hits rank first; the subtitle is the first line of the body. No hits says so — "No matching notes" — and Enter jumps straight into quick capture |
+| Browse and search | Titles and bodies are both searched, multiple words are AND-ed, title hits rank first; the subtitle is the first line of the body. No hits says so — "No matching notes" — and Enter jumps straight into quick capture ([the two empty states](docs/design-notes.md#empty-content)) |
 | Markdown preview | Select a note, press Enter to see it rendered. **A single newline you typed shows as a line break**, while the `.md` on disk is not touched ([why](docs/design-notes.md#preview-line-breaks)) |
 | Source view | `Ctrl+U` toggles between rendered and raw text; **the state is global and remembered**. Pasted HTML / SVG that vanishes when rendered is visible here ([details](docs/design-notes.md#source-mode)) |
 | Edit | Form-based editing (`Ctrl+E`), Tab to "Save" and press Enter; or "Open in default editor" (`Ctrl+O`) and edit outside |
-| Copy body / Open file location | `Ctrl+Shift+C` copies the body (without front matter, **the palette stays open**); `Ctrl+L` selects the `.md` in File Explorer |
-| After jumping out | After `Ctrl+O` or `Ctrl+L` hands off to another app, the palette only steps aside — the hotkey brings it back **on the same page** ([why](docs/design-notes.md#open-external-return)). Two pages are the exception and dismiss the palette instead: the edit form and the scratchpad, because both hold a copy you could still save over the file you just went out to edit. If the file was renamed or moved, or nothing is registered to open `.md`, the reason shows at the bottom instead of silently doing nothing |
+| Copy body / Open file location | `Ctrl+Shift+C` copies the body (without front matter, **the palette stays open** — [why that matters](docs/design-notes.md#copy-feedback)); `Ctrl+L` selects the `.md` in File Explorer |
+| After jumping out | After `Ctrl+O` or `Ctrl+L` hands off to another app, the palette only steps aside — the hotkey brings it back **on the same page** ([why](docs/design-notes.md#open-external-return)). Two pages are the exception and dismiss the palette instead: the edit form and the scratchpad, because both hold a copy you could still save over the file you just went out to edit. If the file was renamed or moved, or nothing is registered to open `.md`, the reason shows at the bottom instead of [silently doing nothing](docs/design-notes.md#open-external-silent) |
 | Scratchpad | `Inkling: Scratchpad` is one permanent sticky note: it opens with whatever you left there, no title required. **No autosave** (CmdPal cannot do it, [why](docs/design-notes.md#scratchpad-no-autosave)): `Tab` → `Enter` saves, **shows "Saved to scratchpad" and dismisses the palette by itself** (Discard changes says so too); `Ctrl+O` opens it in the system's default editor, where autosave lives |
-| Delete | `Ctrl+D` on the list page; after confirming, the file **goes to the Recycle Bin** (not deleted permanently) |
-| Delete many / clear all | `Inkling: Delete notes` opens a page where `Enter` deletes (asks once) and `Ctrl+Enter` deletes immediately; "Delete all" on the same page lists which files it would remove first. Files not created by Inkling are always confirmed on both paths |
+| Delete | `Ctrl+D` on the list page; after confirming, the file **goes to the Recycle Bin**. On a network drive, or a device without a Recycle Bin, Windows deletes it for good instead — the confirmation says so |
+| Delete many / clear all | `Inkling: Delete notes` opens a page where `Enter` deletes (asks once) and `Ctrl+Enter` deletes immediately; "Delete all" on the same page lists which files it would remove first. Files not created by Inkling are always confirmed on both paths ([why those two keys](docs/design-notes.md#delete-keys)) |
 | UI language | English, Traditional Chinese, Simplified Chinese, following the Windows display language — [no setting](docs/design-notes.md#ui-language) |
 
 Archiving, tags, and pinning are not built yet. The `tags` field is understood, but is not written when empty.

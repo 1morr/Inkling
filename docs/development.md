@@ -78,7 +78,8 @@ trimming 只在 `dotnet publish` 時生效,而 `Add-AppxPackage -Register` 註�
 
 ### 改了圖示
 
-`assets/icon/*.svg` 才是原始檔,`src/Inkling/Assets/*.png` 由腳本產生,不要手改 PNG:
+`assets/icon/*.svg` 才是原始檔,`src/Inkling/Assets/*.png` 由腳本產生,不要手改 PNG
+(這套圖示怎麼挑的,見[設計考證〈圖示〉](design-notes.md#icons)):
 
 ```powershell
 pwsh -NoProfile -File tools\render-icons.ps1
