@@ -852,6 +852,63 @@ public class FileSystemNoteRepositoryTests
     }
 
     [Fact]
+    public async Task Changed_FiresWhenASubfolderOfNotesIsRenamed()
+    {
+        // watcher 以前設了 Filter="*.md",而那個過濾器連資料夾事件一起濾掉了 ——
+        // 於是同一個 watcher 上的 NotifyFilters.DirectoryName 設了等於沒設。
+        // 使用者在檔案總管把裝著筆記的子資料夾改名,清單完全不動(要重進頁面才會更新)。
+        //
+        // 這一條釘的是「資料夾改名收得到」:Directory.Move **不會**替裡面每個 .md
+        // 各發一次事件,所以只靠副檔名過濾的話,那件事在外面看起來就是沒發生過。
+        using var temp = new TempDirectory();
+
+        var sub = Path.Combine(temp.Path, "sub");
+        Directory.CreateDirectory(sub);
+        File.WriteAllText(
+            Path.Combine(sub, "a.md"),
+            "---\nid: sub-1\ntitle: 子資料夾裡的筆記\n---\n\n內文");
+
+        using var repository = CreateRepository(temp, out _);
+
+        // 先讀一次:資料夾監看是在這時候才掛上去的。
+        Assert.Single(repository.GetAll());
+
+        using var fired = new SemaphoreSlim(0);
+        repository.Changed += (_, _) => fired.Release();
+
+        Directory.Move(sub, Path.Combine(temp.Path, "sub-renamed"));
+
+        Assert.True(
+            await fired.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken),
+            "子資料夾改名沒有觸發 Changed —— watcher 的過濾又把資料夾事件濾掉了嗎?");
+
+        var note = Assert.Single(repository.GetAll());
+        Assert.Equal(Path.Combine(temp.Path, "sub-renamed", "a.md"), note.FilePath);
+    }
+
+    [Fact]
+    public async Task Changed_DoesNotFireForFilesThatAreNotNotes()
+    {
+        // 拿掉 Filter 的代價是事件量變大,所以過濾改在 handler 裡做 ——
+        // 這一條釘住那個過濾真的在做事,否則資料夾裡任何一個無關檔案(編輯器的暫存檔、
+        // OneDrive 的中繼檔)都會讓每一個開著的清單頁重掃一遍。
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+        repository.GetAll();
+
+        using var fired = new SemaphoreSlim(0);
+        repository.Changed += (_, _) => fired.Release();
+
+        File.WriteAllText(Path.Combine(temp.Path, "note.txt"), "不是筆記");
+        File.WriteAllText(Path.Combine(temp.Path, "note.md.tmp"), "也不是");
+
+        // 比去抖動的 250 ms 長,真的有觸發的話這段時間內一定到了。
+        Assert.False(
+            await fired.WaitAsync(TimeSpan.FromMilliseconds(800), TestContext.Current.CancellationToken),
+            "無關的檔案觸發了 Changed");
+    }
+
+    [Fact]
     public void Version_IsStableWhenNothingChanges()
     {
         using var temp = new TempDirectory();

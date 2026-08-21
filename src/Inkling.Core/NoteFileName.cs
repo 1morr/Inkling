@@ -28,6 +28,12 @@ public static class NoteFileName
     /// <summary>
     /// 把標題轉成檔名安全的 slug。只保留字母與數字(Unicode 分類,所以中日韓照樣留著),
     /// 其餘一律變成連字號。這順帶也擋掉了 Windows 的非法檔名字元。
+    ///
+    /// **逐 Rune 走,不是逐 char。** 逐 char 的話代理對的兩半各自都不是字母
+    /// (<c>char.IsLetterOrDigit</c> 對單一代理字元一律回 false),於是 BMP 以外的漢字
+    /// —— 擴充區 B 之後,人名用字與異體字大量落在那裡 —— 會整串變成連字號,
+    /// 上面那句「中日韓照樣留著」對它們並不成立。順帶讓底下截斷處的代理對保護
+    /// 真的執行得到:逐 char 的版本永遠留不下代理字元,那段是不可能走到的死碼。
     /// </summary>
     public static string Slug(string title)
     {
@@ -36,11 +42,14 @@ public static class NoteFileName
         var builder = new StringBuilder(title.Length);
         var lastWasSeparator = false;
 
-        foreach (var ch in title)
+        // 一個 Rune 最多兩個 UTF-16 字元。
+        Span<char> utf16 = stackalloc char[2];
+
+        foreach (var rune in title.EnumerateRunes())
         {
-            if (char.IsLetterOrDigit(ch))
+            if (Rune.IsLetterOrDigit(rune))
             {
-                builder.Append(ch);
+                builder.Append(utf16[..rune.EncodeToUtf16(utf16)]);
                 lastWasSeparator = false;
             }
             else if (!lastWasSeparator && builder.Length > 0)
@@ -57,6 +66,7 @@ public static class NoteFileName
             var cut = MaxSlugLength;
 
             // 別把代理對切成兩半,不然會生出無效的 UTF-16。
+            // (上限算的是 UTF-16 字元數,不是 Rune 數 —— 那才是路徑長度真正在乎的東西。)
             if (char.IsHighSurrogate(slug[cut - 1]))
             {
                 cut--;

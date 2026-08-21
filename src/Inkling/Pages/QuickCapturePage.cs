@@ -59,7 +59,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     /// 項目快取。規則只有一條 —— 鍵要帶 Version 與所有影響內容的設定值 ——
     /// 「為什麼」寫在 <see cref="VersionedItemsCache{TKey}"/> 上,三個清單頁共用。
     /// </summary>
-    private readonly VersionedItemsCache<(int Version, string Query, string Separator, bool Preview)> _cache = new();
+    private readonly VersionedItemsCache<(int Version, string Query, string Separator, bool Preview, string? Clipboard)> _cache = new();
 
     private bool _disposed;
 
@@ -144,12 +144,21 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         var separator = _separatorStore.CaptureSeparator;
         var preview = _previewStore.ShowCapturePreview;
 
+        // **剪貼簿也是鍵的一部分。** 這一頁比別的清單頁多一個外部輸入:「內文取自剪貼簿」
+        // 那一列的內容完全來自它,而使用者去別的視窗複製東西不會動到 Version、查詢
+        // 或任何設定 —— 少了它,回到這一頁看到的還是上一份剪貼簿,而那一列按下去
+        // 會把過期的內容存成筆記。
+        //
+        // 讀一次就往下傳,不要讓 BuildItems 再讀第二次:兩次讀取之間剪貼簿可能已經變了,
+        // 那會讓「鍵」與「內容」對不上 —— 快取最糟的失效方式,因為它會一直錯下去。
+        var clipboard = TryGetClipboardText();
+
         return _cache.Get(
-            (_repository.Version, _query, separator, preview),
-            () => BuildItems(_query, separator, preview));
+            (_repository.Version, _query, separator, preview, clipboard),
+            () => BuildItems(_query, separator, preview, clipboard));
     }
 
-    private IListItem[] BuildItems(string query, string separator, bool preview)
+    private IListItem[] BuildItems(string query, string separator, bool preview, string? clipboard)
     {
         // 沒有前綴判斷:能走到這一頁,使用者已經用 alias 表達過意圖了。
         var draft = QuickCapture.Split(query, separator);
@@ -162,7 +171,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
         var items = new List<IListItem>(MaxSimilarNotes + 2) { CreateCaptureItem(draft, preview) };
 
-        if (CreateClipboardItem(draft, preview) is { } fromClipboard)
+        if (CreateClipboardItem(draft, preview, clipboard) is { } fromClipboard)
         {
             items.Add(fromClipboard);
         }
@@ -233,17 +242,28 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     /// 但剪貼簿本身是完整的 —— 繞過搜尋框直接讀它就行:標題還是用打的,
     /// 內文取原文,換行、縮排、程式碼區塊通通留著。
     /// </summary>
-    private ListItem? CreateClipboardItem(QuickCaptureDraft draft, bool preview)
+    private ListItem? CreateClipboardItem(QuickCaptureDraft draft, bool preview, string? clipboard)
     {
-        var clipboard = TryGetClipboardText();
-
-        // 只在真的多行時才出現。單行的話搜尋框自己貼得進去,多這一列只是噪音。
-        if (clipboard is null || !clipboard.Contains('\n', StringComparison.Ordinal))
+        if (clipboard is null)
         {
             return null;
         }
 
+        // **先正規化再判斷是不是多行。** 直接拿原文找 '\n' 會漏掉只有裸 CR 的內容
+        // (舊 Mac 行尾、部分終端機與試算表複製出來的就是這樣)—— 那一列會整個不出現,
+        // 而使用者看到的只是「貼了多行卻沒有那一列」。ReplaceLineEndings 把 CR / CRLF /
+        // LS / PS / NEL 全部收斂成 Environment.NewLine,判斷與計行數用的是同一份文字。
+        //
+        // TrimEnd 也排在判斷之前:結尾帶一個換行的單行文字(複製一整列時很常見)
+        // 不該冒出一列「內文取自剪貼簿(1 行)」。
         var text = clipboard.ReplaceLineEndings().TrimEnd();
+
+        // 只在真的多行時才出現。單行的話搜尋框自己貼得進去,多這一列只是噪音。
+        if (!text.Contains(Environment.NewLine, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
         var lineCount = text.Split(Environment.NewLine).Length;
 
         return CreateCaptureItem(

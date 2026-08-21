@@ -462,7 +462,14 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         try
         {
-            var watcher = new FileSystemWatcher(_directory, "*" + NoteFileName.Extension)
+            // **刻意不設 Filter,副檔名改在 OnFileSystemChanged 自己判。**
+            // 以前是 new FileSystemWatcher(_directory, "*.md"),而那個過濾器**連資料夾事件
+            // 一起濾掉了** —— 也就是下面 NotifyFilters.DirectoryName 設了等於沒設。
+            // 實測(同一組組態、獨立重現):在檔案總管把裝著筆記的子資料夾改名
+            // (Directory.Move)**一個事件都沒有**,清單因此不會更新;拿掉 Filter 之後
+            // 收得到 Renamed。代價是事件量變大(資料夾裡任何檔案都會發),
+            // 但 handler 只是設一個失效旗標 + 去抖動,而且 AffectsNotes 會先擋掉。
+            var watcher = new FileSystemWatcher(_directory)
             {
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName,
                 IncludeSubdirectories = true,
@@ -513,6 +520,43 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     }
 
     /// <summary>
+    /// 這個事件值不值得讓快取失效。watcher 收所有檔案(見 <see cref="EnsureWatcher"/>),
+    /// 過濾在這裡做。
+    /// </summary>
+    private static bool AffectsNotes(FileSystemEventArgs e)
+    {
+        if (IsNoteFile(e.FullPath))
+        {
+            return true;
+        }
+
+        // 改名要看兩邊:把 note.md 改成 note.txt 之後新路徑不是筆記,
+        // 但那一則確實從清單裡消失了。
+        if (e is RenamedEventArgs renamed && IsNoteFile(renamed.OldFullPath))
+        {
+            return true;
+        }
+
+        // 沒有副檔名的幾乎一定是資料夾。**只認 Created / Deleted / Renamed,不認 Changed:**
+        //
+        //  - 要的是資料夾被改名或刪掉 —— 那不會替裡面每個 .md 各發一次事件
+        //    (實測 Directory.Move 在舊的 Filter="*.md" 之下一個事件都沒有,那就是這條的成因)。
+        //  - 不要的是資料夾的 Changed:在子資料夾裡動一個檔案會順帶讓那個資料夾的
+        //    LastWrite 變動,而那個事件的路徑是**資料夾**、不是我們剛寫的檔案 ——
+        //    它會繞過自寫回音的抑制(見 <see cref="_selfWrites"/>),讓一次存檔又變成
+        //    重掃兩次。裡面的檔案事件本來就會通知,資料夾那一則沒有帶來新資訊。
+        //
+        // 副作用是名字裡帶點的資料夾(my.notes)會被當成檔案濾掉。代價只是少一次自動更新,
+        // 跟修正前一樣;反過來把有副檔名的東西全放行,等於整個過濾形同虛設
+        // (原子寫入的 .md.tmp 每次都會多打一次事件)。
+        return e.ChangeType != WatcherChangeTypes.Changed
+            && Path.GetExtension(e.FullPath.AsSpan()).IsEmpty;
+    }
+
+    private static bool IsNoteFile(string path) =>
+        Path.GetExtension(path.AsSpan()).Equals(NoteFileName.Extension, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// 記下「這個路徑等一下會發事件,那是我們自己造成的」。
     /// **要在動手寫之前叫** —— 事件有可能在 File.Move 還沒返回時就送到 watcher 執行緒。
     /// </summary>
@@ -552,6 +596,12 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         // 自己剛寫的那個檔案的回音。理由與取捨見 _selfWrites。
         if (e is not null && IsSelfWriteEcho(e.FullPath))
+        {
+            return;
+        }
+
+        // watcher 沒有設 Filter(理由見 EnsureWatcher),副檔名在這裡判。
+        if (e is not null && !AffectsNotes(e))
         {
             return;
         }
