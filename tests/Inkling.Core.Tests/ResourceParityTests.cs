@@ -20,6 +20,9 @@ namespace Inkling.Core.Tests;
 /// 2. **佔位符對不上** —— <c>string.Format</c> 會丟 <c>FormatException</c>。
 ///    多一個 <c>{2}</c> 就足以讓刪除頁整個炸掉。
 /// 3. **值是空的** —— 畫面上出現一列沒有標題的東西,看起來像壞掉。
+/// 4. **中性那份自己的佔位符索引不連續** —— 第 2 點比的是「三份一不一致」,
+///    三份一起寫成 <c>{0} … {2}</c>(缺 <c>{1}</c>)是一致的,測試全綠,而
+///    <c>string.Format</c> 在執行期照樣丟 <c>FormatException</c>。
 /// </summary>
 public class ResourceParityTests
 {
@@ -60,6 +63,34 @@ public class ResourceParityTests
                 expected.SetEquals(actual),
                 FormattableString.Invariant(
                     $"{fileName} 的 {key} 佔位符對不上:中性是 {Describe(expected)},這裡是 {Describe(actual)}"));
+        }
+    }
+
+    /// <summary>
+    /// 中性那份每條字串用到的佔位符索引必須是 <c>0..n-1</c> 連續的。
+    ///
+    /// 上面那條比的是「翻譯跟中性一不一致」,擋不到這個:中性自己寫成
+    /// <c>{0} … {2}</c>、翻譯照抄,三份完全一致 —— 而 <c>string.Format</c> 拿到兩個引數
+    /// 配一個 <c>{2}</c> 就丟 <c>FormatException</c>,那一頁整個炸掉。
+    /// 只驗中性那一份就夠:翻譯跟它一致是上一條的責任。
+    /// </summary>
+    [Fact]
+    public void Neutral_PlaceholderIndexesAreContiguous()
+    {
+        foreach (var (key, value) in Load(NeutralFileName))
+        {
+            var used = Placeholders(value);
+            if (used.Count == 0)
+            {
+                continue;
+            }
+
+            var expected = Enumerable.Range(0, used.Max() + 1).ToHashSet();
+
+            Assert.True(
+                used.SetEquals(expected),
+                FormattableString.Invariant(
+                    $"{NeutralFileName} 的 {key} 佔位符索引不連續:用了 {Describe(used)},最大的是 {Describe([used.Max()])},那就必須把 {Describe(expected)} 都用上"));
         }
     }
 

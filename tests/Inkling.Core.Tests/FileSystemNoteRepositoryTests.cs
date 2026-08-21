@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Inkling.Core.Tests;
 
+[Collection(DiskBoundTests.Name)]
 public class FileSystemNoteRepositoryTests
 {
     private static readonly DateTimeOffset Noon = new(2026, 8, 10, 12, 0, 0, TimeSpan.Zero);
@@ -163,9 +164,12 @@ public class FileSystemNoteRepositoryTests
 
         var note = repository.Create("新筆記", string.Empty);
 
-        Assert.Equal(2, attempts);
+        // 釘的是行為,不是重抽了幾次:「撞到就換一個」跟「一次只換一個」是兩件事,
+        // 後者是實作細節,寫死之後任何改法都得回來改測試。
+        Assert.True(attempts >= 2, "撞到既有 id 之後沒有重抽");
         Assert.Equal("fresh-id", note.Id);
         Assert.Equal(2, repository.GetAll().Count);
+        Assert.Equal(2, repository.GetAll().Select(n => n.Id).Distinct(StringComparer.Ordinal).Count());
     }
 
     [Fact]
@@ -717,7 +721,13 @@ public class FileSystemNoteRepositoryTests
 
         await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
-        Assert.True(count is > 0 and <= 3, $"20 次寫入觸發了 {count} 次 Changed,去抖動沒有生效");
+        // 上界刻意留餘裕:去抖動是「每來一個事件就把觸發時間往後推 250 ms」,
+        // 機器一忙(CI 是共用的),那 20 次寫入本身就可能橫跨好幾個 250 ms 視窗,
+        // 於是合法地通知好幾次。要擋的是「完全沒有合併」,不是「剛好合併成一次」——
+        // 卡在 3 只會換來隨機紅掉的測試,而紅的時候程式並沒有壞。
+        Assert.True(
+            count is > 0 and <= 5,
+            $"20 次寫入觸發了 {count} 次 Changed,去抖動沒有生效");
         Assert.Equal(20, repository.GetAll().Count);
     }
 

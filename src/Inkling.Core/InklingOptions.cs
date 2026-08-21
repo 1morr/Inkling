@@ -18,6 +18,9 @@ public sealed class InklingOptions
     /// </summary>
     public int MaxResults { get; init; } = 200;
 
+    /// <summary>資料夾名。身分的一部分,換掉等於讓使用者的舊筆記從清單上消失。</summary>
+    private const string FolderName = "Inkling";
+
     /// <summary>
     /// 預設把筆記放在 OneDrive 底下,同步完全交給 OneDrive 客戶端處理。
     /// 沒有 OneDrive 時退回使用者的 Documents。
@@ -25,11 +28,28 @@ public sealed class InklingOptions
     public static string DefaultNotesDirectory()
     {
         var oneDrive = Environment.GetEnvironmentVariable("OneDrive");
+        var hasOneDrive = !string.IsNullOrWhiteSpace(oneDrive) && Directory.Exists(oneDrive);
 
-        var root = !string.IsNullOrWhiteSpace(oneDrive) && Directory.Exists(oneDrive)
-            ? oneDrive
-            : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        return DefaultNotesDirectoryUnder(
+            hasOneDrive ? oneDrive : null,
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+    }
 
-        return Path.Combine(root, "Inkling");
+    /// <summary>
+    /// 上面那個決策本身,把「這台機器長什麼樣」當參數傳進來。
+    ///
+    /// **分出來是為了驗得到。** 無參數那個版本問的是這台機器的環境變數,
+    /// 於是「有 OneDrive 就用它」那條分支在 CI 上永遠走不到 —— windows-latest 沒有
+    /// OneDrive,測試看起來在驗兩條路,實際上只碰得到 fallback 那一條。
+    /// </summary>
+    /// <param name="oneDriveRoot">OneDrive 的根目錄;沒有(或那個路徑不存在)就傳 null。</param>
+    /// <param name="documentsRoot">沒有 OneDrive 時的退路。</param>
+    public static string DefaultNotesDirectoryUnder(string? oneDriveRoot, string documentsRoot)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(documentsRoot);
+
+        var root = string.IsNullOrWhiteSpace(oneDriveRoot) ? documentsRoot : oneDriveRoot;
+
+        return Path.Combine(root, FolderName);
     }
 }

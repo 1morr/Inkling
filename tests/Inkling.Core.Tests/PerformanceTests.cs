@@ -10,6 +10,7 @@ namespace Inkling.Core.Tests;
 /// 路徑,一旦有人在裡面塞了正規表示式或每次都重讀磁碟,這裡會先叫。
 /// 門檻刻意抓得寬鬆,免得在慢一點的機器上變成隨機失敗的測試。
 /// </summary>
+[Collection(DiskBoundTests.Name)]
 public class PerformanceTests
 {
     private const int NoteCount = 1000;
