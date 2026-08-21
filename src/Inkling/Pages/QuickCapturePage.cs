@@ -82,7 +82,13 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         // 頁面內要跟 CmdPal 其他畫面協調。這裡挑燈泡而不是加號,是為了跟「新增筆記」
         // 分開;進了頁面又變回加號的話,那個區隔就白做了。
         Icon = Icons.Capture;
-        Title = Resources.ProviderCapturePageTitle;
+
+        // 頁面標題(標題列 + 底部命令列左下角)不帶「Inkling:」—— 進到頁面裡的人已經
+        // 知道自己在哪個擴展了,前綴只是重複佔字。品牌名是**頂層那一列**的需求
+        // (在主搜尋框裡要跟別的擴展區分),所以那一列另外走 ProviderCapturePageTitle。
+        // 別為了省一條字串把兩邊接回去:接回去等於讓頂層的需求決定頁面裡的樣子,
+        // 而那正是這一頁的標題曾經跟「新增筆記」「隨手草稿」對不起來的原因。
+        Title = Resources.CapturePageTitle;
         Name = Resources.CommandOpen;
         PlaceholderText = PlaceholderFor(separator);
 

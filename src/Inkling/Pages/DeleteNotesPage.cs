@@ -62,7 +62,10 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 
         Id = CommandIds.DeleteAll;
         Icon = Icons.Delete;
-        Title = Resources.ProviderDeletePageTitle;
+
+        // 純頁名,不帶「Inkling:」—— 理由與 QuickCapturePage 同一條:前綴是頂層那一列
+        // 的需求,頂層那邊走 ProviderDeletePageTitle。
+        Title = Resources.DeletePageTitle;
 
         // 「開啟」而不是「刪除」:這個名字是頂層清單上那一列的動作標籤,
         // 而按下去只是進到這一頁。寫「刪除」會讓人以為 Enter 當場就動手。

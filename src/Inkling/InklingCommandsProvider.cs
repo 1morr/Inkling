@@ -105,7 +105,11 @@ public sealed partial class InklingCommandsProvider : CommandProvider
             },
             new CommandItem(capturePage)
             {
-                Title = capturePage.Title,
+                // 頂層的標題跟頁面的標題**是兩條字串**,不要改回 capturePage.Title:
+                // 這裡需要「Inkling:」前綴(主搜尋框裡要跟別的擴展區分),頁面裡不需要。
+                // 四列的形狀因此一致,見 QuickCapturePage 的註解。
+                Title = Resources.ProviderCapturePageTitle,
+
                 // 這裡刻意不寫「分號」:分隔符是可以改的設定,而這一列的副標沒有跟著它更新
                 // (頂層命令陣列只在資料夾變了才重建)。頁面裡的提示才會照使用者設的那個顯示。
                 Subtitle = Resources.ProviderCaptureSubtitle,
@@ -128,7 +132,8 @@ public sealed partial class InklingCommandsProvider : CommandProvider
             },
             new CommandItem(deletePage)
             {
-                Title = deletePage.Title,
+                // 同上:帶前綴的是頂層這一列,頁面自己叫「刪除筆記」。
+                Title = Resources.ProviderDeletePageTitle,
 
                 // 副標講的是「按下去會發生什麼」:進去只是看,不是當場刪。
                 // 舊的版本寫「整個資料夾清空」,那句話兩頭都不準 ——

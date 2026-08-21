@@ -435,11 +435,19 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
     <value>Better than the form for long bodies</value>
   </data>
+  <data name="CapturePageTitle" xml:space="preserve">
+    <value>Quick capture</value>
+    <comment>頁面自己的標題(顯示在標題列與底部命令列),刻意不帶「Inkling:」前綴 —— 使用者已經在頁面裡了。頂層那一列是 ProviderCapturePageTitle,那裡才需要品牌名。</comment>
+  </data>
   <data name="NewNotePageTitle" xml:space="preserve">
     <value>New note</value>
   </data>
   <data name="ScratchpadPageTitle" xml:space="preserve">
     <value>Scratchpad</value>
+  </data>
+  <data name="DeletePageTitle" xml:space="preserve">
+    <value>Delete notes</value>
+    <comment>同 CapturePageTitle:頁面標題不帶品牌前綴。頂層那一列是 ProviderDeletePageTitle。</comment>
   </data>
   <data name="SettingsPageName" xml:space="preserve">
     <value>Settings</value>

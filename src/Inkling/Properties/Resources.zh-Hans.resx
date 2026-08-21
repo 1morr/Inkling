@@ -386,11 +386,17 @@
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
     <value>正文很长时比表单好用</value>
   </data>
+  <data name="CapturePageTitle" xml:space="preserve">
+    <value>快速记下</value>
+  </data>
   <data name="NewNotePageTitle" xml:space="preserve">
     <value>新建笔记</value>
   </data>
   <data name="ScratchpadPageTitle" xml:space="preserve">
     <value>随手草稿</value>
+  </data>
+  <data name="DeletePageTitle" xml:space="preserve">
+    <value>删除笔记</value>
   </data>
   <data name="SettingsPageName" xml:space="preserve">
     <value>设置</value>
