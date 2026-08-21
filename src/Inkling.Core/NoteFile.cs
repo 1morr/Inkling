@@ -80,6 +80,22 @@ public static class NoteFile
         }
 
         var block = lines[1..closingIndex].Select(l => l.TrimEnd('\r')).ToArray();
+
+        // **開頭是 `---` 不代表那是 front matter。** Markdown 的水平線也是 `---`,
+        // 而「第一行就是一條線、後面某處還有一條」的文件並不罕見。把那種檔案當成
+        // front matter 的後果是兩層的:前半段內容從清單與預覽裡消失,而且使用者在
+        // Inkling 裡編輯一次之後,那幾行會被寫進 front matter 區塊 —— 它們沒有冒號,
+        // Obsidian / Hugo 從此解析不了這個檔案。這正是「外來 .md 也要能列出來」
+        // 那條資料格式承諾要防的事。
+        //
+        // 判準與「有開頭沒收尾」那條路一樣保守:認不出 key 就整檔當內文。
+        // 兩個方向的代價不對稱 —— 認錯成 front matter 會吃掉內容,
+        // 認錯成內文只是多顯示兩行 `---`。
+        if (!LooksLikeFrontMatter(block))
+        {
+            return new ParsedNoteFile { Body = StripTrailingNewline(Newlines.ToLf(content)), HadFrontMatter = false };
+        }
+
         var body = string.Join('\n', lines[(closingIndex + 1)..].Select(l => l.TrimEnd('\r')));
 
         // 收尾分隔線後習慣空一行,把它吃掉,免得每次 round-trip 都多長一行。
@@ -89,6 +105,47 @@ public static class NoteFile
         }
 
         return ParseBlock(block, StripTrailingNewline(body));
+    }
+
+    /// <summary>
+    /// 這個區塊看起來是不是 YAML front matter:至少要有一行是 <c>key: value</c>。
+    ///
+    /// 三道限制都是為了不把內文誤認成 key:冒號後面必須接空白或就是行尾
+    /// (YAML 對應的規則,順帶擋掉 <c>https://example.com</c> 這種行)、
+    /// key 不能有內部空白(<c>單元二:開場</c> 是句子不是 key)、
+    /// key 不能以 <c>#</c> 開頭(<c># 標題: 副標</c> 是 Markdown 標題)。
+    /// </summary>
+    private static bool LooksLikeFrontMatter(string[] block)
+    {
+        foreach (var line in block)
+        {
+            // 空行與接續行不能當判準:它們要靠前面那個 key 才有意義。
+            if (line.Length == 0
+                || char.IsWhiteSpace(line[0])
+                || line.StartsWith("- ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var separator = line.IndexOf(':', StringComparison.Ordinal);
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            if (separator + 1 < line.Length && line[separator + 1] != ' ')
+            {
+                continue;
+            }
+
+            var key = line[..separator].TrimEnd();
+            if (key.Length > 0 && key[0] != '#' && !key.Any(char.IsWhiteSpace))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static ParsedNoteFile ParseBlock(string[] block, string body)
@@ -104,6 +161,14 @@ public static class NoteFile
         // 不認得的 key 要連同它的接續行整段原樣留著,否則巢狀結構會被拆爛。
         var currentKey = string.Empty;
 
+        // 折疊/字面純量(`title: >`、`title: |`)的暫存。YAML 允許把值寫在後面的縮排行裡,
+        // 而我們認得的四個欄位在寫回去時只能是單行純量。不處理的話 title 會變成一個 ">",
+        // 續行則掉進 ExtraFrontMatter —— 而 Serialize 把 extra 寫在固定欄位後面,
+        // 那幾行縮排就這樣排到 `updated:` 底下,把 updated 變成多行純量、日期壞掉。
+        // 所以把續行收起來併成一行還給原本那個欄位:標題救回來了,檔案也還是合法的 YAML。
+        string? blockKey = null;
+        var blockLines = new List<string>();
+
         foreach (var line in block)
         {
             var isContinuation = line.Length > 0
@@ -111,6 +176,12 @@ public static class NoteFile
 
             if (isContinuation)
             {
+                if (blockKey is not null)
+                {
+                    blockLines.Add(line.Trim());
+                    continue;
+                }
+
                 if (currentKey == "tags")
                 {
                     var item = line.TrimStart();
@@ -132,6 +203,9 @@ public static class NoteFile
                 continue;
             }
 
+            // 不是接續行 = 上一個區塊純量到此為止。
+            FlushBlockScalar();
+
             var separator = line.IndexOf(':', StringComparison.Ordinal);
             if (separator <= 0)
             {
@@ -149,6 +223,13 @@ public static class NoteFile
             var value = line[(separator + 1)..].Trim();
             currentKey = key.ToLowerInvariant();
 
+            // 認得的單行欄位寫成區塊純量時,值在後面的縮排行裡,這一行本身沒有內容。
+            if (IsBlockScalarIndicator(value) && currentKey is "id" or "title" or "created" or "updated")
+            {
+                blockKey = currentKey;
+                continue;
+            }
+
             switch (currentKey)
             {
                 case "id":
@@ -164,13 +245,18 @@ public static class NoteFile
                     updated = ParseDate(value);
                     break;
                 case "tags":
-                    tags = ParseInlineTags(value);
+                    // `tags: >` 沒有意義,但真遇到時不能把它當 inline 清單 ——
+                    // 那會產出一個叫 ">" 的標籤。當成空的,讓後面的 "- " 續行接手。
+                    tags = IsBlockScalarIndicator(value) ? [] : ParseInlineTags(value);
                     break;
                 default:
                     extra.Add(line);
                     break;
             }
         }
+
+        // 區塊純量收在最後一行時,迴圈裡沒有機會沖掉它。
+        FlushBlockScalar();
 
         return new ParsedNoteFile
         {
@@ -183,6 +269,58 @@ public static class NoteFile
             Body = body,
             HadFrontMatter = true,
         };
+
+        void FlushBlockScalar()
+        {
+            if (blockKey is null)
+            {
+                return;
+            }
+
+            // 折疊成一行:這四個欄位在 Serialize 那邊本來就只能是單行純量(見 Quote)。
+            // `>` 與 `|` 的差別(折疊 vs 保留換行)在這裡沒有意義,不分開處理。
+            var value = string.Join(' ', blockLines.Where(l => l.Length > 0));
+
+            switch (blockKey)
+            {
+                case "id":
+                    id = value;
+                    break;
+                case "title":
+                    title = value;
+                    break;
+                case "created":
+                    created = ParseDate(value);
+                    break;
+                case "updated":
+                    updated = ParseDate(value);
+                    break;
+            }
+
+            blockKey = null;
+            blockLines.Clear();
+        }
+    }
+
+    /// <summary>
+    /// 值是不是 YAML 的區塊純量標記:<c>&gt;</c> 或 <c>|</c>,後面可以接 chomping
+    /// 的 <c>-</c> / <c>+</c> 與明確縮排的數字(<c>|2-</c>),再後面只能是註解。
+    /// </summary>
+    private static bool IsBlockScalarIndicator(string value)
+    {
+        if (value.Length == 0 || (value[0] != '>' && value[0] != '|'))
+        {
+            return false;
+        }
+
+        var rest = value[1..];
+        var comment = rest.IndexOf('#', StringComparison.Ordinal);
+        if (comment >= 0)
+        {
+            rest = rest[..comment];
+        }
+
+        return rest.Trim().All(c => c is '-' or '+' || char.IsAsciiDigit(c));
     }
 
     private static List<string> ParseInlineTags(string value)
@@ -285,19 +423,86 @@ public static class NoteFile
             : null;
     }
 
+    /// <summary>
+    /// 去掉最外層的引號。
+    ///
+    /// **「開頭與結尾剛好都是引號」不等於「被一對引號包住」。** 只看頭尾兩個字元的話,
+    /// <c>"賣點" 與 "痛點"</c> 會被剝成 <c>賣點" 與 "痛點</c>,而下一次 Serialize
+    /// 又會把它整個包起來 —— 每編輯一輪就多一層殘骸,而且沒有任何地方會報錯。
+    /// 所以中間出現沒有逸出的同種引號時就當它不是引號字串,原樣留著。
+    /// </summary>
     private static string Unquote(string value)
     {
-        if (value.Length >= 2
-            && ((value[0] == '"' && value[^1] == '"') || (value[0] == '\'' && value[^1] == '\'')))
+        if (value.Length < 2)
         {
-            var inner = value[1..^1];
-            return value[0] == '"'
-                ? inner.Replace("\\\"", "\"", StringComparison.Ordinal)
-                       .Replace("\\\\", "\\", StringComparison.Ordinal)
-                : inner.Replace("''", "'", StringComparison.Ordinal);
+            return value;
         }
 
-        return value;
+        var quote = value[0];
+        if (quote != value[^1] || (quote != '"' && quote != '\''))
+        {
+            return value;
+        }
+
+        var inner = value[1..^1];
+
+        if (quote == '"')
+        {
+            return HasUnescapedDoubleQuote(inner)
+                ? value
+                : inner.Replace("\\\"", "\"", StringComparison.Ordinal)
+                       .Replace("\\\\", "\\", StringComparison.Ordinal);
+        }
+
+        // 單引號的逸出是連續兩個 '' —— 落單的一個代表這對引號沒有包住整個值。
+        return HasLoneSingleQuote(inner)
+            ? value
+            : inner.Replace("''", "'", StringComparison.Ordinal);
+    }
+
+    private static bool HasUnescapedDoubleQuote(string inner)
+    {
+        for (var i = 0; i < inner.Length; i++)
+        {
+            if (inner[i] == '\\')
+            {
+                // 被逸出的那個字元跳過,\\ 也因此不會被誤讀成逸出下一個字元。
+                i++;
+                continue;
+            }
+
+            if (inner[i] == '"')
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasLoneSingleQuote(string inner)
+    {
+        for (var i = 0; i < inner.Length;)
+        {
+            if (inner[i] != '\'')
+            {
+                i++;
+                continue;
+            }
+
+            var start = i;
+            while (i < inner.Length && inner[i] == '\'')
+            {
+                i++;
+            }
+
+            if ((i - start) % 2 != 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static string Serialize(Note note)

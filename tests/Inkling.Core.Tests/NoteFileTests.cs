@@ -300,4 +300,136 @@ public class NoteFileTests
         Assert.Equal(string.Empty, parsed.Body);
         Assert.Equal("買咖啡機的想法", parsed.Title);
     }
+
+    [Fact]
+    public void Parse_HorizontalRuleAtTopOfFile_IsNotFrontMatter()
+    {
+        // Markdown 的水平線也是 ---。以前這種檔案的第一段會被當成 front matter 吞掉,
+        // 使用者在 Inkling 裡編輯一次之後那幾行還會被寫進 front matter 區塊 ——
+        // 它們沒有冒號,別的工具從此解析不了這個檔案。
+        const string content = "---\n\n# 我的標題\n\n第一段內容\n\n---\n\n第二段內容";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.False(parsed.HadFrontMatter);
+        Assert.Equal(content, parsed.Body);
+        Assert.Null(parsed.Title);
+        Assert.Empty(parsed.ExtraFrontMatter);
+    }
+
+    [Fact]
+    public void Parse_BlockThatOnlyLooksLikeKeysBecauseOfAUrl_IsNotFrontMatter()
+    {
+        // https://… 有冒號但後面沒有空白。YAML 的對應規則要求冒號後接空白或就是行尾,
+        // 少了這一條,任何以水平線開頭又貼了網址的筆記都會被當成 front matter。
+        const string content = "---\n\nhttps://example.com\n\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.False(parsed.HadFrontMatter);
+        Assert.Equal(content, parsed.Body);
+    }
+
+    [Fact]
+    public void Parse_MarkdownHeadingWithColon_IsNotMistakenForAKey()
+    {
+        const string content = "---\n\n# 單元二: 開場\n\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.False(parsed.HadFrontMatter);
+        Assert.Equal(content, parsed.Body);
+    }
+
+    [Fact]
+    public void Parse_RealFrontMatterWithOnlyOneKey_IsStillFrontMatter()
+    {
+        // 上面三條的反面:只要有一行是真的 key,就照樣當 front matter,
+        // 不能因為收緊判準而把正常的檔案擋掉。
+        const string content = "---\ntitle: 只有標題\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.True(parsed.HadFrontMatter);
+        Assert.Equal("只有標題", parsed.Title);
+        Assert.Equal("內文", parsed.Body);
+    }
+
+    [Theory]
+    [InlineData(">")]
+    [InlineData("|")]
+    [InlineData(">-")]
+    [InlineData("|+")]
+    [InlineData("|2")]
+    public void Parse_FoldedTitle_KeepsTheTitleAndDoesNotOrphanItsLines(string indicator)
+    {
+        // 別的工具會把長標題寫成區塊純量。以前 Title 會變成一個 ">",續行掉進
+        // ExtraFrontMatter —— 而 extra 是寫在固定欄位後面的,那幾行縮排於是排到
+        // updated: 底下,把 updated 變成多行純量、日期就此壞掉。
+        var content = $"---\nid: abc\ntitle: {indicator}\n  這是一個很長的標題\n  被折成兩行\naliases:\n  - foo\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.Equal("這是一個很長的標題 被折成兩行", parsed.Title);
+        Assert.Equal(["aliases:", "  - foo"], parsed.ExtraFrontMatter);
+    }
+
+    [Fact]
+    public void Parse_FoldedTitle_SurvivesRoundTripAsASingleLineScalar()
+    {
+        const string content = "---\nid: abc\ntitle: >\n  折疊的標題\ncreated: 2026-01-01T00:00:00+08:00\nupdated: 2026-01-02T00:00:00+08:00\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+        var note = new Note
+        {
+            Id = parsed.Id!,
+            Title = parsed.Title!,
+            Body = parsed.Body,
+            Created = parsed.Created!.Value,
+            Updated = parsed.Updated!.Value,
+            ExtraFrontMatter = parsed.ExtraFrontMatter,
+            FilePath = @"C:\notes\x.md",
+        };
+
+        var again = NoteFile.Parse(NoteFile.Serialize(note));
+
+        Assert.Equal("折疊的標題", again.Title);
+        // 這一條才是重點:updated 沒有被縮排行黏成多行純量。
+        Assert.Equal(parsed.Updated, again.Updated);
+    }
+
+    [Fact]
+    public void Parse_BlockStyleTagsWithAFoldedIndicator_DoesNotProduceAGreaterThanTag()
+    {
+        const string content = "---\ntitle: t\ntags: >\n  - foo\n  - bar\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.Equal(["foo", "bar"], parsed.Tags);
+    }
+
+    [Theory]
+    [InlineData("\"賣點\" 與 \"痛點\"")]
+    [InlineData("'單引號' 開頭也 '單引號' 結尾")]
+    public void Parse_TitleThatMerelyStartsAndEndsWithAQuote_IsNotStripped(string title)
+    {
+        // 只看頭尾兩個字元的話會剝掉一層,而下一次 Serialize 又整個包起來 ——
+        // 每編輯一輪就多一層殘骸,沒有任何地方會報錯。
+        var content = $"---\ntitle: {title}\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.Equal(title, parsed.Title);
+    }
+
+    [Fact]
+    public void Parse_ProperlyQuotedTitle_IsStillUnquoted()
+    {
+        // 上一條的反面:真的被一對引號包住(中間的引號有逸出)時照樣要剝掉。
+        const string content = "---\ntitle: \"他說 \\\"好\\\" 之後就走了\"\n---\n\n內文";
+
+        var parsed = NoteFile.Parse(content);
+
+        Assert.Equal("他說 \"好\" 之後就走了", parsed.Title);
+    }
 }
