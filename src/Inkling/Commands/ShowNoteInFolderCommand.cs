@@ -52,7 +52,7 @@ internal sealed partial class ShowNoteInFolderCommand : ShowFileInFolderCommand
         if (!File.Exists(_filePath))
         {
             // 留痕跡,理由同 OpenNoteFileCommand:畫面上那條訊息 2.5 秒就收掉了。
-            DiagnosticLog.Write($"ShowNoteInFolder: 檔案不存在 '{_filePath}'");
+            DiagnosticLog.Failure($"ShowNoteInFolder: 檔案不存在 '{_filePath}'");
             new ToastStatusMessage(Resources.OpenFileMissing).Show();
             return CommandResult.KeepOpen();
         }

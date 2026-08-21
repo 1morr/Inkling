@@ -167,7 +167,7 @@ internal sealed partial class SettingsManager
         // 部分儲存只會讓「到底哪些生效了」變得難猜。
         if (!Path.IsPathFullyQualified(directory))
         {
-            DiagnosticLog.Write($"Apply: 拒絕非完整路徑 '{directory}',整筆未存");
+            DiagnosticLog.Failure($"Apply: 拒絕非完整路徑 '{directory}',整筆未存");
             return ApplyResult.RejectedRelativePath;
         }
 
@@ -237,7 +237,7 @@ internal sealed partial class SettingsManager
         catch (Exception ex)
         {
             // 設定存不起來不該讓整個擴展掛掉,但也不能無聲無息。
-            DiagnosticLog.Write($"SaveSettings({reason}) 失敗:{ex}");
+            DiagnosticLog.Failure($"SaveSettings({reason}) 失敗:{ex}");
             return false;
         }
     }

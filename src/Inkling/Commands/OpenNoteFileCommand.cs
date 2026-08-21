@@ -67,14 +67,14 @@ internal sealed partial class OpenNoteFileCommand : InvokableCommand
         {
             // 留痕跡:這條路唯一看得見的東西是一個 2.5 秒就收掉的 InfoBadge,
             // 事後回頭查「按了沒反應」的時候,log 是唯一還在的證據。
-            DiagnosticLog.Write($"OpenNoteFile: 檔案不存在 '{_filePath}'");
+            DiagnosticLog.Failure($"OpenNoteFile: 檔案不存在 '{_filePath}'");
             new ToastStatusMessage(Resources.OpenFileMissing).Show();
             return CommandResult.KeepOpen();
         }
 
         if (!ShellHelpers.OpenInShell(_filePath))
         {
-            DiagnosticLog.Write($"OpenNoteFile: OpenInShell 開不起來 '{_filePath}'");
+            DiagnosticLog.Failure($"OpenNoteFile: OpenInShell 開不起來 '{_filePath}'");
             new ToastStatusMessage(Resources.OpenInEditorFailed).Show();
             return CommandResult.KeepOpen();
         }

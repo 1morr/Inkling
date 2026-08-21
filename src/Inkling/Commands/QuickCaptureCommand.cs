@@ -56,7 +56,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 用 DiagnosticLog 而不是 Debug.WriteLine:後者掛著 [Conditional("DEBUG")],
             // Release 會整個編掉,而日常安裝的就是 Release —— 也就是說最需要留下痕跡的
             // 那條路,在正式版反而什麼都查不到。
-            DiagnosticLog.Write($"QuickCapture 失敗:{ex}");
+            DiagnosticLog.Failure($"QuickCapture 失敗:{ex}");
 
             // **這條路一個 toast 都不能發,也不能 Dismiss。** 搜尋框裡那句話是使用者
             // 剛打的、還沒存下來的東西:toast 視窗一搶焦點主視窗就自我隱藏(第 8 條那個

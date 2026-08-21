@@ -75,7 +75,7 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            DiagnosticLog.Write($"DeleteAllNotes 失敗:{ex}");
+            DiagnosticLog.Failure($"DeleteAllNotes 失敗:{ex}");
 
             return CommandResult.ShowToast(Strings.Format(Resources.DeleteFailed, ex.Message));
         }

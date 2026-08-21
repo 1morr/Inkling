@@ -200,7 +200,7 @@ internal sealed partial class CapturedNotePage : ContentPage
             _done.Name = Resources.CommandGoBack;
             _done.Result = CommandResult.GoBack();
 
-            DiagnosticLog.Write($"CapturedNotePage.Capture 失敗:{ex}");
+            DiagnosticLog.Failure($"CapturedNotePage.Capture 失敗:{ex}");
         }
     }
 

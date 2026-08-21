@@ -6,8 +6,8 @@ body:
     attributes:
       value: |
         Thanks for reporting. The version and log fields below cut the time to track
-        something down a lot — Inkling has no console, so plenty of problems are only
-        visible in `diagnostic.log`.
+        something down a lot — Inkling has no console, so plenty of problems leave a
+        trace only in the log.
 
         Write in English or Traditional Chinese, whichever you prefer.
         繁體中文也可以,不必翻成英文。
@@ -60,20 +60,30 @@ body:
       placeholder: C:\Users\me\Documents\Notes
 
   - type: textarea
-    id: diagnostic-log
+    id: log
     attributes:
-      label: diagnostic.log
+      label: Log
       description: |
         ⚠️ **Read it through and redact before pasting.** This is a public page that
-        search engines index, and the log records your **note titles**, **search
+        search engines index, and Inkling's logs carry your **note titles**, **search
         strings**, and the **full path of your notes folder** (which usually contains
-        your Windows username) verbatim. Note bodies are not recorded — only their
-        length — but a title alone is often enough to give something away. Replacing
-        them with `note-1`, `aaa` and the like does not hurt the diagnosis.
+        your Windows username). Note bodies are never recorded — only their length —
+        but a title alone is often enough to give something away, and a file path
+        carries the title too. Replacing them with `note-1`, `aaa` and the like does
+        not hurt the diagnosis.
 
-        To turn it on: create an empty file `diagnostic.on` in
-        `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` (get `<PFN>` from
-        `(Get-AppxPackage Inkling).PackageFamilyName`), run Reload in Command Palette,
-        reproduce the problem, then paste the contents of `diagnostic.log` from the
-        same folder.
+        **Start here — nothing to set up.** Command Palette's own log is always on,
+        and Inkling writes every failure to it, tagged `[Inkling]`:
+
+        ```powershell
+        $log = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\PowerToys\CmdPal\Logs" -Recurse -Filter 'Log_*.log' |
+          Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        Get-Content $log.FullName | Select-String '\[Inkling\]' -Context 0,6
+        ```
+
+        **If that turns up nothing**, switch on the detailed log: create an empty file
+        `diagnostic.on` in `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` (get
+        `<PFN>` from `(Get-AppxPackage Inkling).PackageFamilyName`), run Reload in
+        Command Palette, reproduce the problem, then paste `diagnostic.log` from that
+        folder.
       render: text

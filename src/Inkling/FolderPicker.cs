@@ -91,7 +91,7 @@ internal static partial class FolderPicker
             catch (Exception ex)
             {
                 // 選資料夾失敗不該把整個擴展帶走,但也不能無聲無息。
-                DiagnosticLog.Write($"FolderPicker 失敗:{ex}");
+                DiagnosticLog.Failure($"FolderPicker 失敗:{ex}");
                 failed?.Invoke();
             }
             finally
@@ -117,7 +117,7 @@ internal static partial class FolderPicker
 
         if (hr < 0 || native == IntPtr.Zero)
         {
-            DiagnosticLog.Write($"FolderPicker: CoCreateInstance 失敗 0x{hr:X}");
+            DiagnosticLog.Failure($"FolderPicker: CoCreateInstance 失敗 0x{hr:X}");
             failed?.Invoke();
             return null;
         }
@@ -161,7 +161,7 @@ internal static partial class FolderPicker
 
             if (shown < 0)
             {
-                DiagnosticLog.Write($"FolderPicker: Show 失敗 0x{shown:X}");
+                DiagnosticLog.Failure($"FolderPicker: Show 失敗 0x{shown:X}");
                 failed?.Invoke();
                 return null;
             }

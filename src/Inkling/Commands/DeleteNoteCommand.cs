@@ -46,7 +46,7 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
         {
             // 檔案被別的程式鎖住、資料夾權限不對、或是別台機器已經先刪掉了 ——
             // 都不該讓擴展掛掉,但更不能假裝刪掉了。
-            DiagnosticLog.Write($"DeleteNote 失敗:{ex}");
+            DiagnosticLog.Failure($"DeleteNote 失敗:{ex}");
 
             // 失敗路形狀的準則(跟 QuickCaptureCommand、ConfirmedDeleteAllNotesCommand 對照著看):
             // **畫面上還壓著使用者沒存下的輸入時**(存檔類),一個 toast 都不能發 ——
