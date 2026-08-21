@@ -174,6 +174,14 @@
   <data name="ListPageMoreResultsSubtitle" xml:space="preserve">
     <value>Type a bit more to narrow it down</value>
   </data>
+  <!-- 跟「還有幾則沒顯示」同一個形狀:讀不出來的檔案會從清單上消失,不講的話
+       使用者沒有任何線索。{0} 是這次掃描略過的檔案數。 -->
+  <data name="ListPageSkippedFiles" xml:space="preserve">
+    <value>{0} file(s) could not be read</value>
+  </data>
+  <data name="ListPageSkippedFilesSubtitle" xml:space="preserve">
+    <value>Still in the folder — another program may have them open</value>
+  </data>
   <data name="ToggleSourceShowRaw" xml:space="preserve">
     <value>Show raw text</value>
     <comment>講的是「按下去之後會看到什麼」,不是目前的狀態。</comment>

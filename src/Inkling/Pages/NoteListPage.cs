@@ -177,6 +177,21 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             });
         }
 
+        // 讀不出來的檔案同理,而且更需要講:那一則是真的存在、只是這次讀不到
+        // (被別的程式鎖住、編碼壞掉),使用者不會知道它為什麼從清單上消失了。
+        // repository 一直有在數,只是以前沒有任何人讀那個數字。
+        //
+        // **不受查詢字影響**:讀不出來就不知道它的標題,篩不了,所以永遠掛在最後一列。
+        if (_repository.SkippedFileCount > 0)
+        {
+            items.Add(new ListItem(new NoOpCommand())
+            {
+                Title = Strings.Format(Resources.ListPageSkippedFiles, _repository.SkippedFileCount),
+                Subtitle = Resources.ListPageSkippedFilesSubtitle,
+                Icon = Icons.Note,
+            });
+        }
+
         return [.. items];
     }
 

@@ -473,6 +473,26 @@ public class FileSystemNoteRepositoryTests
     }
 
     [Fact]
+    public void GetAll_CountsFilesItCouldNotRead()
+    {
+        // 讀不出來的檔案會從清單上消失,而使用者不會知道為什麼 —— 清單頁靠這個數字
+        // 多掛一列說明。以前這個數字算完沒有任何消費者,也沒有測試碰過遞增那條路。
+        using var temp = new TempDirectory();
+        temp.WriteFile("讀得到.md", "---\nid: ok-1\ntitle: 讀得到\n---\n\n內文");
+        var locked = temp.WriteFile("被鎖住.md", "---\nid: locked-1\ntitle: 被鎖住\n---\n\n內文");
+
+        // FileShare.None:別的程序連讀都不行,正是「被編輯器或同步程式佔著」的形狀。
+        using (File.Open(locked, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            using var repository = CreateRepository(temp, out _);
+
+            var only = Assert.Single(repository.GetAll());
+            Assert.Equal("讀得到", only.Title);
+            Assert.Equal(1, repository.SkippedFileCount);
+        }
+    }
+
+    [Fact]
     public void GetAll_MarksFilesNotWrittenByInklingAsExternal()
     {
         // 批次刪除靠這個旗標決定範圍,認錯就是刪掉別人的檔案。

@@ -163,6 +163,12 @@
   <data name="ListPageMoreResultsSubtitle" xml:space="preserve">
     <value>再多打幾個字縮小範圍</value>
   </data>
+  <data name="ListPageSkippedFiles" xml:space="preserve">
+    <value>有 {0} 個檔案讀不出來</value>
+  </data>
+  <data name="ListPageSkippedFilesSubtitle" xml:space="preserve">
+    <value>檔案還在資料夾裡 —— 可能被別的程式開著</value>
+  </data>
   <data name="ToggleSourceShowRaw" xml:space="preserve">
     <value>顯示原始文字</value>
   </data>

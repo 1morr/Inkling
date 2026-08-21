@@ -23,6 +23,16 @@ public interface INoteRepository
     /// </summary>
     int Version { get; }
 
+    /// <summary>
+    /// 上一次掃描中因為讀不到而略過的檔案數(被別的程式鎖住、編碼壞掉)。
+    ///
+    /// **放在介面上是刻意的**:清單頁要拿它去多加一列。少了那一列,一個讀不出來的
+    /// <c>.md</c> 就從畫面上靜靜消失,而使用者沒有任何線索 —— 這個專案在別的地方
+    /// 都不允許那種靜默(清單被截斷時就會明講「還有幾則」)。
+    /// 這個數字算完卻沒有任何消費者的狀態維持了很久。
+    /// </summary>
+    int SkippedFileCount { get; }
+
     /// <summary>取得全部筆記,依最後更新時間遞減排序。</summary>
     IReadOnlyList<Note> GetAll();
 

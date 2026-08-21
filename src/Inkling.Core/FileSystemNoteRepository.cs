@@ -111,10 +111,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// <inheritdoc />
     public int Version => Volatile.Read(ref _version);
 
-    /// <summary>
-    /// 這次掃描中因為讀不到而略過的檔案數。給手動驗證與日後的狀態訊息用,
-    /// 免得檔案默默消失卻查不出原因。
-    /// </summary>
+    /// <inheritdoc />
     public int SkippedFileCount { get; private set; }
 
     public IReadOnlyList<Note> GetAll()
