@@ -23,9 +23,18 @@ namespace Inkling.Pages;
 /// 只讀 Id / Name / Icon,不碰 <c>GetContent</c>(查過原始碼)。內容是使用者真的按下
 /// Enter、CmdPal 建出 <c>ContentPageViewModel</c> 時才取的。
 ///
-/// 也不會走成 toast:toast 視窗會搶焦點,而 CmdPal 主視窗一失焦就把自己藏起來
-/// (<c>MainWindow_Activated</c> → <c>EndSession("LostFocus")</c>,沒有開關)——
-/// 那正是「記下之後 CmdPal 整個消失」的成因。這一頁要留在畫面上,就一個 toast 都不能發。
+/// <para><b>toast 的規矩在這一頁分成兩段,別把它讀成「完全不能發」。</b></para>
+///
+/// toast 視窗會搶焦點,而 CmdPal 主視窗一失焦就把自己藏起來(<c>MainWindow_Activated</c>
+/// → <c>EndSession("LostFocus")</c>,沒有開關)—— 那正是「記下之後 CmdPal 整個消失」的成因。
+/// 所以**停留期間一個 toast 都不能發**:進頁、存檔那一刻、存檔失敗、複製內文,全部不行,
+/// 這一頁的存在意義就是讓使用者看一眼。
+///
+/// **但按下「完成」時相反。** 那一下的語意就是收工,面板本來就要關掉 ——
+/// toast 搶焦點造成的隱藏剛好是我們要的結果,所以它是免費的。而這裡非發不可:
+/// 關掉「記下後先看一眼」走的是 <see cref="Commands.QuickCaptureCommand"/>,那條路存完會
+/// 跳「已記下:標題」;開著設定卻什麼都沒有,同一個動作換個設定就少了結尾確認。
+/// 兩條路共用 <c>Resources.CaptureSaved</c>,文案因此不會漂移。見 <see cref="Capture"/>。
 /// </summary>
 internal sealed partial class CapturedNotePage : ContentPage
 {
@@ -131,6 +140,22 @@ internal sealed partial class CapturedNotePage : ContentPage
 
             _note = note;
             _copyBody.Text = note.Body;
+
+            // 「完成」帶著記下的確認一起收工 —— 跟關掉「記下後先看一眼」那條路
+            // (QuickCaptureCommand)講同一句話,用的也是同一個字串。
+            //
+            // 這是這一頁**唯一**可以發 toast 的時機:按下去的語意就是「收工」,面板本來
+            // 就要關,所以 toast 搶焦點造成的隱藏不是代價而是目的。停留期間為什麼一個都
+            // 不能發,見型別註解。
+            //
+            // ToastArgs.Result 是 CmdPal 顯示完提示之後要做的事,維持 Dismiss ——
+            // 不是 GoHome:記完這則想法就要回去做原本的事,留一個主搜尋框在畫面上
+            // 只是多一次 Esc(同一個取捨見 NoteCommands.Done)。
+            _done.Result = CommandResult.ShowToast(new ToastArgs
+            {
+                Message = Strings.Format(Resources.CaptureSaved, note.Title),
+                Result = CommandResult.Dismiss(),
+            });
 
             // 這裡才補齊命令列。CmdPal 讀 Commands 的時機比 GetContent 早
             // (ContentPageViewModel.InitializeProperties:先 BuildCommandViewModels,

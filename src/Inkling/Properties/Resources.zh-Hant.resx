@@ -133,6 +133,12 @@
   <data name="ScratchpadDiscard" xml:space="preserve">
     <value>捨棄變更</value>
   </data>
+  <data name="ScratchpadSaved" xml:space="preserve">
+    <value>已存到隨手草稿</value>
+  </data>
+  <data name="ScratchpadDiscarded" xml:space="preserve">
+    <value>已捨棄這次的變更</value>
+  </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
     <value>挑幾則刪掉,或整個清空</value>
   </data>
@@ -328,6 +334,12 @@
   </data>
   <data name="DeleteFailed" xml:space="preserve">
     <value>刪除失敗：{0} —— 請到設定檢查筆記資料夾</value>
+  </data>
+  <data name="OpenFileMissing" xml:space="preserve">
+    <value>找不到這個檔案 —— 可能在 Inkling 以外被改名或移走了</value>
+  </data>
+  <data name="OpenInEditorFailed" xml:space="preserve">
+    <value>沒有可以開啟 .md 的程式 —— 到 Windows 設定挑一個預設應用程式</value>
   </data>
   <data name="CopyNoBody" xml:space="preserve">
     <value>沒有內文</value>

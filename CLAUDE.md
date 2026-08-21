@@ -185,6 +185,13 @@ Version 的症狀)。
    成因是 toast,不是 `GoHome()`,後者的語意明明白白是「回主頁但保持開著」。
    **`ToastArgs.Result = KeepOpen` 救不回來**,搶焦點的是那個視窗本身,不是回傳值;
    toolkit 有幾個現成命令(例如 `CopyTextCommand`)預設就回 `ShowToast`,拿來用要記得改掉。
+   **反過來,收工那一下 toast 是免費的,而且該發。** 判準不是「這裡會不會關面板」,
+   而是**「使用者接下來還要不要看著這個面板」**:不要的話,toast 是唯一能在面板消失之後
+   還留在畫面上的通道(InfoBadge 畫在面板上,面板收了就跟著沒了)。記下並預覽頁的「完成」、
+   隨手草稿的存檔與「捨棄變更」都走這條 —— 記下並預覽頁那一顆跟關掉「記下後先看一眼」
+   那條路共用 `Resources.CaptureSaved`,少了它同一個動作換個設定就沒有結尾確認。
+   **唯一的例外是跳到外部程式那幾條**(第 11 條):那時焦點剛給了編輯器或檔案總管,
+   toast 比它晚出現會把它壓下去,所以成功路徑一個字都不說。
    **這一條專指 `CommandResult.ShowToast`。`ToastStatusMessage` 名字很像但不是同一件事** ——
    它呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 畫成底部命令列的 `InfoBadge`,
    不開視窗、不關面板,存檔提示用的就是它。見 [設計考證〈`ToastStatusMessage` 不是那個 toast〉](docs/design-notes.md#toast-status-message)。
@@ -217,6 +224,16 @@ Version 的症狀)。
     複製維持 `Ctrl+Shift+C`,因為 `Ctrl+C` 是搜尋框的,而那組鍵本來就是複製的慣例)。
     另外**同一個項目的選單裡撞鍵不會報錯** —— CmdPal 用 `TryAdd`,第二個被靜靜丟掉,
     只在它自己的 log 留一行 warning。
+11. **toolkit 的現成命令會吞掉失敗,而且預設 `Result` 彼此不一致 —— 拿來用就要顯式指定。**
+    `OpenUrlCommand` 預設 `KeepOpen`、`ShowFileInFolderCommand` 預設 `Dismiss`,
+    於是同一個 `Ctrl+K` 選單裡兩個「跳出去」的鍵行為相反,而那不是誰決定的。
+    失敗更麻煩:`OpenUrlCommand.Invoke` 把 `ShellHelpers.OpenInShell` 的 `bool` 丟掉,
+    `ShowFileInFolderCommand` 對不存在的路徑整段跳過,兩個都**靜靜地什麼都不做**。
+    現在各包一層(`OpenNoteFileCommand` / `ShowNoteInFolderCommand`)。
+    **預設值問不到就實際 `new` 一個出來讀** —— `tools/ApiDump` 只印簽章,印不出欄位初始值。
+    另外**這是少數「發提示看得見」的地方**:失敗的定義就是沒有外部視窗跳出來,面板還在
+    前景,所以 `ToastStatusMessage` 的 InfoBadge 讀得到(成功那條路相反,發什麼都是白費)。
+    考證見[設計考證〈跳出去之後回得到哪一頁〉](docs/design-notes.md#open-external-return)。
 
 ## 慣例
 

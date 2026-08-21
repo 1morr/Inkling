@@ -86,23 +86,10 @@ internal static class NoteCommands
     /// 就把外部的修改整個蓋掉。收起來之後下次打開會重新 <c>GetContent()</c> 讀檔,
     /// 看到的才是編輯器存下的那一版。
     ///
-    /// 筆記那三頁不傳(維持 <see cref="OpenUrlCommand"/> 的預設 <c>KeepOpen</c>):
-    /// 它們顯示的是唯讀的預覽,沒有這個問題,而且要改行為的話是另一件事。
+    /// 筆記那三頁不傳(維持 <c>KeepOpen</c>):它們顯示的是唯讀的預覽,沒有這個問題。
     /// </param>
     public static CommandContextItem OpenInEditor(string filePath, bool dismiss = false) =>
-        new(new OpenUrlCommand(filePath)
-        {
-            // Name 一定要自己換掉。底部工具列那兩顆按鈕顯示的是命令的 Name(不是這裡的
-            // Title),而 OpenUrlCommand 預設帶的是 toolkit 自己資源檔的 "Open" ——
-            // 跟著 CmdPal 的語言走,不見得跟我們一致。隨手草稿把這一項放在 Commands[1],
-            // 那正是工具列的位置,漏掉的話按鈕上就是一個英文的 Open(實機驗證時抓到的)。
-            // ShowFileInFolderCommand 早就為了同一件事這樣做,見 OpenFileLocation。
-            Name = Resources.CommandOpenInEditor,
-
-            // 顯式指定,不靠 toolkit 的預設 —— 那個預設(現在是 KeepOpen)是別人的實作細節,
-            // 而這裡選哪一個攸關會不會蓋掉使用者在外部編輯器寫的東西。
-            Result = dismiss ? CommandResult.Dismiss() : CommandResult.KeepOpen(),
-        })
+        new(new OpenNoteFileCommand(filePath, dismiss))
         {
             Title = Resources.CommandOpenInEditor,
             Icon = Icons.OpenExternal,
@@ -112,16 +99,12 @@ internal static class NoteCommands
     /// <summary>
     /// 在檔案總管裡開啟所在資料夾,並選中這個檔案。
     ///
-    /// 直接用 toolkit 現成的命令(它跑的是 <c>explorer.exe /select,"&lt;路徑&gt;"</c>),
-    /// 自己寫一個只會多一份 Process.Start 的錯誤處理。Name 要自己換掉:
-    /// toolkit 給的是它自己資源檔裡的字串,而它跟著 CmdPal 的語言走、不見得跟我們一致,
-    /// 而這一項有機會出現在底部工具列上。
+    /// 底下還是 toolkit 的命令,但包了一層 —— 它對不存在的路徑是靜默的,而且預設的
+    /// <c>Result</c> 跟隔壁的 <c>Ctrl+O</c> 相反。兩件事都在
+    /// <see cref="ShowNoteInFolderCommand"/> 上說明。
     /// </summary>
     public static CommandContextItem OpenFileLocation(Note note) =>
-        new(new ShowFileInFolderCommand(note.FilePath)
-        {
-            Name = Resources.CommandOpenFileLocation,
-        })
+        new(new ShowNoteInFolderCommand(note.FilePath))
         {
             Title = Resources.CommandOpenFileLocation,
             Subtitle = Resources.CommandOpenFileLocationSubtitle,

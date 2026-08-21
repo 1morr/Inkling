@@ -227,7 +227,9 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
       項目快取的鍵有帶這個設定值,少了它會看到「設定改了、Enter 行為沒變」
 - [ ] 🤖 存檔之後**停在一頁 Markdown 上**,看得到剛記下的標題與內文,
       **沒有** toast,Command Palette **沒有消失**
-- [ ] 🤖 在那一頁按 Enter → 整個 Command Palette 收起來(不是回到主搜尋框)
+- [ ] 🤖 在那一頁按 Enter → **跳出「已記下：…」的 toast**,然後整個 Command Palette 收起來
+      (不是回到主搜尋框)。那句話要跟**設定關閉**時存檔跳的那一句**一模一樣** ——
+      兩條路共用同一個資源字串,不一樣就是有人另外寫了一份
 - [ ] 🤖 預覽頁上 `Ctrl+E` 進編輯表單,改完存檔回到預覽頁,**內容跟著更新**
       (CmdPal 不會因為導覽回來就重新取內容,靠的是表單回呼)
 - [ ] 🤖 預覽頁的選單裡「在預設編輯器開啟」與「複製內文」都在,而且指的是剛記下的那則
@@ -356,7 +358,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
 
 ## 4b. 複製內文與開啟檔案位置
 
-本節 🤖 14 項 / 👀 0 項。
+本節 🤖 18 項 / 👀 1 項。
 
 在清單頁選中一則**有內文**的筆記:
 
@@ -376,6 +378,25 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
 - [ ] 🤖 按 `Ctrl+L` → **檔案總管打開,而且那個 `.md` 是選中狀態**(不是只開資料夾;
       用 `orca computer` 讀 explorer 驗)
 - [ ] 🤖 對**放在子資料夾裡**的筆記按 `Ctrl+L` → 開的是那個子資料夾
+- [ ] 🤖 `Ctrl+O` / `Ctrl+L` 跳出去之後,**按熱鍵把面板叫回來 → 還停在原本那一頁**
+      (不是回到主頁、搜尋框也沒被清空)。`Ctrl+L` 曾經吃 toolkit 預設的 `Dismiss`,
+      那會回主頁 —— 見[設計考證〈跳出去之後回得到哪一頁〉](design-notes.md#open-external-return)
+
+失敗路徑(toolkit 那兩個命令都會吞掉失敗,所以這幾條是回歸測試):
+
+- [ ] 🤖 **先進到某則筆記的預覽頁**,再把那個 `.md` 在 Inkling 以外改名,然後按 `Ctrl+O`
+      → 底部展開一條 InfoBar「找不到這個檔案 —— 可能在 Inkling 以外被改名或移走了」,
+      左下角一個 InfoBadge,**面板留在預覽頁**。
+      ⚠ 一定要用**預覽頁**:清單頁會跟著 `repository.Changed` 刷新到新路徑,那一列指向的
+      檔案是存在的,測不出這條;預覽頁持有的是進入當下那個路徑,不會更新
+- [ ] 🤖 同一個狀態按 `Ctrl+L` → 同樣的訊息 + 留在原地(改之前是「面板關掉、檔案總管沒開」,
+      因為它吃的是 toolkit 預設的 `Dismiss`)
+- [ ] 🤖 那則訊息是 **InfoBadge,不是 toast**:`tools\cmdpal-ui.ps1 -Steps "…|toast"` 要回
+      `可見=False`,而且主視窗還在
+- [ ] 👀 `.md` **真的沒有任何程式能開**時按 `Ctrl+O` → InfoBadge 講的是「沒有可以開啟 .md
+      的程式」,跟「找不到檔案」是**兩句不同的話**。⚠ **別拿 `assoc .md` 判斷**:它只看
+      `HKCR\.md` 的預設值,`OpenWithProgids` 裡有候選程式時它照樣回 "not found" 但檔案
+      開得起來(實測踩過)。要看 `HKCR\.md\OpenWithProgids` 與 `UserChoice`
 
 進到預覽頁(在清單頁按 `Enter`)再驗一次 —— 同一則筆記在兩個畫面上要能用同一組手勢:
 
@@ -654,7 +675,7 @@ $dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
 
 ## 7e. 隨手草稿
 
-本節 🤖 17 項 / 👀 3 項。考證見
+本節 🤖 16 項 / 👀 4 項。考證見
 [設計考證〈隨手草稿為什麼沒有自動儲存〉](design-notes.md#scratchpad-no-autosave)。
 
 開起來的樣子:
@@ -671,9 +692,14 @@ $dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
 
 存檔:
 
-- [ ] 🤖 打幾行字 → `Tab` → `Enter` → **面板整個收起來**(存完就結束,兩鍵)
-- [ ] 🤖 存檔那一下**沒有跳任何 toast 視窗**(`toast` 步驟要顯示「toast 視窗 可見=False」)
-- [ ] 🤖 `Enter`(捨棄變更)按下去 → 面板收起,而且**檔案內容跟按之前一模一樣**
+- [ ] 🤖 打幾行字 → `Tab` → `Enter` → **跳出「已存到隨手草稿」的 toast**,面板整個收起來
+      (存完就結束,兩鍵)
+- [ ] 🤖 「捨棄變更」按下去 → **跳出「已捨棄這次的變更」的 toast**,面板收起,
+      而且**檔案內容跟按之前一模一樣**(「這次的」是刻意的:丟掉的是這一次的編輯,
+      不是檔案裡的草稿。toast 只有一行,更長的說明放不下)。
+      ⚠ **工具列雖然標著 `⏎`,但直接按 `Enter` 按不到它** —— 焦點在多行文字框裡,
+      `Enter` 是換行(這正是它難以誤按的原因,見 `ScratchpadPage.Discard` 的註解)。
+      腳本要驗就走 `key:Tab|key:Tab|key:Enter`(第一站是卡片裡的「儲存」)
 - [ ] 🤖 筆記資料夾根目錄出現 `scratchpad.md`,內容就是打的那幾行,
       **沒有 front matter**、**檔尾沒有多出空行**、資料夾裡**沒有 `.tmp` 殘留**
 - [ ] 🤖 **換行是 CRLF,沒有裸 CR**(Adaptive Cards 送回來的是裸 CR,不正規化的話
@@ -693,6 +719,10 @@ $dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
 - [ ] 🤖 `Ctrl+Enter` 跟 `Ctrl+O` 做同一件事
 - [ ] 🤖 在編輯器裡改內容存檔 → 重新打開隨手草稿 → 看到的是**編輯器那一版**
 - [ ] 🤖 一個字都還沒存過就按 `Ctrl+O` → **照樣打得開**(`EnsureFile` 會先建空檔)
+- [ ] 👀 `.md` **真的沒有任何程式能開**時按 `Ctrl+O`(怎麼判斷見 §4b 那條同類的,
+      **別用 `assoc`**)→ **面板不收起來**,底部出現「沒有可以開啟 .md 的程式」的 InfoBadge。
+      收起來的話那則訊息會跟著消失,使用者只會以為編輯器在背景開好了 ——
+      `dismissOnSuccess` **只管成功那條路**
 
 不會汙染筆記:
 

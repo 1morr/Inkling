@@ -138,6 +138,14 @@
     <value>Discard changes</value>
     <comment>草稿板底部工具列的第一顆(Enter)。刻意不叫 Done —— 這一頁存檔會自己關掉面板,所以按到這一顆的意思是「這次打的不存」。講「變更」而不是「草稿」:被丟掉的是這一次的編輯,不是已經存在檔案裡的草稿。</comment>
   </data>
+  <data name="ScratchpadSaved" xml:space="preserve">
+    <value>Saved to scratchpad</value>
+    <comment>存完就關面板,所以走的是會關面板的 toast(CommandResult.ShowToast),不是 InfoBadge —— 後者畫在面板上,面板收了就看不見。</comment>
+  </data>
+  <data name="ScratchpadDiscarded" xml:space="preserve">
+    <value>Changes discarded</value>
+    <comment>toast 是一瞥的東西,一行就要讀完 —— 曾經在後面接「存著的草稿沒有動」,實機看過就知道太長。要保住的區分(丟掉的是這一次的編輯,不是檔案裡的草稿)由中文的「這次的」帶,英文 discarded 的受詞是 changes 已經隱含。同一個區別見 ScratchpadDiscard。</comment>
+  </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
     <value>Delete a few, or clear them all</value>
   </data>
@@ -367,6 +375,14 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="DeleteFailed" xml:space="preserve">
     <value>Delete failed: {0} — check the notes folder in Settings</value>
     <comment>{0} 是例外訊息,由 .NET 提供,不會翻譯。後半句給下一步:常見原因(資料夾被移走、沒權限、OneDrive 鎖檔)全都指向設定裡的資料夾路徑。</comment>
+  </data>
+  <data name="OpenFileMissing" xml:space="preserve">
+    <value>File not found — it may have been renamed or moved outside Inkling</value>
+    <comment>Ctrl+O 與 Ctrl+L 共用。走的是 ToastStatusMessage(底部 InfoBadge),不是會關掉面板的那種 toast。</comment>
+  </data>
+  <data name="OpenInEditorFailed" xml:space="preserve">
+    <value>Nothing is set to open .md files — pick a default app in Windows Settings</value>
+    <comment>後半句給下一步:這條路最常見的成因就是 .md 根本沒有檔案關聯。</comment>
   </data>
   <data name="CopyNoBody" xml:space="preserve">
     <value>No body</value>

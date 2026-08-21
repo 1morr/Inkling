@@ -75,10 +75,18 @@ internal sealed partial class ScratchpadFormContent : FormContent
             // **存完就把面板收掉。** 寫下來的東西通常就是那一趟的全部目的,
             // 留一個面板在畫面上只是多一次 Esc。`Tab` → `Enter` 兩鍵結束。
             //
-            // 因此這裡**不發** ToastStatusMessage:那東西畫成底部命令列的 InfoBadge,
-            // 面板都收了就看不見,發了只是白費。回饋是「面板消失」本身。
-            // 存檔失敗才需要說話 —— 見下面那個 catch,那條路刻意留在原地。
-            return CommandResult.Dismiss();
+            // 回饋走的是**會關面板的那種 toast**,不是 ToastStatusMessage ——
+            // 兩者名字很像但畫在完全不同的地方:InfoBadge 畫在面板的底部命令列上,
+            // 面板都收了就看不見,發了只是白費(這裡曾經因為這個理由什麼都不發,
+            // 而「面板消失」單獨拿來當回饋,說不出存進去的是什麼)。
+            // toast 是獨立視窗,它搶焦點造成的隱藏在這條路上剛好就是我們要的結果。
+            //
+            // 存檔失敗相反,見下面那個 catch:那條路刻意留在原地,所以只能用 InfoBadge。
+            return CommandResult.ShowToast(new ToastArgs
+            {
+                Message = Resources.ScratchpadSaved,
+                Result = CommandResult.Dismiss(),
+            });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

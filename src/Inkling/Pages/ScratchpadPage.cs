@@ -64,7 +64,21 @@ internal sealed partial class ScratchpadPage : ContentPage
     {
         Name = Resources.ScratchpadDiscard,
         Icon = Icons.Discard,
-        Result = CommandResult.Dismiss(),
+
+        // 帶一句話再收工。這一顆最容易被誤讀成「存檔並結束」,而它一個字都不會存 ——
+        // 名字只在按下去**之前**看得到,真正需要確認的是按下去**之後**「剛才那些字沒進檔案」。
+        //
+        // 訊息刻意只有一行:曾經在後面接「—— 存著的草稿沒有動」,實機看過就知道太長,
+        // toast 是一瞥的東西。要保住的區分由「這次的」帶(丟掉的是這一次的編輯,
+        // 不是檔案裡的草稿)。
+        //
+        // 面板本來就要關,所以 toast 搶焦點不是代價(同一個判斷見 ScratchpadFormContent
+        // 的存檔路徑與 CapturedNotePage 的「完成」)。
+        Result = CommandResult.ShowToast(new ToastArgs
+        {
+            Message = Resources.ScratchpadDiscarded,
+            Result = CommandResult.Dismiss(),
+        }),
     };
 
     public override IContent[] GetContent()

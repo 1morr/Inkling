@@ -30,7 +30,7 @@
       tree[:<深度>]   dump UI Automation 樹(預設深度 14)
       shot:<路徑>     截圖(PrintWindow,不受遮擋影響;**拍不到 Ctrl+K 的選單 popup**
                       —— 那是獨立的頂層視窗,不在主視窗的內容裡,平台限制無解)
-      toast           列出 CmdPal 的 toast 視窗狀態 —— 驗證「一個 toast 都不發」
+      toast           toast 視窗的狀態,可見的話連內容一起讀出來(兩種預期都有,見函式說明)
       notes           列出目前設定的筆記資料夾內容
       log[:<行數>]    diagnostic.log 的尾巴(預設 20 行)
       state           兩份 settings.json 的摘要(Inkling 自己的 + CmdPal 那邊的)
@@ -623,12 +623,21 @@ function Save-CmdPalScreenshot {
 }
 
 <#
-    看 toast 視窗在不在。
+    看 toast 視窗在不在,可見的話順便把裡面的字讀出來。
 
-    docs/design-notes.md〈刪除成功時一個 toast 都不發〉那條規矩就是靠這個驗的:CmdPal 的 toast 是
-    **另一個頂層視窗**,它一出現就搶焦點,而主視窗一失焦就自我隱藏 —— 也就是
-    「做完之後整個面板消失」的成因。要驗證某條路徑沒有發 toast,就在那個動作之後
-    立刻跑這個。
+    CmdPal 的 toast 是**另一個頂層視窗**,它一出現就搶焦點,而主視窗一失焦就自我隱藏 ——
+    也就是「做完之後整個面板消失」的成因。
+
+    **「有 toast」本身不是對或錯,要看那條路徑的預期是什麼**,兩種都有:
+
+      預期沒有 —— 使用者接下來還要看著面板(複製內文、刪除成功、記下並預覽頁停留期間)。
+                  跳了就是 bug,見 docs/design-notes.md〈刪除成功時一個 toast 都不發〉。
+      預期有   —— 收工那一下,面板本來就要關(記下並預覽頁的「完成」、隨手草稿的存檔與
+                  「捨棄變更」)。這幾條**沒跳才是 bug**:面板消失分不出「存好了」跟「沒存」。
+
+    所以可見時會把內容一起印出來 —— 「有沒有跳」跟「跳的是哪一句」是兩件事,
+    預期會跳的路徑要對的正是後者(例如記下那句要跟關掉「記下後先看一眼」時一模一樣)。
+    toast 只活約 2.5 秒,所以這一步要緊接在動作之後,中間的 wait 不要超過 1 秒。
 #>
 function Write-ToastState {
     $targetPid = Get-CmdPalPid
@@ -642,9 +651,31 @@ function Write-ToastState {
     $visible = [CmdPalNative]::IsWindowVisible($toast)
     $mainVisible = (Find-CmdPalWindow -VisibleOnly) -ne [IntPtr]::Zero
     Write-Output "  toast 視窗:HWND=$toast 可見=$visible / 主視窗還在=$mainVisible"
-    if ($visible) {
-        Write-Output '  !! 有 toast 跳出來 —— 主面板會跟著消失,見 docs/design-notes.md〈刪除成功時一個 toast 都不發〉'
+    if (-not $visible) { return }
+
+    # 這個視窗跟主面板是分開的,所以讀它不受「主面板不在前景」那道守門影響。
+    $text = ''
+    try {
+        $el = [System.Windows.Automation.AutomationElement]::FromHandle($toast)
+        if ($el) {
+            $found = $el.FindAll(
+                [System.Windows.Automation.TreeScope]::Descendants,
+                [System.Windows.Automation.Condition]::TrueCondition)
+            $parts = @()
+            foreach ($node in $found) {
+                $name = $node.Current.Name
+                if ($name -and $parts -notcontains $name) { $parts += $name }
+            }
+            $text = $parts -join ' / '
+        }
+    } catch { }
+
+    if ($text) {
+        Write-Output "     內容:$text"
+    } else {
+        Write-Output '     內容:讀不到(轉場中的話把前面的 wait 拉長一點再試)'
     }
+    Write-Output '     ※ 主面板會跟著隱藏。這一條是對是錯要看那條路徑的預期,見函式上方說明。'
 }
 
 function Get-NotesDirectory {

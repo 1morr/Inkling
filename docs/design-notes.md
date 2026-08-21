@@ -106,6 +106,12 @@ CmdPal 手上握著的是使用者當下開著的那個頁面實例,新建的頁
 再按一次 Enter 才收起 Command Palette。關掉之後改成記完就收:存檔 →
 toast「已記下：標題」→ Command Palette 消失。
 
+**兩條路的結尾都會跳那個 toast,而且是同一句話。** 開著設定時它跳在「完成」那一下,
+關掉時跳在存檔那一下 —— 時機不同是因為兩條路的「這件事做完了」發生在不同時刻,
+但使用者拿到的確認一樣。曾經只有關掉設定那條路有:開著設定按完 Enter 什麼都沒有,
+同一個記下動作換個設定就少了結尾確認,那是不一致,不是設計。
+兩邊共用 `Resources.CaptureSaved`,文案不會漂移。
+
 **同一時間只有一條路在。** 做過「兩條都掛著,設定只決定哪一條在 Enter 上,另一條落到
 `Ctrl+Enter`」,拿掉了 —— 沒有人會為了看一眼特地去按 `Ctrl+Enter`,那一列留著只是讓
 選單多一項要讀的東西。設定就是設定。
@@ -119,12 +125,25 @@ toast「已記下：標題」→ Command Palette 消失。
 
 實作上有三件事是被 CmdPal 逼出來的:
 
-**1. 停留就不能發 toast。** toast 是另一個會搶焦點的視窗,而 CmdPal 主視窗一失焦就把自己
-藏起來(`MainWindow_Activated` → `EndSession("LostFocus")`,沒有開關)。「記下之後
-Command Palette 整個消失」其實是 toast 造成的,不是 `GoHome()` —— 後者的語意明明白白是
-「回主頁但**保持開著**」。所以預覽這條路一個 toast 都不發,存檔失敗的訊息直接畫在頁面上;
-記完就收那條路的存檔失敗走 `ToastStatusMessage`(底部 InfoBadge,不開視窗)+ `KeepOpen`,
-搜尋框裡那句話留著,修好問題之後再按一次 Enter 就是重試。
+**1. 停留期間不能發 toast,離開那一下可以 —— 分清楚這兩段。** toast 是另一個會搶焦點的
+視窗,而 CmdPal 主視窗一失焦就把自己藏起來(`MainWindow_Activated` →
+`EndSession("LostFocus")`,沒有開關)。「記下之後 Command Palette 整個消失」其實是 toast
+造成的,不是 `GoHome()` —— 後者的語意明明白白是「回主頁但**保持開著**」。
+
+所以**停留期間一個都不能發**:進頁、存檔那一刻、複製內文、存檔失敗,全部走別的路
+(存檔失敗的訊息直接畫在頁面上;記完就收那條路的存檔失敗走 `ToastStatusMessage`
+= 底部 InfoBadge,不開視窗,配 `KeepOpen`,搜尋框裡那句話留著,修好問題再按一次 Enter
+就是重試)。
+
+**「完成」那一下剛好相反,而且 toast 在那裡是免費的**:按下去的語意就是收工,面板本來
+就要關,搶焦點造成的隱藏不是代價而是目的。判斷一條路能不能發 toast,問的不是
+「這裡會不會關面板」,而是**「使用者接下來還要不要看著這個面板」** —— 要,就一個都不能發;
+不要,那 toast 反而是唯一能在面板消失之後還留在畫面上的通道(InfoBadge 畫在面板上,
+面板收了就跟著沒了)。同一個判斷套在隨手草稿的存檔與「捨棄變更」上,結論一樣。
+
+**但「本來就要關」不等於「可以發」還有一個例外:跳到外部程式的那幾條路。**
+那時剛拿到焦點的是使用者要用的編輯器或檔案總管,toast 比它晚出現,會把它壓下去 ——
+見〈跳出去之後回得到哪一頁〉。
 
 **2. `CommandResult.GoToPage` 是空殼。** SDK 有那個型別,但 CmdPal 的
 `ShellViewModel.UnsafeHandleCommandResult` 那個 switch 裡根本沒有 `GoToPage` 這個
@@ -984,6 +1003,94 @@ $d = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8w
 | 底部工具列的按鈕(`Enter` / `Ctrl+Enter` 那兩顆) | `CommandBar.xaml` 裡兩顆都寫死 `SubtleButtonStyle`,沒有 critical 變體。所以刪除頁上那一列的「刪除 ⏎」是白的,同一個命令在 `Ctrl+K` 選單裡卻是紅的 |
 | 確認框的兩顆按鈕 | `ConfirmationArgs` 只有四個屬性,紅色在上游是註解掉的 TODO(見上一節) |
 | 清單列本身(「刪除全部 N 則」那兩列的圖示) | `ListItem` 沒有 `IsCritical`,glyph 圖示跟著主題前景色走。真要紅只能改成自備的圖檔(`IconHelpers.FromRelativePath` 吃 `.svg` / `.png`,CmdPal 自己就這樣用),為了兩列多帶一份資產與淺色/深色兩張圖,現在不做 |
+
+## 跳出面板
+
+<a id="open-external-return"></a>
+
+### 跳出去之後回得到哪一頁
+
+`Ctrl+O`(在預設編輯器開啟)與 `Ctrl+L`(開啟檔案位置)都會讓面板從畫面上消失,
+但**成因是兩件不同的事**,而它們的後果不一樣:
+
+| | 怎麼消失的 | 面板叫回來之後 |
+|---|---|---|
+| `KeepOpen` + 外部視窗搶焦點 | 主視窗自我隱藏(`HideWindow`) | **還停在原本那一頁** |
+| `Dismiss` | CmdPal 主動收尾 | **回到主頁,搜尋框清空** |
+
+上游 `main` 的 `ShellViewModel.UnsafeHandleCommandResult` 裡,`Dismiss` 那個 case 做的是
+`GoHome(withAnimation: false, focusSearch: false)` 再送 `DismissMessage`,而失焦那條路
+(`MainWindow_Activated` → `HideWindow`)只隱藏、不 `GoHome`。
+
+**但這件事不能照 `main` 寫。** byte-scan 安裝版 0.11.11762.0:`EndSession` 掃得到,
+同一個方法在 `main` 裡呼叫的 `LogSessionDuration` 與同一段的 `preventHideWhenDeactivated`
+**兩種編碼都掃不到** —— 也就是說安裝版的 `EndSession` 根本不是 `main` 那個 telemetry-only
+的版本,拿 `main` 的控制流去推論會落空。所以結論是**實機量出來的**:
+
+1. 讓面板停在某個子頁(隨便哪個都行),把焦點交給別的視窗讓它自我隱藏,再按熱鍵叫回來
+   → UIA 樹裡 `Button: 'Back'` 還在、placeholder 還是子頁那一句。**導覽堆疊完整保留。**
+2. 在筆記預覽頁按 `Ctrl+L`(當時走的是 toolkit 預設的 `Dismiss`),檔案總管開起來之後
+   再叫回面板 → placeholder 變回「搜尋應用程式、檔案和命令...」、`value` 是空的。
+   **回到主頁,而且字沒了。**
+
+所以 `Ctrl+O` 與 `Ctrl+L` 現在都是 `KeepOpen`:按這兩個鍵的人是去外面做事,回來多半
+還想著同一則筆記,留著那一頁就省掉重新搜尋一次。
+
+⚠ **那個保留有時限。** 同一次驗證裡還撞到另一件事:面板隱藏著擱了幾分鐘再叫回來,
+它自己回到了主頁 —— 沒有精確量過門檻,也沒查是哪一段程式碼做的,但足以說明
+上面那張表講的是**馬上回來**的情形。這不影響結論(跳出去做事再回來本來就是幾秒到幾十秒
+的節奏),但驗證時中間別插一堆別的操作,不然會看到「`KeepOpen` 也回主頁」而以為改壞了。
+
+這件事以前是**沒人決定過的** —— `OpenUrlCommand` 的預設是 `KeepOpen`,
+`ShowFileInFolderCommand` 的預設是 `Dismiss`(`tools/ApiDump` 那條路問不出預設值,是拿
+0.11.260520004 的 toolkit 實際 `new` 一個出來讀 `Result.Kind` 讀到的),於是同一個
+`Ctrl+K` 選單裡兩個「跳出去」的鍵行為相反。現在兩邊都顯式指定,見
+`OpenNoteFileCommand` 與 `ShowNoteInFolderCommand`。
+
+**隨手草稿是唯一的例外,它照樣 `Dismiss`。** 那一頁畫面上有一份使用者還能按儲存的副本:
+面板留著的話,從外部編輯器改完回來再按一次儲存,就把外部的修改整個蓋掉。收起來之後
+下次打開會重新 `GetContent()` 讀檔,看到的才是編輯器存下的那一版。
+
+<a id="open-external-silent"></a>
+
+### 開不起來的時候,以前是完全靜默的
+
+toolkit 那兩個命令**都會吞掉失敗**:
+
+- `OpenUrlCommand.Invoke()` 呼叫 `ShellHelpers.OpenInShell`,那個函式裡有
+  `catch (Win32Exception) { return false; }` —— 但 `Invoke` **把回傳值丟掉**,
+  無論成敗都回傳自己的 `Result`。
+- `ShowFileInFolderCommand.Invoke()` 是 `if (Path.Exists(_path))`,不成立就整段跳過,
+  連 `explorer.exe` 都不會叫;裡面那個 `Process.Start` 另外還包著一個空的 `catch`。
+
+實機重現過,製造方式是**把筆記檔在 Inkling 以外改名**(預覽頁持有進入當下那個路徑,
+不會跟著 `repository.Changed` 更新,所以那一頁的路徑就失效了)。改之前:按 `Ctrl+O`
+UIA 樹**原封不動停在預覽頁**,`toast 視窗:可見=False`,沒有任何程式起來,也沒有任何
+訊息 —— 使用者按下去,什麼都沒有發生。`Ctrl+L` 更糟一點:它當時還走 toolkit 預設的
+`Dismiss`,所以是「面板關掉了、檔案總管沒開」,看起來跟成功幾乎一樣。
+
+改之後同一個情境:面板留在預覽頁,底部展開一條 InfoBar 寫著「找不到這個檔案 ——
+可能在 Inkling 以外被改名或移走了」,左下角一個 InfoBadge,而 `toast` 步驟依然是
+`可見=False`(確認走的不是會關面板的那種)。`Ctrl+O` 與 `Ctrl+L` 兩條路都驗過。
+
+**「沒有可以開啟 `.md` 的程式」那條路沒有在真機上重現過**,只從原始碼確認。查證時踩過
+一個坑值得記下來:`assoc .md` 回 "File association not found" **不代表開不起來** ——
+那個舊命令只看 `HKCR\.md` 的預設值,而 `OpenWithProgids` 底下還有候選程式,
+`ShellExecute` 照樣開得起來。實測就是這樣:`assoc` 說沒有關聯,`Ctrl+O` 按下去
+VS Code 照開,`DiagnosticLog` 記的是「已交給 shell」。**用 `assoc` 判斷「這台機器沒有
+關聯」會得到假的結論**,要看的是 `HKCR\.md\OpenWithProgids` 與 `UserChoice`。
+
+**這條路是整個擴展裡少數「提示真的看得見」的地方**,原因剛好是失敗本身:
+沒有任何外部視窗跳出來,面板因此還在前景,`ToastStatusMessage`(底部命令列的
+`InfoBadge`)看得見也留得住。所以現在失敗會說話,而且分成兩句 ——「檔案不在了」
+跟「沒有程式能開 `.md`」的下一步完全不同。
+
+成功那條路相反,**一個字都不說**:編輯器或檔案總管一起來,面板就被蓋掉了,那時發什麼
+都是白費(同一個道理見〈隨手草稿存完就把面板收掉〉那段註解)。跳出來的那個視窗本身
+就是最好的回饋。
+
+失敗時一律 `KeepOpen`,連隨手草稿也不例外 —— 面板收掉的話,那則訊息連同
+「什麼都沒發生」會一起消失,使用者只會以為編輯器在背景開好了。
 
 ## 身分與介面
 
