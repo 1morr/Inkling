@@ -1,5 +1,6 @@
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Inkling.Commands;
 using Inkling.Core;
 using Inkling.Properties;
 
@@ -29,7 +30,20 @@ internal sealed partial class NoteEditPage : ContentPage
         Name = Resources.CommandEdit;
 
         Commands = [
-            new CommandContextItem(new OpenUrlCommand(note.FilePath))
+            // 走 OpenNoteFileCommand 而不是 toolkit 的 OpenUrlCommand,三件事:
+            //
+            // 1. **dismiss 是必要的,不是偏好。** 這一頁跟隨手草稿一樣,畫面上有一份
+            //    使用者還能按儲存的副本 —— 卡片的值是 GetContent() 當下烤進 DataJson 的。
+            //    面板留著的話,從外部編輯器改完回到 CmdPal 再按一次儲存,就把外部的修改
+            //    整個蓋掉(CmdPal 不會因為視窗重新出現就重新 GetContent)。收起來之後
+            //    下次進來才會重讀檔案。理由與形狀見 NoteCommands.OpenInEditor。
+            // 2. 開不起來時會說話,而且**失敗時不收面板** —— 收掉的話那則訊息會跟著消失。
+            // 3. Name 要自己給:底部工具列顯示的是命令的 Name(不是這裡的 Title),
+            //    而 toolkit 的預設是它自己資源檔的 "Open" —— 實機截圖抓到過那顆英文按鈕。
+            new CommandContextItem(new OpenNoteFileCommand(note.FilePath, dismissOnSuccess: true)
+            {
+                Name = Resources.EditOpenExternalTitle,
+            })
             {
                 Title = Resources.EditOpenExternalTitle,
                 Subtitle = Resources.EditOpenExternalSubtitle,
