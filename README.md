@@ -84,7 +84,9 @@ the main search box: CmdPal Settings → Extensions → Inkling → `Inkling: Qu
 > (the `#` and `@` on the right of the first screenshot).
 
 Then: summon Command Palette → type `!` and a space → the quick capture page opens →
-type `coffee machine idea` → Enter. Saved, hands never left the keyboard.
+type `coffee machine idea;;Look up pour-over vs. espresso first` → Enter. Everything before
+the separator is the title, everything after it is the body. Saved, hands never left the
+keyboard — and the separator is optional, a title on its own is a perfectly good note.
 
 ![Quick capture](docs/images/quick-capture.gif)
 

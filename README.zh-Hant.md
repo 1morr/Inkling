@@ -76,7 +76,9 @@ CmdPal 設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 
 > (最上面那張圖右側的 `#` 與 `@` 就是)。
 
 然後:叫出 Command Palette → 打 `!` 加一個空白 → 快速記下頁跳出來 →
-打 `買咖啡機的想法` → Enter。存檔完成,全程不離開鍵盤。
+打 `coffee machine idea;;Look up pour-over vs. espresso first` → Enter。
+分隔符前面是標題、後面是內文。存檔完成,全程不離開鍵盤 ——
+分隔符是選配的,只打一個標題也是一則完整的筆記。
 
 ![快速記下](docs/images/quick-capture.gif)
 

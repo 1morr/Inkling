@@ -141,8 +141,14 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
    清單頁;GIF 是快速記下那條路連拍(`$g` 是放格子的資料夾):
 
    ```powershell
-   pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|wait:900|type:! |wait:1500|shot:$g\f02.png|type:coffee |wait:450|shot:$g\f03.png|type:machine |wait:450|shot:$g\f04.png|type:idea|wait:1200|shot:$g\f05.png|key:Enter|wait:2000|shot:$g\f06.png|esc|wait:700|esc|wait:700|esc"
+   pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|wait:900|esc|wait:600|show|wait:900|type:! |wait:1500|shot:$g\f02.png|type:coffee machine idea|wait:1000|shot:$g\f03.png|type:;;|wait:900|shot:$g\f04.png|type:Look up pour-over vs. espresso first|wait:1300|shot:$g\f05.png|key:Enter|wait:2500|shot:$g\f06.png|esc|wait:700|esc|wait:700|esc"
    ```
+
+   **GIF 要把分隔符演出來。** 六格分別是:快速記下頁剛打開 → 打完標題 → 打上 `;;`
+   (那一列當場從「Save as a new note」變成「Body: ...」)→ 打完內文 → `Enter` →
+   停在「記下並預覽」頁,**標題與內文都在畫面上**。以前是一路打標題、最後一格只有標題,
+   看不出「內文怎麼進去的」,而那正是 README 那一段在講的事 ——
+   **改了這一串就要同步改兩份 README〈上手〉那一句**,文字與圖演的必須是同一件事。
 
    **每一串都要用 `show|wait|esc|wait|show` 開頭。** CmdPal 記得上一次停在哪一頁,
    直接 `show` 會回到那一頁,而不是主頁 —— 踩過:接著 `type:# ` 就把別名打進了
@@ -153,23 +159,24 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
    **剪貼簿的內容會進畫面。** 剪貼簿裡是多行文字時,快速記下頁會多一列
    「Body from the clipboard (N lines)」—— 那是真的功能,舊圖也有,但 `N` 會忠實反映
    你當下剪貼簿裡是什麼。要嘛先 `Set-Clipboard` 成一段刻意的內容,要嘛清空讓那一列消失。
+   目前的作法是:`quick-capture.png` **留著**那一列(設成兩行,它是真功能,gallery 那張要展示),
+   **GIF 清空**(那條路要演的是分隔符,多一列剪貼簿只會分散注意力)。
 
    **不要拿 `show` 之後那一張當第一格**:主頁會帶著上一次的查詢字與使用者自己的應用程式 /
-   最近項目,那是使用者的東西,從快速記下頁那一格開始。剪貼簿有多行文字時會多一列
-   「內文取自剪貼簿」,那是真的功能,留著沒關係。
+   最近項目,那是使用者的東西,從快速記下頁那一格開始。
 3. **合成**(ffmpeg,`winget install ffmpeg`)。concat demuxer 給每一格自己的停留秒數,
    palettegen / paletteuse 兩段式壓成 256 色,縮到 960 寬(GitHub 的 README 欄位本來就不到這個寬):
 
    ```text
    # list.txt —— 最後一格要再列一次,否則 concat 會吃掉它的 duration
    file 'f02.png'
-   duration 1.3
+   duration 1.2
    file 'f03.png'
-   duration 0.45
+   duration 1.0
    file 'f04.png'
-   duration 0.45
+   duration 0.9
    file 'f05.png'
-   duration 1.6
+   duration 1.8
    file 'f06.png'
    duration 3.0
    file 'f06.png'
@@ -179,7 +186,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
    ffmpeg -y -f concat -safe 0 -i list.txt -vf "fps=10,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" -loop 0 docs\images\quick-capture.gif
    ```
 
-   目前那張是 5 格、9.8 秒、960×576、約 130 KB。
+   目前那張是 6 格、10.9 秒、960×576、約 112 KB。
 4. **換回去**:把備份蓋回 `settings.json`,再 `Stop-Process -Name Inkling` + reload,
    `-Steps "notes"` 確認回到真的資料夾;demo 資料夾刪掉。
 
