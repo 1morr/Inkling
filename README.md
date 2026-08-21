@@ -40,7 +40,7 @@ come from whatever cloud drive and editor you already use; Inkling itself contai
      same script stitched with ffmpeg; the procedure is in docs/development.md. -->
 
 The UI follows your Windows display language (English, Traditional Chinese, Simplified Chinese);
-the screenshots here were taken on a Traditional Chinese system.
+the screenshots here were taken on an English system.
 
 ## Requirements
 

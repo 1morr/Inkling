@@ -225,6 +225,14 @@
   (照抄跑不起來);手動驗證清單〈換一種語言〉那兩條只列四個頂層命令,漏了隨手草稿;
   README 維護註解說三份對外文案「從英文 pitch 拿」,實際上是三個長度不同的欄位、
   三句不同的話 —— 改成講清楚什麼時候要三處一起動。
+- **三張截圖與 GIF 全部重拍,而且第一次是全英文的。** 上一組是在繁體中文系統上拍的,
+  而英文 README 是對外預設 —— 以前做不到:截圖裡有一半的字串(「Results」、底部那排
+  `Open` / `Pin to home` / `More`)是 CmdPal 自己的,跟著 Windows 顯示語言走,擴展碰不到。
+  順帶補掉真正的過期:上一次重拍之後有 19 個 UI 檔案動過,包含 `CommandIds.cs`、`Icons.cs`
+  與三份 `.resx` 全部(命令標題與所有介面字串),而 `top-level-commands.png` 更舊,
+  少了「隨手草稿」那一列。`docs/development.md`〈重拍截圖與 GIF〉補上兩個踩過的坑:
+  **顯示語言要先是英文**(換完要重新登入),以及**每一串都要 `show|esc|show` 開頭** ——
+  CmdPal 記得上一次停在哪一頁,直接 `show` 會把別名打進前一頁的搜尋框,而且不報錯。
 - `docs/design-notes.md` 多一節 [〈評估過但沒有做〉](docs/design-notes.md#deferred):
   **查過、量過,然後決定不做**的東西 —— 清單第一次開啟沒有載入指示(本機 SSD 3000 則
   冷掃 108–125 ms,但 OneDrive Files On-Demand 那條路從沒量過)、沒有實作 dock band、

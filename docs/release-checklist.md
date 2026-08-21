@@ -159,12 +159,15 @@ schema 一路在動(`.claude/skills/publish-extension` 底下那份參考也已�
 
 - [ ] LICENSE 已存在(MIT)—— 已完成。
 - [ ] `.gitignore` 擋住 `*.pfx` 等簽章產出物 —— 已完成。
-- [ ] git 歷史裡沒有任何憑證、私鑰或本機路徑敏感資訊(`git log -p | grep -i pfx` 之類掃一次)。
+- [x] git 歷史裡沒有任何憑證、私鑰或本機路徑敏感資訊(`git log -p | grep -i pfx` 之類掃一次)。
+      掃過一次:兩個命中都是誤報(文檔在講「不要提交 `.pfx`」、skill 範例卡片的 `"id": "ApiKey"`),
+      `C:\Users\<名字>` 這類本機路徑零命中。
+      **加了新 commit 就要重掃**,這條不是一勞永逸的。
 - [ ] 兩份 README(`README.md` 英文、`README.zh-Hant.md` 繁中)的〈安裝〉章節:目前是
       「還沒發佈」的佔位,第一個 release 出來就把對應那一條換成真的下載 / 安裝指令
       (Releases → WinGet → Store,開通一條補一條),而且兩份一起改。
       `docs/development.md` 的 clone URL 已經是真的。
-- [ ] 兩份 README 共用的截圖與 GIF(`docs/images/`)跟當前版本一致(命令標題、圖示、版面都會過期;
+- [x] 兩份 README 共用的截圖與 GIF(`docs/images/`)跟當前版本一致(命令標題、圖示、版面都會過期;
       重拍前先把筆記資料夾指到 demo 資料夾,別把真的筆記放進公開 repo;
       流程見 `docs/development.md`〈重拍截圖與 GIF〉)。
 - [ ] GitHub repo 的 description / topics 還對得上

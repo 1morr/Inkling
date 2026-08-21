@@ -124,6 +124,13 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
 兩份 README 共用 `docs/images/` 裡的 PNG 與 GIF,全部是真機上用 `cmdpal-ui.ps1` 的 `shot`
 動作拍的(`PrintWindow`,1200×720)。改了圖示、命令標題或版面就要重拍,兩份 README 一起換。
 
+**拍之前先確認 Windows 顯示語言是英文**(`Get-WinUILanguageOverride`)。截圖裡有一半的字串
+不是我們的 —— 「Results」、底部那排 `Open` / `Pin to home` / `More`、搜尋框的 placeholder
+全是 CmdPal 自己的,**跟著系統顯示語言走,擴展碰不到**(把附屬組件從佈署佈局裡拿掉只能讓
+*我們的*字串回退成英文,那半邊不會動)。而**兩份 README 共用同一組圖**,所以圖是英文的 ——
+對外預設是英文,見 [CLAUDE.md 〈文檔語言分層〉](../CLAUDE.md#docs-language)。
+換語言要重新登入才生效,不是改完就好。
+
 1. **先把筆記資料夾指到 demo 資料夾**,別把真的筆記放進公開 repo。備份
    `%LOCALAPPDATA%\Packages\<PFN>\LocalState\settings.json`(`<PFN>` 用
    `(Get-AppxPackage Inkling).PackageFamilyName` 查),把 `Inkling.NotesDirectory` 改成
@@ -136,6 +143,16 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
    ```powershell
    pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|wait:900|type:! |wait:1500|shot:$g\f02.png|type:coffee |wait:450|shot:$g\f03.png|type:machine |wait:450|shot:$g\f04.png|type:idea|wait:1200|shot:$g\f05.png|key:Enter|wait:2000|shot:$g\f06.png|esc|wait:700|esc|wait:700|esc"
    ```
+
+   **每一串都要用 `show|wait|esc|wait|show` 開頭。** CmdPal 記得上一次停在哪一頁,
+   直接 `show` 會回到那一頁,而不是主頁 —— 踩過:接著 `type:# ` 就把別名打進了
+   *前一頁的*搜尋框,拍出來的是快速記下頁而不是清單頁,而且過程沒有任何錯誤。
+   先 `show` 一次再 `esc` 才收得掉那一頁,第二次 `show` 才是乾淨的主頁。
+   拍之前用 `tree:4` 對一下搜尋框的 `value=''`。
+
+   **剪貼簿的內容會進畫面。** 剪貼簿裡是多行文字時,快速記下頁會多一列
+   「Body from the clipboard (N lines)」—— 那是真的功能,舊圖也有,但 `N` 會忠實反映
+   你當下剪貼簿裡是什麼。要嘛先 `Set-Clipboard` 成一段刻意的內容,要嘛清空讓那一列消失。
 
    **不要拿 `show` 之後那一張當第一格**:主頁會帶著上一次的查詢字與使用者自己的應用程式 /
    最近項目,那是使用者的東西,從快速記下頁那一格開始。剪貼簿有多行文字時會多一列
