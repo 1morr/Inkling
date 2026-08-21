@@ -137,4 +137,8 @@
 - [ ] GitHub repo 的 description / topics 還對得上
       (`gh repo view --json description,repositoryTopics`);social preview 是
       `assets/social-preview.png`,沒有 API,要手動到 Settings → General → Social preview 上傳。
-- [ ] SECURITY.md 的私密回報管道在 repo 公開後確認可用(Security tab → Advisories)。
+- [x] SECURITY.md 的私密回報管道已啟用並確認開著
+      (`gh api repos/<owner>/<repo>/private-vulnerability-reporting` → `{"enabled":true}`)。
+      **沒開的話那條路對外部回報者是死的** —— 只有有寫入權限的人打得開 advisories 的表單,
+      而 SECURITY.md 同時又叫人不要開公開 issue,等於兩條路都沒有。
+      要關是同一條路換 `-X DELETE`。
