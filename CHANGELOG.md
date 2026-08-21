@@ -89,7 +89,9 @@
 ### 新增(專案治理)
 
 - MIT 授權(LICENSE)、SECURITY.md、issue 範本、CI 與 release 工作流程。
-- README 拆成使用者文檔 + `docs/design-notes.md`(設計考證),並補上英文摘要與三張截圖。
+- 文檔拆成三份:`README.md`(使用者:怎麼用、有哪些鍵、筆記檔長什麼樣)、
+  `docs/development.md`(建置、部署、專案結構、排錯)、`docs/design-notes.md`(設計考證)。
+  README 另補上英文摘要與三張截圖。
 - `docs/release-checklist.md` 與 `docs/gallery/`(gallery 投稿草稿與 256×256 圖示)。
 
 ### 開發工具

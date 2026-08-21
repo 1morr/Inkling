@@ -13,7 +13,7 @@ description: >-
 >
 > 1. **改 `Identity` 的 `Name` 或 `Publisher` 會弄丟使用者的設定。** 套件家族名跟著變,
 >    等於換一個空的 `LocalState` —— 舊的 `settings.json` 還在磁碟上但再也沒人去讀。
->    上架換成 Partner Center 的身分就一定會發生這件事。README〈設定存在哪,更新擴展之後還在嗎〉。
+>    上架換成 Partner Center 的身分就一定會發生這件事。`docs/development.md`〈設定檔〉。
 > 2. **WinGet 那條路正文叫你切成 unpackaged EXE + Inno Setup —— 對本專案是錯的,別走。**
 >    實際在架的 CmdPal 擴展(`lin-ycv.EverythingCmdPal`、`8LWXpg.ProcessKillerforCommandPalette`)
 >    用的是 `InstallerType: msix`:x64/arm64 指向 GitHub Release 上同一個簽章過的

@@ -124,5 +124,7 @@
 - [ ] LICENSE 已存在(MIT)—— 已完成。
 - [ ] `.gitignore` 擋住 `*.pfx` 等簽章產出物 —— 已完成。
 - [ ] git 歷史裡沒有任何憑證、私鑰或本機路徑敏感資訊(`git log -p | grep -i pfx` 之類掃一次)。
-- [ ] README 的安裝說明與 clone URL 換成真的。
+- [ ] README 與 `docs/development.md` 的安裝說明與 clone URL 換成真的。
+- [ ] README 的三張截圖跟當前版本一致(命令標題、圖示、版面都會過期;
+      重拍前先把筆記資料夾指到 demo 資料夾,別把真的筆記放進公開 repo)。
 - [ ] SECURITY.md 的私密回報管道在 repo 公開後確認可用(Security tab → Advisories)。

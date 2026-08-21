@@ -32,7 +32,7 @@ namespace Inkling;
 /// |---|---|---|
 /// | 編輯 | <c>Ctrl+E</c> | E = Edit |
 /// | 新增筆記 | <c>Ctrl+N</c> | N = New,而且是各家編輯器共通的手勢 |
-/// | 原始文字 | <c>Ctrl+U</c> | 見 README〈原始文字模式〉 |
+/// | 原始文字 | <c>Ctrl+U</c> | 見 docs/design-notes.md〈原始文字模式〉 |
 /// | 在預設編輯器開啟 | <c>Ctrl+O</c> | O = Open,剪貼簿記錄擴展的 <c>KeyChords.OpenUrl</c> 也是它 |
 /// | 開啟檔案位置 | <c>Ctrl+L</c> | L = Location。CmdPal 的慣例是 <c>Ctrl+Shift+E</c>
 ///     (<c>WellKnownKeyChords.OpenFileLocation</c>),這裡刻意讓位給少一個鍵 |

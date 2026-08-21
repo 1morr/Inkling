@@ -720,7 +720,7 @@ $dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
       到底有沒有那道判斷,不要照 CmdPal `main` 的原始碼寫
 
 **全新安裝看到的預設值**(先把 `settings.json` 改名備份、Reload,驗完再改回來 ——
-路徑見 README〈設定存在哪,更新擴展之後還在嗎〉):
+路徑見 [development.md](development.md#settings-file)):
 
 - [ ] 🤖 「記下後先看一眼」一開就是**勾著的**
 - [ ] 🤖 筆記資料夾是 `%OneDrive%\Inkling`,分隔符是 `;;`
@@ -830,7 +830,7 @@ COM 層失敗才走得到,真機上沒有穩定的觸發方式 —— 靠程式�
 `.resx` 動過就要跑這一段 —— 少一條 key、佔位符對不上,單元測試擋得住;
 但「翻譯是對的、位置卻塞不下」只有眼睛看得出來。
 
-先確認擴展進程拿到的是哪一種語言(需要 `diagnostic.on`,見 README〈排錯:讓擴展自己說話(DiagnosticLog)〉):
+先確認擴展進程拿到的是哪一種語言(需要 `diagnostic.on`,見 [development.md](development.md#diagnostic-log)):
 
 ```powershell
 $ls = "$env:LOCALAPPDATA\Packages\$((Get-AppxPackage Inkling).PackageFamilyName)\LocalState"

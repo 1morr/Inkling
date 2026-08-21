@@ -235,7 +235,10 @@ Version 的症狀)。
 - 資料格式是承諾:`id` 才是身分(改標題不重新命名檔案)、不認得的 front matter 欄位
   原樣保留、沒有 front matter 的外來 `.md` 也要能列出來。
 - 改了指令、設定項、資料格式或對外行為,同一輪更新 `README.md` 與
-  `docs/manual-test-checklist.md`。
+  `docs/manual-test-checklist.md`。**文檔分三份,別放錯**:`README.md` 是使用者文檔
+  (怎麼用、有哪些鍵、筆記檔長什麼樣),`docs/development.md` 是建置/部署/專案結構/排錯,
+  `docs/design-notes.md` 是「為什麼是這樣」的考證 —— README 每一節只留結論加連結。
+  改了 build、部署腳本或圖示流程,更新的是 `docs/development.md`。
 
 - **圖示的原始檔是 `assets/icon/*.svg`**,`src/Inkling/Assets/*.png` 是
   `tools/render-icons.ps1` 產生的,不要手改 PNG。那些 PNG 必須帶

@@ -34,7 +34,7 @@ description: >-
 >    沒設的話 CmdPal 拿 `ProviderId + DisplayTitle + Title + Subtitle` 算雜湊當身分,
 >    標題改一個字,使用者的 alias / 快速鍵 / 釘選就全部對不上。
 > 4. **`Debug.Write()` 在這個專案沒用。** 它掛著 `[Conditional("DEBUG")]`,而日常安裝的是 Release。
->    用 `DiagnosticLog`,見 README〈排錯:讓擴展自己說話(DiagnosticLog)〉。
+>    用 `DiagnosticLog`,見 `docs/development.md`〈讓擴展自己說話(DiagnosticLog)〉。
 > 5. **〈Build & Debug〉那節是 Visual Studio 流程,這台機器沒有 VS。** 走 `tools\deploy.ps1`。
 > 6. **圖示碼位不要寫成 `\uXXXX`。** 本專案的 `Icons.cs` 用 `Glyph(0xE70B)` —— `\u` 逸出
 >    被文字處理工具碰到會**無聲地**變成一個私用區字元,檔案看起來還是好的,圖示卻全部消失。
