@@ -51,6 +51,21 @@ public sealed partial class InklingCommandsProvider : CommandProvider
         _settingsManager.Applied += OnSettingsApplied;
     }
 
+    /// <summary>
+    /// CmdPal 把它自己交給我們的地方。**這裡不接的話,<c>ToastStatusMessage</c> 整條路是死的。**
+    ///
+    /// toolkit 的 <c>ToastStatusMessage.Show()</c> 走的是靜態的
+    /// <c>ExtensionHost.ShowStatus</c>,而那個靜態類要先拿到 host 才有對象可呼叫 ——
+    /// 沒有的話它靜靜地什麼都不做,不丟例外也不留痕跡。也就是說失敗提示
+    /// (開不起來的檔案、複製不到內文)一句都沒有真的送到畫面上,而文檔一直把
+    /// 那條路寫成「少數提示看得見的地方」。
+    /// </summary>
+    public override void InitializeWithHost(IExtensionHost host)
+    {
+        base.InitializeWithHost(host);
+        ExtensionHost.Initialize(host);
+    }
+
     // CmdPal 一啟動就會呼叫這個方法,絕對不能碰磁碟 —— 只回傳事先建好的靜態命令項。
     // 真正的載入延後到使用者實際打開清單頁時。
     //

@@ -193,8 +193,12 @@ Version 的症狀)。
    **唯一的例外是跳到外部程式那幾條**(第 11 條):那時焦點剛給了編輯器或檔案總管,
    toast 比它晚出現會把它壓下去,所以成功路徑一個字都不說。
    **這一條專指 `CommandResult.ShowToast`。`ToastStatusMessage` 名字很像但不是同一件事** ——
-   它呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 畫成底部命令列的 `InfoBadge`,
-   不開視窗、不關面板,存檔提示用的就是它。見 [設計考證〈`ToastStatusMessage` 不是那個 toast〉](docs/design-notes.md#toast-status-message)。
+   它呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 畫成一條橫跨面板底部的 `InfoBar`
+   加一個計數 `InfoBadge`,不開視窗、不關面板,存檔提示用的就是它。
+   **前提是 `ExtensionHost` 接到了 host**:那是靜態的,沒有在
+   `CommandProvider.InitializeWithHost` 裡呼叫 `ExtensionHost.Initialize(host)` 的話,
+   `Show()` 靜靜地什麼都不做 —— 這條路曾經整個是死的,而文檔一直寫成通的。
+   見 [設計考證〈`ToastStatusMessage` 不是那個 toast〉](docs/design-notes.md#toast-status-message)。
    需要回饋又要留在原地時走 `ListItem.Tags`(見〈查證 CmdPal 的行為〉最後那段)。
    而**導頁也不能靠回傳值**:`CommandResult.GoToPage` 是空殼,SDK 有型別但
    `ShellViewModel.UnsafeHandleCommandResult` 的 switch 裡沒有那個 case(安裝版沒有,

@@ -432,8 +432,11 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="EditOpenExternalTitle" xml:space="preserve">
     <value>Open in default editor instead</value>
   </data>
+  <!-- 這一頁的 Enter 就坐在這個命令上(底部工具列的主命令只看順序),而卡片上
+       改到一半的內容不會跟著過去 —— 焦點在單行的標題欄時按 Enter 特別容易誤觸,
+       所以副標要把代價講出來。 -->
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
-    <value>Better than the form for long bodies</value>
+    <value>Better than the form for long bodies; unsaved edits here are dropped</value>
   </data>
   <data name="CapturePageTitle" xml:space="preserve">
     <value>Quick capture</value>

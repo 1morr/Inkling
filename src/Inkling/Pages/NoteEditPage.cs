@@ -48,6 +48,13 @@ internal sealed partial class NoteEditPage : ContentPage
                 Title = Resources.EditOpenExternalTitle,
                 Subtitle = Resources.EditOpenExternalSubtitle,
                 Icon = Icons.OpenExternal,
+
+                // 這一頁只有一個命令,所以它同時是底部工具列的主命令 —— **Enter 就是它**
+                // (那兩顆按鈕坐的是誰只看順序,見 NoteCommands)。焦點在單行的標題欄時
+                // 按 Enter 是很自然的「送出」手勢,結果卻是跳去外部編輯器並收掉面板,
+                // 卡片上未儲存的修改跟著消失(實機驗過)。Enter 本身收不回來,
+                // 至少把 Ctrl+O 補上:跨頁同一個鍵做同一件事,而且副標講明了代價。
+                RequestedShortcut = Shortcuts.OpenExternal,
             },
         ];
     }

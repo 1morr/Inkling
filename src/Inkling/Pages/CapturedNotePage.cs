@@ -120,10 +120,19 @@ internal sealed partial class CapturedNotePage : ContentPage
     }
 
     /// <summary>
-    /// 真正寫檔的地方,只跑一次。
+    /// 真正寫檔的地方,成功之後就不再跑。
     ///
     /// <see cref="GetContent"/> 不保證只被呼叫一次(編輯完回來、<c>RaiseItemsChanged</c>
     /// 都會再要一次內容),少了這道旗標,同一則想法會被存成好幾個檔案。
+    ///
+    /// <para><b>但失敗時旗標要放掉,否則「重試」是假的。</b></para>
+    ///
+    /// 失敗那條路把 Enter 改成「回上一步」,設計意圖是「剛打的那句話還在搜尋框裡,
+    /// 退回去就能再試一次」。可是退回去之後查詢字沒變、repository 的 Version 也沒變
+    /// (根本沒寫成功),快速記下頁的項目快取因此原封不動地回傳**同一個頁面實例** ——
+    /// 旗標還立著,再按一次 Enter 只是把同一則錯誤訊息再畫一遍,連寫檔都沒有嘗試。
+    /// 實機驗過:連按三次 Enter,診斷日誌裡只有一筆 Capture 失敗。
+    /// 失敗時放掉旗標之後,那條唯一的重試路徑才真的會重試。
     /// </summary>
     private void Capture()
     {
@@ -132,6 +141,9 @@ internal sealed partial class CapturedNotePage : ContentPage
             return;
         }
 
+        // 先立起來再寫。順序是刻意的:寫檔中途又被要一次內容時,寧可漏掉一次重試,
+        // 也不要把同一則想法存成兩個檔案 —— 漏掉的那次使用者再按一次就有,
+        // 多出來的那個檔案使用者得自己去刪。
         _captured = true;
 
         try
@@ -157,6 +169,11 @@ internal sealed partial class CapturedNotePage : ContentPage
                 Result = CommandResult.Dismiss(),
             });
 
+            // 前一次嘗試失敗過的話,這一顆的字還停在「回上一步」。改回來 ——
+            // 底部按鈕寫著「回上一步」卻收掉整個面板,比什麼都不寫更糟。
+            _done.Name = Resources.CommandDone;
+            _error = null;
+
             // 這裡才補齊命令列。CmdPal 讀 Commands 的時機比 GetContent 早
             // (ContentPageViewModel.InitializeProperties:先 BuildCommandViewModels,
             // 後 FetchContent),所以只能靠換掉整個陣列發出的 PropChanged 讓它重讀 ——
@@ -170,6 +187,9 @@ internal sealed partial class CapturedNotePage : ContentPage
             // 磁碟滿了、資料夾被移走、OneDrive 鎖住檔案。這一頁沒有 toast 可用,
             // 錯誤就直接畫在頁面上 —— 絕對不能讓使用者以為想法記下來了。
             _error = ex.Message;
+
+            // 放掉旗標,下一次進來才會真的再寫一次檔(理由見方法註解)。
+            _captured = false;
 
             // Enter 改成回快速記下頁:剛打的那句話還在搜尋框裡,可以直接重試。
             _done.Name = Resources.CommandGoBack;
@@ -194,6 +214,7 @@ internal sealed partial class CapturedNotePage : ContentPage
         _toggleSource.CreateItem(Resources.ToggleSourcePageSubtitle),
         NoteCommands.CopyBody(_copyBody),
         NoteCommands.OpenInEditor(note),
+        NoteCommands.OpenFileLocation(note),
     ];
 
     /// <summary>

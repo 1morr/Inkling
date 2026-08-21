@@ -835,9 +835,27 @@ toast 關掉,也比默默少刪好。
 | `new ToastStatusMessage(…).Show()` | 呼叫 `IExtensionHost.ShowStatus`,由 CmdPal 收進 `StatusMessages` | 不會 |
 
 `ToastStatusMessage.Show()` 在 toolkit 裡做的事只有一件:
-`ExtensionHost.ShowStatus(Message, StatusContext.Extension)`,然後隔 2500 ms 再 `HideStatus`。
+`ExtensionHost.ShowStatus(Message, StatusContext.Extension)`,然後隔 2500 ms 再 `HideStatus`
+(`Duration` 的預設值 2500 是 `new` 一個出來讀到的,ApiDump 只印得出簽章)。
 **擴展跑在自己的 COM 進程裡,本來就開不了 CmdPal 的視窗** —— 它能做的只有呼叫 host。
-CmdPal 那一頭把訊息畫成底部命令列左邊的一個 `InfoBadge`,點開是 flyout 裡的 `InfoBar`。
+
+**而那個 `ExtensionHost` 是靜態的,要先接到 host 才有對象可呼叫。** 這一條漏過:
+`CommandProvider.InitializeWithHost(IExtensionHost)` 是 CmdPal 把自己交過來的地方,
+我們沒有覆寫它,於是 `ExtensionHost.Host` 一直是 `null`,`ShowStatus` 靜靜地什麼都不做 ——
+不丟例外、不留痕跡。也就是說**這整條「看得見的失敗提示」曾經一句都沒有真的送到畫面上**,
+而文檔(包括這一節)一直把它寫成通的。現在 `InklingCommandsProvider.InitializeWithHost`
+會呼叫 `ExtensionHost.Initialize(host)`。
+
+畫出來的樣子也跟原本寫的不一樣。實機截圖(0.11.11762.0):訊息是**一條橫跨面板底部、
+壓在內容上方的 `InfoBar`**(左邊一個 ⓘ、右邊一個關閉的 ✕),外加底部命令列**左下角
+頁面標題旁邊的一個計數 `InfoBadge`**(顯示「1」)。不是「一個 InfoBadge,點開才是 InfoBar」。
+`ListPage` 與 `ContentPage` 兩種頁面都會出現(清單頁與預覽頁各驗過一次)。
+
+**剛 Reload 完的那幾秒不算數。** 實測那時 `InitializeWithHost` 會被呼叫四次
+(CmdPal 對套件安裝事件沒有去重,見〈重新註冊後有時會出現兩個 Inkling〉),
+靜態的 `ExtensionHost.Host` 指到最後接上的那一個,而畫面上開著的頁面可能屬於別的實例 ——
+訊息因此落在別人的 `StatusMessages` 上,畫面什麼都不會出現。查「提示沒出來」之前,
+先讓 CmdPal 靜置幾秒。
 
 安裝版 0.11.11762.0 對得上:`ProcessStatusMessage` 在 `Microsoft.CmdPal.UI.exe` 裡,
 `StatusMessagesButton` / `StatusMessagesFlyout` / `MessagesDropdown` 在 `resources.pri`(UTF-16)。

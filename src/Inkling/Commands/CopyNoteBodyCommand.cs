@@ -24,8 +24,17 @@ namespace Inkling.Commands;
 ///
 /// 所以回饋改由頁面自己給:<paramref name="report"/> 讓清單頁在那一列打一個標籤
 /// (<c>ListItem.Tags</c> 改了畫面會即時更新,那條路在安裝版上是通的)。
-/// 沒有傳 <c>report</c> 的呼叫端(預覽頁,它沒有清單列可以掛標籤)就是靜靜地複製 ——
-/// 那一頁本來就整頁顯示著剛複製的內容。
+/// 沒有傳 <c>report</c> 的呼叫端(預覽頁、記下並預覽頁,它們沒有清單列可以掛標籤)
+/// **成功時**就是靜靜地複製 —— 那兩頁本來就整頁顯示著剛複製的內容。
+///
+/// <para><b>但「內文是空的」那條路不能沿用那個理由。</b></para>
+///
+/// 空內文時什麼都沒被複製,「整頁顯示著剛複製的內容」不成立 —— 實機驗過:那兩頁按下去
+/// 畫面一點變化都沒有,跟快速鍵壞掉分不出來。所以那條路改走
+/// <see cref="ToastStatusMessage"/>:它不開視窗、不搶焦點、不收面板,而面板此時就在前景。
+/// (那個提示畫成一條橫跨底部的 InfoBar 加一個計數 InfoBadge,ListPage 與 ContentPage 都會出現 ——
+/// 前提是 <c>ExtensionHost</c> 拿得到 host,見 <see cref="InklingCommandsProvider.InitializeWithHost"/>。)
+/// 成功那條路維持靜默。
 /// </summary>
 internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
 {
@@ -49,7 +58,21 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
         {
             // 照實講。剪貼簿看不見,不講的話按下去就是完全沒有反應,
             // 使用者只會以為快速鍵壞了。
-            _report?.Invoke(Resources.CopyNoBody);
+            //
+            // **沒有傳 report 的呼叫端也要講。** 類別註解給那兩頁靜默的理由是
+            // 「那一頁本來就整頁顯示著剛複製的內容」—— 而空內文時什麼都沒被複製,
+            // 那個理由在這條路上不成立(實機驗過:預覽頁按下去 UIA 樹前後一字不差)。
+            // 走 ToastStatusMessage 的 InfoBadge 而不是 ShowToast:不開視窗、不搶焦點、
+            // 不收面板,而面板此時就在前景,所以讀得到。成功那條路維持靜默。
+            if (_report is null)
+            {
+                new ToastStatusMessage(Resources.CopyNoBody).Show();
+            }
+            else
+            {
+                _report(Resources.CopyNoBody);
+            }
+
             return CommandResult.KeepOpen();
         }
 

@@ -384,7 +384,7 @@
     <value>改用預設編輯器開啟</value>
   </data>
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
-    <value>內文很長時比表單好用</value>
+    <value>內文很長時比表單好用;這張卡片上未儲存的修改不會帶過去</value>
   </data>
   <data name="CapturePageTitle" xml:space="preserve">
     <value>快速記下</value>
