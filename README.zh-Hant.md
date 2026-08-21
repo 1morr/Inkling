@@ -207,9 +207,8 @@ Reload 或重新部署的話,按 Save 會靜靜地什麼都不做。
 
 ## 文檔
 
-<!-- README.md 在這裡多一句「The in-depth docs are written in Traditional Chinese.」,
-     這一份**刻意沒有對應** —— 對中文讀者那句是廢話。兩份 README 其他地方要對得上,
-     只有這一句是例外,不要「補齊」。語言分層規則見 CLAUDE.md〈文檔語言分層〉。 -->
+<!-- README.md 這一節多一句「The in-depth docs are written in Traditional Chinese.」,
+     對中文讀者是廢話,所以刻意不對應 —— 兩份 README 唯一容許不對齊的地方,別「補齊」。 -->
 
 | | |
 |---|---|
