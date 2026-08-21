@@ -64,6 +64,9 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   清單內容、快速鍵、placeholder、有沒有跳 toast 這些**可以**用
   `tools\cmdpal-ui.ps1` 驅動 Windows 的 UI Automation 驗掉(見
   `.claude/skills/verify-cmdpal-ui/`),但顏色、圖示長相、游標位置只能靠眼睛。
+  **命令跑出面板以外的視窗時(在編輯器開啟、檔案位置、「瀏覽…」對話框)那個腳本管不到,
+  改用 `orca computer`** —— 它讀不到 CmdPal 的面板,但檔案總管、編輯器、Win32 對話框
+  都讀得到也點得動,用法與踩過的坑同樣寫在那份 skill 裡。
 
 新增行為時先問:這段邏輯能不能放進 Core?能的話就放,並補測試。
 牽涉平台的部分(例如「刪除要送資源回收筒」需要 shell32)在 Core 留一個介面,

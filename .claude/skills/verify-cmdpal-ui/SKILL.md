@@ -4,9 +4,11 @@ description: >-
   在真機上驅動 Command Palette 的畫面驗證 Inkling:讀 UI Automation 樹、截圖、
   打字與按快速鍵,補上 docs/manual-test-checklist.md 裡那些「只能靠眼睛」的項目。
   改了 src/Inkling 底下的頁面、命令、快速鍵或 .resx 之後要驗證有沒有真的生效時看這份;
-  要確認 README 對 CmdPal 行為的某條斷言時也看這份。
+  要確認 README 對 CmdPal 行為的某條斷言時也看這份。跑出面板以外的視窗
+  (檔案總管、外部編輯器、資料夾對話框)怎麼驗也寫在這份裡 —— 那些用 orca computer。
   Use when verifying Command Palette UI behavior on a real machine, driving CmdPal,
-  computer use, UI automation, screenshots, or running the manual test checklist.
+  computer use, UI automation, screenshots, or running the manual test checklist,
+  or when a command leaves the palette and lands in Explorer, an external editor, or a dialog.
 ---
 
 # 在真機上驗證 Inkling 的畫面
@@ -16,7 +18,13 @@ description: >-
 
 工具是 `tools\cmdpal-ui.ps1`。
 
-## 先讀這一條:computer-use 對 CmdPal 走不通
+## 先讀這一條:面板用腳本,面板以外用 computer-use
+
+這份 skill 管的是 **CmdPal 的面板**,不是「只准用 `cmdpal-ui.ps1`」。Inkling 有好幾條路
+會跳出面板 —— 在編輯器開啟、開啟檔案位置、設定頁的「瀏覽…」對話框 —— 那些用
+`orca computer` 驗得到,**別因為這份 skill 沒寫就停在那裡說「驗不到」**。
+
+### CmdPal 的面板:`orca computer` 看不到
 
 **`orca computer` 那套指令看不到 Command Palette 的主面板。**(orca 是作者自己的
 桌面工具;沒有它的話略過這幾行即可 —— 核心驗證工具是 `tools\cmdpal-ui.ps1`,
@@ -41,15 +49,64 @@ orca 的 `list-apps` 也列得出 CmdPal、`list-windows` 回得到那個視窗�
 `tools\cmdpal-ui.ps1` 因此自己走 `EnumWindows` + 比對 pid 與視窗標題,再用 Windows 內建的
 UI Automation 讀畫面。**要驗 CmdPal 就用這個腳本,不要繞回 `orca computer`。**
 
-反過來,**computer-use 在「CmdPal 以外的視窗」上仍然是對的工具**,而 Inkling 有幾條路
-正好會跳出去:
+### 面板以外:`orca computer` 是對的工具
+
+`orca computer capabilities` 在這台機器上回報的能力(實測):
+
+```
+Observation: screenshot=true elementFrames=true annotatedScreenshot=false
+Actions: click, typeText, pressKey, hotkey, pasteText, scroll, drag, setValue, performAction
+```
 
 | 要驗什麼 | 用什麼 |
 |---|---|
-| `Ctrl+L` 有沒有在檔案總管裡**選取**那個 `.md` | `orca computer` 讀 explorer |
+| `Ctrl+L` 有沒有在檔案總管裡**選取**那個 `.md` | `orca computer` 讀 explorer(見下方三步) |
 | `Ctrl+O` 有沒有用預設程式開起來 | `orca computer list-apps` 看有沒有多一個視窗 |
+| 外部編輯器裡的內容對不對 | `orca computer get-app-state --app <編輯器>` |
 | 設定頁「瀏覽…」跳出來的資料夾對話框 | `orca computer`(它是一般的 Win32 對話框) |
 | CmdPal 面板本身的任何東西 | **`tools\cmdpal-ui.ps1`** |
+
+固定是三步:`list-windows` 拿 id → `get-app-state` 讀樹 → `click` / `type-text` 動它。
+
+```powershell
+orca computer list-windows --app explorer --json     # 拿 pid 與 window-id
+orca computer get-app-state --app pid:6580 --window-id 7343176 --json > state.json
+orca computer click --app pid:6580 --window-id 7343176 --element-index 36 --no-screenshot --json
+```
+
+踩過的坑,每一條都是實測:
+
+- **`--app explorer` 會挑到桌面殼。** 直接 `get-app-state --app explorer` 拿到的是一個
+  1×1、`elementCount` = 1 的 `Progman` 視窗,樹裡什麼都沒有 —— 成因跟 CmdPal 那條一樣。
+  **資料夾視窗是另一個 `explorer.exe` 進程**(實測桌面殼 pid 12352、資料夾視窗 pid 6580),
+  所以一定要先 `list-windows` 拿到 pid 與 window-id 再指名,不要只給 `--app`。
+  同理,`list-windows` 只回一個 1×1 視窗時,代表**那個資料夾視窗根本還沒開**,不是工具壞了。
+- **選取狀態不在清單項目上,在狀態列。** 清單項目那一行只有
+  `清單項目 design-notes.md, Secondary Actions: SetValue, Select`,選中與否看不出來;
+  真正的證據是狀態列那一行變成 `文字 已選取 1 個項目 82.1 KB`。驗 `Ctrl+L` 就抓這一行,
+  再拿 KB 數跟檔案大小對一下。
+- **`--element-index` 會在快照之間位移。** 選取一次之後狀態列多了一個群組,同一個
+  `design-notes.md` 就從 34 變成 36。**每動一次就重新 `get-app-state`**,不要沿用舊索引。
+- **`--json` 會把整棵樹印在 stdout,很長。** 導到檔案再挑,不要直接讓它進上下文。
+  檔案總管的**預覽窗格**尤其毒:它把整份 `.md` 的渲染結果塞成一個 base64 `data:` URI
+  當節點名字,一個節點就幾十 KB。
+- **`get-app-state` 預設會截圖**,路徑在回傳的 `result.screenshot.path`
+  (`%TEMP%\orca-computer-use\*.png`,有 `expiresAt`),那個檔案直接用 Read 打得開。
+  不需要圖就加 `--no-screenshot`,省一次寫檔。
+
+**全螢幕截圖 orca 沒有指令**(`get-app-state` 只截目標視窗)。要看整個桌面自己來:
+
+```powershell
+Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+$b = [System.Windows.Forms.SystemInformation]::VirtualScreen
+$bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+[System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+$bmp.Save("$env:TEMP\shot.png", [System.Drawing.Imaging.ImageFormat]::Png)
+```
+
+存出來的 PNG 用 Read 開得起來,**而且這條路看得到 CmdPal 的面板** —— 它是螢幕像素,
+不經過視窗列舉,上面那個「列舉不到主面板」的限制擋不到它。只是它給不了元素樹,
+判斷邏輯還是回 `cmdpal-ui.ps1`。
 
 ## 開始之前
 
