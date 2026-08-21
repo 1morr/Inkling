@@ -81,7 +81,19 @@ public class CmdPalNative {
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-    [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+
+    // GetWindowText / GetClassName 一定要指定 CharSet.Unicode。DllImport 的預設是
+    // CharSet.Ansi,會綁到 ...A 版本,標題裡只要有一個系統 ANSI 字碼頁沒有的字元就變成問號。
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+
+    // 視窗的樣式位元 —— 分辨主面板與 toast 靠它,見 Get-CmdPalUiWindows。
+    public const int GWL_STYLE = -16;
+    public const int GWL_EXSTYLE = -20;
+    public const int WS_DISABLED = 0x08000000;
+    public const int WS_EX_TOOLWINDOW = 0x00000080;
+
+    [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int index);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
@@ -164,10 +176,6 @@ if ($inklingPackage.Count -eq 1) {
     Write-Output '     notes / log / state 會讀不到東西。先跑 tools\deploy.ps1 註冊再來。'
 }
 
-# 視窗標題是寫死的英文,不跟著 Windows 顯示語言走(在 zh-TW 機器上實測仍是英文)。
-$MainWindowTitle = 'Command Palette'
-$ToastWindowTitle = 'Command Palette Toast'
-
 # ---------------------------------------------------------------- 視窗
 
 $script:CmdPalPid = $null
@@ -181,35 +189,111 @@ function Get-CmdPalPid {
 }
 
 <#
-    照標題找 CmdPal 的頂層視窗。
+    列出 CmdPal 自己畫的兩個頂層視窗(主面板與 toast)。
 
     不能用 (Get-Process ...).MainWindowHandle 找主面板 —— CmdPal 是 WinUI 3 應用,
     主面板不是它的「主視窗」,那個屬性平常是 0,連面板開著的時候也是。
     (唯一的例外:設定視窗開著時 MainWindowHandle 會指向設定視窗 —— 拿它當依據
     只會找到設定視窗,永遠找不到主面板。)同樣的原因,orca computer list-apps
     整個看不到 CmdPal,--app pid:<CmdPal> 會回 app_not_found。
+
+    **也不能照視窗標題找。** 這裡原本比對的是寫死的 'Command Palette' /
+    'Command Palette Toast',旁邊還註著「在 zh-TW 機器上實測仍是英文」——
+    那句話已經不成立了:同一台機器上 CmdPal 進程重啟之後,兩個視窗的標題變成
+    「命令選擇區」與「命令選擇區快顯通知」,整支腳本因此找不到面板、四輪重試全部失敗。
+    標題跟著顯示語言走,一支驗證工具不該在別的語言環境下就失明。
+
+    改用結構特徵。三條判準都是在這台機器上實地量出來的
+    (2026-08-21,CmdPal 0.11.11762.0):
+
+    | 視窗 | class | ex-style | style |
+    |---|---|---|---|
+    | 主面板「命令選擇區」 | WinUIDesktopWin32WindowClass | 0x188(**含 WS_EX_TOOLWINDOW**) | 0x14CF0000 |
+    | toast「命令選擇區快顯通知」 | 同上 | 0x188(**含 WS_EX_TOOLWINDOW**) | 0x0CC80000(**含 WS_DISABLED**) |
+    | 設定視窗「命令選擇區設定」 | 同上 | 0x100(沒有 TOOLWINDOW) | 0x14CF0000 |
+    | XAML 的隱形宿主 ×3 | 同上 | 0x100(沒有 TOOLWINDOW) | 0x04CF0000 |
+    | `Ctrl+K` 的選單「快顯主機」 | Microsoft.UI.Content.PopupWindowSiteBridge | — | — |
+    | 輸入法視窗 ×2 | MSCTFIME UI / IME | — | — |
+
+    所以:
+
+      候選 = class 相符 **而且** 帶 WS_EX_TOOLWINDOW
+             —— 面板與 toast 都不進工作列,設定視窗與隱形宿主都會被這一條濾掉。
+      主面板 = 候選裡**沒有** WS_DISABLED 的那一個(要打字,不可能 disabled)。
+      toast  = 候選裡**有** WS_DISABLED 的那一個(它不收輸入)。
+
+    哪天這三條不成立,Get-CmdPalWindowReport 會把當時看到的每一個視窗連同樣式印出來
+    —— 這種東西壞掉的時候一定要看得見,不然又是一次「靜靜地找不到」。
 #>
-function Find-CmdPalWindow {
-    param([string]$Title = $MainWindowTitle, [switch]$VisibleOnly)
-
+function Get-CmdPalUiWindows {
     $targetPid = Get-CmdPalPid
-    if (-not $targetPid) { return [IntPtr]::Zero }
+    if (-not $targetPid) { return @() }
 
-    $script:foundWindow = [IntPtr]::Zero
+    $script:uiWindows = New-Object System.Collections.Generic.List[object]
     $callback = [CmdPalNative+EnumProc] {
         param($hwnd, $lparam)
         $ownerPid = 0
         [CmdPalNative]::GetWindowThreadProcessId($hwnd, [ref]$ownerPid) | Out-Null
         if ($ownerPid -ne $targetPid) { return $true }
-        if ($VisibleOnly -and -not [CmdPalNative]::IsWindowVisible($hwnd)) { return $true }
 
-        $buf = New-Object System.Text.StringBuilder 256
-        [CmdPalNative]::GetWindowText($hwnd, $buf, 256) | Out-Null
-        if ($buf.ToString() -eq $Title) { $script:foundWindow = $hwnd; return $false }
+        $cls = New-Object System.Text.StringBuilder 256
+        [CmdPalNative]::GetClassName($hwnd, $cls, 256) | Out-Null
+        if ($cls.ToString() -ne 'WinUIDesktopWin32WindowClass') { return $true }
+
+        $exStyle = [CmdPalNative]::GetWindowLong($hwnd, [CmdPalNative]::GWL_EXSTYLE)
+        if (($exStyle -band [CmdPalNative]::WS_EX_TOOLWINDOW) -eq 0) { return $true }
+
+        $style = [CmdPalNative]::GetWindowLong($hwnd, [CmdPalNative]::GWL_STYLE)
+        $title = New-Object System.Text.StringBuilder 256
+        [CmdPalNative]::GetWindowText($hwnd, $title, 256) | Out-Null
+
+        $script:uiWindows.Add([pscustomobject]@{
+            Hwnd     = $hwnd
+            Title    = $title.ToString()
+            Visible  = [CmdPalNative]::IsWindowVisible($hwnd)
+            Disabled = (($style -band [CmdPalNative]::WS_DISABLED) -ne 0)
+            Style    = $style
+            ExStyle  = $exStyle
+        })
         return $true
     }
     [CmdPalNative]::EnumWindows($callback, [IntPtr]::Zero) | Out-Null
-    return $script:foundWindow
+    return $script:uiWindows.ToArray()
+}
+
+<#
+    主面板的 HWND,面板不可見時回 IntPtr::Zero。
+
+    「可見」只是最低門檻,不等於「面板開著」—— 收起來的那一小段時間裡它仍然
+    IsWindowVisible(設定視窗搶走焦點時也是)。真的判準是 UIA 讀不讀得到子節點,
+    那一層在 Test-CmdPalReady。
+#>
+function Find-CmdPalPanel {
+    $panel = @(Get-CmdPalUiWindows | Where-Object { $_.Visible -and -not $_.Disabled })
+    if ($panel.Count -eq 0) { return [IntPtr]::Zero }
+    return $panel[0].Hwnd
+}
+
+<#
+    toast 視窗的 HWND,**不看可不可見** —— 那個視窗 CmdPal 一啟動就建好了、一直都在,
+    「有沒有跳 toast」看的是它可不可見(見 Write-ToastState)。
+#>
+function Find-CmdPalToast {
+    $toast = @(Get-CmdPalUiWindows | Where-Object { $_.Disabled })
+    if ($toast.Count -eq 0) { return [IntPtr]::Zero }
+    return $toast[0].Hwnd
+}
+
+# 找不到面板時把實際看到的東西印出來。上面那三條判準哪天不成立,差別就在這裡 ——
+# 沒有這幾行的話症狀只是「面板沒開」,跟 CmdPal 真的沒開一模一樣。
+function Get-CmdPalWindowReport {
+    $all = @(Get-CmdPalUiWindows)
+    if ($all.Count -eq 0) {
+        return "     CmdPal 進程底下找不到任何帶 WS_EX_TOOLWINDOW 的 WinUIDesktopWin32WindowClass 視窗 —— 認視窗的判準可能要重量(見 Get-CmdPalUiWindows)"
+    }
+    return ($all | ForEach-Object {
+        "     hwnd=$($_.Hwnd) 可見=$($_.Visible) disabled=$($_.Disabled) style=0x$('{0:X8}' -f $_.Style) 標題='$($_.Title)'"
+    }) -join [Environment]::NewLine
 }
 
 <#
@@ -227,7 +311,7 @@ function Test-CmdPalForeground {
     # 前景屬於 CmdPal 還**不夠**:x-cmdpal:// 把進程拉起來之後有一段時間是
     # 「進程在、面板還沒出來」,那時候前景視窗確實屬於 CmdPal,但打字會落在一個
     # 看不見的視窗上,而且後面的 tree 只讀得到根節點。所以還要確認面板真的在。
-    return ((Find-CmdPalWindow -VisibleOnly) -ne [IntPtr]::Zero)
+    return ((Find-CmdPalPanel) -ne [IntPtr]::Zero)
 }
 
 # 失焦時要能一眼看出「那串字跑到哪去了」,所以把前景視窗是誰印出來。
@@ -251,7 +335,7 @@ function Get-ForegroundDescription {
 function Test-CmdPalReady {
     if (-not (Test-CmdPalForeground)) { return $false }
 
-    $hwnd = Find-CmdPalWindow -VisibleOnly
+    $hwnd = Find-CmdPalPanel
     if ($hwnd -eq [IntPtr]::Zero) { return $false }
 
     try {
@@ -307,7 +391,7 @@ function Assert-CmdPalFocus {
 
     # 視窗還在、只是被壓在後面的話,拉一次看看。CmdPal 一失焦通常會自己隱藏,
     # 所以這條多半救不回來,但成本只有一次呼叫。
-    $hwnd = Find-CmdPalWindow -VisibleOnly
+    $hwnd = Find-CmdPalPanel
     if ($hwnd -ne [IntPtr]::Zero) {
         [CmdPalNative]::SetForegroundWindow($hwnd) | Out-Null
         if (Wait-CmdPalReady -TimeoutMs 500) { return }
@@ -435,7 +519,7 @@ function Show-CmdPal {
     #>
     for ($round = 1; $round -le 3; $round++) {
         if (Test-CmdPalReady) {
-            Write-Output "  熱鍵=$chord HWND=$(Find-CmdPalWindow -VisibleOnly)"
+            Write-Output "  熱鍵=$chord HWND=$(Find-CmdPalPanel)"
             # 結果走 $script:FocusOk,理由見 Assert-CmdPalFocus 的註解。
             $script:FocusOk = $true
             return
@@ -443,7 +527,7 @@ function Show-CmdPal {
 
         # 這裡不能只看 IsWindowVisible:正在關閉的面板也還是 visible,
         # 對它 SetForegroundWindow 拉到的是一個空殼。UIA 讀得到子節點才算真的開著。
-        $hwnd = Find-CmdPalWindow -VisibleOnly
+        $hwnd = Find-CmdPalPanel
         if ($hwnd -ne [IntPtr]::Zero) {
             try {
                 $probe = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
@@ -464,9 +548,14 @@ function Show-CmdPal {
         }
     }
 
-    $state = if ((Find-CmdPalWindow -VisibleOnly) -eq [IntPtr]::Zero) { '沒開' } else { '開著但拿不到焦點' }
+    $state = if ((Find-CmdPalPanel) -eq [IntPtr]::Zero) { '沒開' } else { '開著但拿不到焦點' }
     Write-Output "  !! 試了 3 輪($chord),CmdPal 還是沒到前景(面板$state)"
     Write-Output "     目前前景:$(Get-ForegroundDescription)"
+
+    # 「面板沒開」有兩種:CmdPal 真的沒開,或者認視窗的判準過時了(見 Get-CmdPalUiWindows)。
+    # 兩種的訊息本來一模一樣,查起來會直接往錯的方向走 —— 所以把實際看到的視窗列出來。
+    Write-Output '     CmdPal 目前的視窗:'
+    Write-Output (Get-CmdPalWindowReport)
     $script:FocusOk = $false
 }
 
@@ -494,7 +583,7 @@ function Write-UiaTree {
     # 「畫面上什麼都沒有」,其實只是焦點跑掉了。不擋的話會照著它做出錯誤判斷。
     if (-not (Test-CmdPalForeground)) { Write-Output '  !! CmdPal 不在前景,這棵樹讀不到內容'; return }
 
-    $hwnd = Find-CmdPalWindow -VisibleOnly
+    $hwnd = Find-CmdPalPanel
     if ($hwnd -eq [IntPtr]::Zero) { Write-Output '  !! CmdPal 視窗不可見'; return }
 
     $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
@@ -575,7 +664,7 @@ function Save-CmdPalScreenshot {
 
     if (-not (Test-CmdPalForeground)) { Write-Output '  !! CmdPal 不在前景,截出來會是空白'; return }
 
-    $hwnd = Find-CmdPalWindow -VisibleOnly
+    $hwnd = Find-CmdPalPanel
     if ($hwnd -eq [IntPtr]::Zero) { Write-Output '  !! CmdPal 視窗不可見'; return }
 
     # 相對路徑要先轉成絕對的 —— GDI+ 的 Save 是拿當前目錄去解的,而那個目錄跟你以為的
@@ -643,13 +732,13 @@ function Write-ToastState {
     $targetPid = Get-CmdPalPid
     if (-not $targetPid) { Write-Output '  !! CmdPal 沒在跑'; return }
 
-    $toast = Find-CmdPalWindow -Title $ToastWindowTitle
+    $toast = Find-CmdPalToast
     if ($toast -eq [IntPtr]::Zero) {
         Write-Output '  toast 視窗:不存在'
         return
     }
     $visible = [CmdPalNative]::IsWindowVisible($toast)
-    $mainVisible = (Find-CmdPalWindow -VisibleOnly) -ne [IntPtr]::Zero
+    $mainVisible = (Find-CmdPalPanel) -ne [IntPtr]::Zero
     Write-Output "  toast 視窗:HWND=$toast 可見=$visible / 主視窗還在=$mainVisible"
     if (-not $visible) { return }
 
@@ -738,10 +827,20 @@ function Write-SettingsState {
     try {
         $json = Get-Content $cmdPalSettings -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        Write-Output '    aliases:'
-        $json.Aliases.PSObject.Properties |
-            Where-Object { $_.Value.CommandId -like 'Inkling*' } |
-            ForEach-Object { "      '$($_.Name)' -> $($_.Value.CommandId)" }
+        # **鍵是命令 Id,而 Inkling 的命令 Id 全部還是 `Notelet.*`** —— 那是改名前的名字,
+        # 刻意保留的(CmdPal 的 Aliases 以純命令 Id 當鍵,改了等於把使用者設過的 alias 清掉;
+        # 見 src\Inkling\CommandIds.cs 與 docs\design-notes.md〈命令 Id 為什麼要寫死〉)。
+        # 這裡曾經寫成 'Inkling*',於是**永遠**印出一份空清單 —— 而空清單跟「真的沒設過 alias」
+        # 長得一模一樣,是最糟的一種失效:看起來有在驗,實際上什麼都沒看到。
+        # 所以連總數一起印,零命中時也明講一句,不要讓空白自己說話。
+        $all = @($json.Aliases.PSObject.Properties)
+        $ours = @($all | Where-Object { $_.Value.CommandId -like 'Notelet.*' })
+        Write-Output "    aliases($($ours.Count) 個是 Inkling 的,CmdPal 總共 $($all.Count) 個):"
+        if ($ours.Count -eq 0) {
+            Write-Output '      (一個都沒有 —— 快速記下的入口就是 alias,沒設過的話那條動線等於不存在)'
+        } else {
+            $ours | ForEach-Object { "      '$($_.Name)' -> $($_.Value.CommandId)" }
+        }
 
         Write-Output '    provider settings:'
         $json.ProviderSettings.PSObject.Properties |

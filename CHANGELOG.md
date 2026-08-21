@@ -106,6 +106,21 @@
 
 ### 開發工具
 
+- `tools/cmdpal-ui.ps1` **不再照視窗標題找 CmdPal 的視窗**。標題跟著 Windows 顯示語言走,
+  而腳本比對的是寫死的 `Command Palette` / `Command Palette Toast`,旁邊還註著
+  「在 zh-TW 機器上實測仍是英文」—— 那句話在某次 CmdPal 進程重啟之後就不成立了
+  (那一次連 CmdPal 自己的介面都從英文變成中文,變的是整個 app 的語言解析,不只是標題),
+  於是整支腳本找不到面板、四輪重試全部失敗。改用結構特徵:
+  `WinUIDesktopWin32WindowClass` 加 `WS_EX_TOOLWINDOW` 挑出「面板與 toast」
+  (設定視窗有工作列按鈕、不帶那個旗標,所以不會被誤認),再用 `WS_DISABLED` 分辨兩者
+  —— toast 不收輸入所以是 disabled。三條判準的實測數字寫在 `Get-CmdPalUiWindows` 的註解裡。
+  另外真的找不到面板時會把當時看到的每一個視窗連同樣式印出來:「判準過時」跟
+  「CmdPal 真的沒開」原本的訊息一模一樣,查起來會直接往錯的方向走。
+- `tools/cmdpal-ui.ps1` 的 `state` 動作**修好了永遠印出空 alias 清單**的問題。
+  它用 `Inkling*` 去比對命令 Id,而那些 Id 刻意還是改名前的 `Notelet.*`
+  (CmdPal 的 alias 以純命令 Id 當鍵,改了會清掉使用者設過的 alias)——
+  改名時漏改了這一處。空清單跟「真的沒設過 alias」長得一模一樣,是最糟的一種失效:
+  看起來有在驗,實際上什麼都沒看到。現在連 CmdPal 的 alias 總數一起印,零命中時也明講一句。
 - `tools/cmdpal-ui.ps1` 會送按鍵的動作改成在**送出之前**確認 CmdPal 的面板真的在前景
   且可以用了。原本是先 `SendInput` 再檢查 —— 而 `SendInput` 送到的永遠是當下的前景
   視窗,所以 CmdPal 不在前景時那串字會打進使用者正在用的別的視窗,檢查只是事後報告;

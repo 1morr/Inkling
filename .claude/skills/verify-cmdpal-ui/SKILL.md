@@ -46,8 +46,18 @@ orca 的視窗列舉照那個屬性過濾,於是整個進程被跳過。同一�
 orca 的 `list-apps` 也列得出 CmdPal、`list-windows` 回得到那個視窗。那個 handle
 是設定視窗的,**主面板依然列舉不到** —— 看到 orca 列得出 CmdPal 不代表它能驗面板。
 
-`tools\cmdpal-ui.ps1` 因此自己走 `EnumWindows` + 比對 pid 與視窗標題,再用 Windows 內建的
-UI Automation 讀畫面。**要驗 CmdPal 就用這個腳本,不要繞回 `orca computer`。**
+`tools\cmdpal-ui.ps1` 因此自己走 `EnumWindows` 找視窗,再用 Windows 內建的 UI Automation
+讀畫面。**要驗 CmdPal 就用這個腳本,不要繞回 `orca computer`。**
+
+**它不是照視窗標題找的,別改回去。** 標題跟著 Windows 顯示語言走:在這台 zh-TW 機器上
+主面板叫「命令選擇區」、toast 叫「命令選擇區快顯通知」、設定視窗叫「命令選擇區設定」,
+而腳本原本比對的是寫死的 `'Command Palette'` —— 某次 CmdPal 進程重啟之後整支腳本就
+找不到面板了(那一次連 CmdPal 自己的介面都從英文變成中文,變的是整個 app 的語言解析,
+不只是標題)。現在改用結構特徵:`WinUIDesktopWin32WindowClass` + `WS_EX_TOOLWINDOW`
+挑出「面板與 toast」,再用 `WS_DISABLED` 分辨兩者(toast 不收輸入所以是 disabled)。
+設定視窗不帶 `WS_EX_TOOLWINDOW`(它有工作列按鈕),因此不會被誤認。
+判準的量測數字寫在 `Get-CmdPalUiWindows` 的註解裡;真的找不到面板時腳本會把當時
+看到的每一個視窗連同樣式印出來,不會只說一句「面板沒開」。
 
 ### 面板以外:`orca computer` 是對的工具
 
@@ -222,7 +232,12 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|tree:9"
 腳本層級還有兩個參數:`-Retries`(整串最多嘗試幾次,含第一次,預設 4)與 `-MaxText`
 (樹裡每個字串印到幾個字,預設 120)。
 
-### 樹裡只有一行 `Window: 'Command Palette'` 的時候
+### 樹裡只有根節點那一行的時候
+
+(根節點的名字**跟著 Windows 顯示語言走** —— 這台機器上是 `Window: '命令選擇區'`,
+英文環境是 `Window: 'Command Palette'`。下面幾棵範例樹是在 CmdPal 介面還是英文時抓的,
+所以 CmdPal 自己的字串(`More`、`Open`、設定按鈕那一長串)現在看到的會是中文 ——
+判讀時看的是**結構與 Inkling 自己的字串**,不是 CmdPal 那幾個字。)
 
 那**不是**「畫面上什麼都沒有」。有兩個成因,腳本各給一行不同的訊息:
 
@@ -316,7 +331,8 @@ Window: 'Command Palette' [FOCUS]
 ## toast:唯一一條「沒發生才算對」的驗證
 
 [設計考證〈刪除成功時一個 toast 都不發〉](../../../docs/design-notes.md#delete-no-toast)那條規矩靠 `toast` 動作驗。CmdPal 的 toast 是
-**另一個頂層視窗**(`Command Palette Toast`),它一出現就搶焦點,主視窗一失焦就自己隱藏 ——
+**另一個頂層視窗**(標題跟著顯示語言走,這台機器上是「命令選擇區快顯通知」;腳本不靠標題
+認它,見上面〈CmdPal 的面板〉),它一出現就搶焦點,主視窗一失焦就自己隱藏 ——
 「做完之後整個面板消失」的成因就是它,不是 `GoHome()`。
 
 ```
