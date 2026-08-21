@@ -112,7 +112,7 @@ public sealed partial class InklingCommandsProvider : CommandProvider
 
                 // 明確指定圖示,不要靠繼承 provider 的那張套件磚:
                 // 頂層命令是同一個單色家族(見 Icons.cs),漏掉這一行的話
-                // 只有這一列會變成彩色方磚,跟其他三列對不起來。
+                // 只有這一列會變成彩色方磚,跟其他四列對不起來。
                 Icon = Icons.TopLevelList,
 
                 // 跟 CmdPal 設定裡那一頁是同一個實例,兩邊看到的永遠一致。
@@ -122,7 +122,7 @@ public sealed partial class InklingCommandsProvider : CommandProvider
             {
                 // 頂層的標題跟頁面的標題**是兩條字串**,不要改回 capturePage.Title:
                 // 這裡需要「Inkling:」前綴(主搜尋框裡要跟別的擴展區分),頁面裡不需要。
-                // 四列的形狀因此一致,見 QuickCapturePage 的註解。
+                // 五列的形狀因此一致,見 QuickCapturePage 的註解。
                 Title = Resources.ProviderCapturePageTitle,
 
                 // 這裡刻意不寫「分號」:分隔符是可以改的設定,而這一列的副標沒有跟著它更新

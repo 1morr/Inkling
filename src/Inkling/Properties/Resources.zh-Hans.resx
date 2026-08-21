@@ -221,7 +221,7 @@
     <value>记下并预览</value>
   </data>
   <data name="CaptureFailedContent" xml:space="preserve">
-    <value># 存档失败
+    <value># 保存失败
 
 {0}
 
@@ -280,10 +280,10 @@
     <value>删除全部 {0} 则笔记？</value>
   </data>
   <data name="DeleteAllConfirmDescription" xml:space="preserve">
-    <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站。</value>
+    <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站。随手草稿不受影响。</value>
   </data>
   <data name="DeleteAllConfirmDescriptionWithExternal" xml:space="preserve">
-    <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站,其中 {1} 则不是 Inkling 创建的。</value>
+    <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站,其中 {1} 则不是 Inkling 创建的。随手草稿不受影响。</value>
   </data>
   <data name="DeleteAllItemTitle" xml:space="preserve">
     <value>删除全部 {0} 则</value>
@@ -292,7 +292,7 @@
     <value>{0}(含子文件夹)</value>
   </data>
   <data name="DeleteAllScope" xml:space="preserve">
-    <value>底下(含子文件夹)所有的 `.md`,目前 {0} 则,**全部都会删掉**。</value>
+    <value>底下(含子文件夹)所有的 `.md`,目前 {0} 则,**全部都会删掉**。随手草稿不受影响。</value>
   </data>
   <data name="DeleteAllScopeExternalSuffix" xml:space="preserve">
     <value>
@@ -357,7 +357,7 @@
     <value>一句话讲完这个想法</value>
   </data>
   <data name="FormTitleRequired" xml:space="preserve">
-    <value>标题不能空白</value>
+    <value>标题不能为空</value>
   </data>
   <data name="FormBodyLabel" xml:space="preserve">
     <value>正文(Markdown)</value>
@@ -378,7 +378,7 @@
     <value>已保存：{0}</value>
   </data>
   <data name="SaveFailed" xml:space="preserve">
-    <value>存档失败：{0} —— 请到设置检查笔记文件夹</value>
+    <value>保存失败：{0} —— 请到设置检查笔记文件夹</value>
   </data>
   <data name="EditPageTitle" xml:space="preserve">
     <value>编辑：{0}</value>

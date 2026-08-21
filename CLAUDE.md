@@ -141,7 +141,9 @@ Version 的症狀)。
    編輯頁「游標放到內文最後」查過,做不到,現在是在卡片底部提示按 `Ctrl+End`)、
    多行輸入框的高度完全不可控(只能靠預填內容撐開)、沒有 `Ctrl+S`(表單值只活在 CmdPal 進程裡)。
    `TextBlock` 不是 `Control`,加幾塊說明文字不會把焦點從輸入框搶走。
-5. **設定頁有兩個入口**(清單頁 `Ctrl+K` → 設定,以及 CmdPal 設定 → Extensions → Inkling)。
+5. **設定頁有兩個入口**(主搜尋框選中「Inkling」那一列按 `Ctrl+K` → 設定 —— 它掛在
+   **頂層那一列的 `MoreCommands`** 上,所以 `Ctrl+Enter` 也直接到;**不是**進了清單頁之後按。
+   另一個入口是 CmdPal 設定 → Extensions → Inkling)。
    後者 CmdPal **只初始化一次**,而且它拿的是 `ICommandSettings.SettingsPage` ——
    所以我們自己實作了 `ICommandSettings`(見 `InklingCommandSettings`),把
    `InklingSettingsPage` 交出去,才發得出 `ItemsChanged` 讓它重讀。那個頁面因此
@@ -167,7 +169,7 @@ Version 的症狀)。
    進程停掉讓它重啟,PowerToys 本身不用重開。
    **有另一種長得很像但成因完全不同的「多一列 Inkling」**:Windows 的應用程式清單項
    被 CmdPal 內建的應用程式搜索列進結果,按 Enter 沒反應(exe 是純 COM server)。
-   副標是 manifest 的英文 `Description` 而不是我們的資源字串,而且只多一列不是多四列。
+   副標是 manifest 的英文 `Description` 而不是我們的資源字串,而且只多一列不是多五列。
    `Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }` 有輸出就是這一種 ——
    manifest 的 `AppListEntry="none"` 掉了,那一行**不要拿掉**,考證見
    [設計考證〈套件刻意不出現在開始功能表〉](docs/design-notes.md#app-list-entry)。同一個根源還有一個更會騙人的症狀:**Reload / 重新部署之後,
@@ -260,8 +262,10 @@ Version 的症狀)。
   不要順手升級。
 - 資料格式是承諾:`id` 才是身分(改標題不重新命名檔案)、不認得的 front matter 欄位
   原樣保留、沒有 front matter 的外來 `.md` 也要能列出來。
-- 改了指令、設定項、資料格式或對外行為,同一輪更新**兩份 README** 與
-  `docs/manual-test-checklist.md`。**README 有兩個語言版本**:`README.md` 英文是預設、
+- 改了指令、設定項、資料格式或對外行為,同一輪更新**兩份 README**、
+  `docs/manual-test-checklist.md` **與 `CHANGELOG.md`**(使用者感覺得到的變更一定要進
+  `[Unreleased]` —— 這一條以前漏在這份規則外,`CONTRIBUTING.md` 列了、這裡沒有,
+  結果是好幾個 commit 的行為改動沒有記錄)。**README 有兩個語言版本**:`README.md` 英文是預設、
   `README.zh-Hant.md` 繁中,是同一份文檔的兩個版本 —— 章節、表格的列、截圖都要對得上,
   改一份就改另一份(英文 pitch 以 `README.md` 為準,Store listing 與 gallery 從那裡拿)。
   **文檔分三份,別放錯**:README 是使用者文檔(怎麼用、有哪些鍵、筆記檔長什麼樣),

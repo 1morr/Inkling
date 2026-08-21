@@ -55,8 +55,11 @@ alias 的機制要知道兩件事(`AliasManager.CheckAlias`):
 | indirect alias 存的鍵是「alias + 空白」 | 所以填 `!`,實際觸發的是你打完 `! ` 的那一刻 |
 | 觸發時送 `ClearSearchMessage` + `PerformCommandMessage` | 搜尋框被清空、跳進頁面。**所以 alias 觸發的命令拿不到觸發當下那句話** —— 但跳進去之後打的字,是我們自己 `DynamicListPage.UpdateSearchText` 收的,完全掌控。這正是頁面版能成立的原因 |
 
-**哪天 CmdPal 修好了想把 fallback 加回來**:整套實作在 git 歷史裡,
-`git log --diff-filter=D -- src/Inkling/QuickCaptureFallbackItem.cs` 找得到。
+**哪天 CmdPal 修好了想把 fallback 加回來**:整套實作在 git 歷史裡,移除它的是
+`4a49505 refactor!: remove the fallback quick capture path`。
+**路徑不能寫成 `src/Inkling/…`** —— 那個檔案存在的時候專案還叫 Notelet,
+照現在的路徑查一行輸出都沒有(而「沒有輸出」跟「查錯了」長得一模一樣)。
+要自己找的話用 `git log --all --diff-filter=D --oneline -- '*QuickCaptureFallbackItem.cs'`。
 判準是打一句不帶前綴的話,結果裡不再多出空列。真要加回來記得:alias 比 fallback
 早一步處理(`MainListPage.UpdateSearchTextCore` 開頭就 `if (aliases.CheckAlias(newSearch)) return;`),
 所以 alias 別跟前綴設成同一個字,否則 alias 會先把搜尋框清掉,fallback 再也看不到那句查詢。
@@ -541,9 +544,12 @@ Adaptive Cards 沒有任何值變更的回呼,沒有失焦事件,也沒有 `Ctrl
   而它一個字都不會存。講「變更」而不是「草稿」也是刻意的:丟掉的是**這一趟的編輯**,
   不是檔案裡那份草稿。實務上很難誤按:焦點在文字框裡時 `Enter` 是換行,碰不到工具列,
   而 `Tab` 的第一站是「儲存」。
-- **存檔成功時一個訊息都不發。** `ToastStatusMessage` 畫成底部命令列的 `InfoBadge`,
-  面板都收了就看不見,發了只是白費 —— 回饋是「面板消失」本身。存檔**失敗**才說話,
-  而且那條路留在原地(`KeepOpen`),不然使用者會以為存起來了然後把視窗關掉。
+- **存檔成功時發 `CommandResult.ShowToast`,而不是狀態訊息。** 判準是〈記下之後要不要
+  先看一眼〉那一條:**使用者接下來還要不要看著這個面板**。存完就收工,所以不必看 ——
+  那正是 toast 唯一合適的時機(它是唯一能在面板消失之後還留在畫面上的通道;
+  狀態訊息畫在面板上,面板收了就跟著沒了)。
+  「面板消失」單獨拿來當回饋不夠:它說不出存進去的是什麼。
+  存檔**失敗**那條路留在原地(`KeepOpen`),不然使用者會以為存起來了然後把視窗關掉。
 - **存檔後刻意不叫 `RaiseItemsChanged`。** 重新取內容會重建整張卡片,而卡片顯示的本來就是
   剛存進去的東西。(存完就 Dismiss 之後這一條更像是防呆,但留著 —— 哪天改回 `KeepOpen`,
   漏掉它就是「使用者接下來打的字被沖掉、游標跳回開頭」。)
@@ -575,7 +581,7 @@ Adaptive Cards 沒有任何值變更的回呼,沒有失焦事件,也沒有 `Ctrl
 
 | 入口 | CmdPal 怎麼拿 |
 |---|---|
-| 清單頁 `Ctrl+K` → 設定 | 我們放在 `MoreCommands` 裡的頁面,每次導覽進去都重建 viewmodel |
+| 主搜尋框在「Inkling」那一列按 `Ctrl+K`(或 `Ctrl+Enter`)→ 設定 | 我們放在**頂層那一列**的 `MoreCommands` 裡的頁面,每次導覽進去都重建 viewmodel |
 | 設定 → Extensions → Inkling | `ICommandSettings.SettingsPage`,**整個 CmdPal 生命週期只初始化一次** |
 
 第二條路是這樣寫的(`ProviderSettingsViewModel`):
@@ -1070,9 +1076,15 @@ $d = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8w
 `Ctrl+K` 選單裡兩個「跳出去」的鍵行為相反。現在兩邊都顯式指定,見
 `OpenNoteFileCommand` 與 `ShowNoteInFolderCommand`。
 
-**隨手草稿是唯一的例外,它照樣 `Dismiss`。** 那一頁畫面上有一份使用者還能按儲存的副本:
-面板留著的話,從外部編輯器改完回來再按一次儲存,就把外部的修改整個蓋掉。收起來之後
-下次打開會重新 `GetContent()` 讀檔,看到的才是編輯器存下的那一版。
+**例外的判準是「畫面上有沒有一份使用者還能按儲存的副本」,不是頁面名單。**
+有的話一定要 `Dismiss`:面板留著,使用者從外部編輯器改完回到 CmdPal 再按一次儲存,
+就把外部的修改整個蓋掉(卡片的值是 `GetContent()` 當下烤進 `DataJson` 的,
+CmdPal 不會因為視窗重新出現就重新取一次)。收起來之後下次打開才會重讀檔案。
+
+目前符合這個判準的有**兩頁**:隨手草稿,以及**筆記的編輯表單**
+(`NoteEditPage`,`85d1dfc` 之後也改成 `Dismiss`)。筆記的預覽頁與清單頁不符合 ——
+它們顯示的是唯讀的預覽,沒有這個問題,所以維持 `KeepOpen`。
+寫判準而不是列頁面:名單會漂,判準不會。
 
 <a id="open-external-silent"></a>
 
@@ -1188,7 +1200,7 @@ seconds, right in Command Palette」,按 Enter 完全沒有反應。
 | | 多出來的那一列 |
 |---|---|
 | 應用程式清單項 | 副標是 manifest 的 `Description`(英文),圖示是 Windows 從 `Square44x44Logo` 挑的,按 Enter 沒反應 |
-| 重複的 provider | 副標是我們自己的資源字串(跟著介面語言),四個命令整組重複 |
+| 重複的 provider | 副標是我們自己的資源字串(跟著介面語言),五個命令整組重複 |
 
 驗法:`Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }`,有東西就是前者。
 
@@ -1200,7 +1212,7 @@ seconds, right in Command Palette」,按 Enter 完全沒有反應。
 設定 → 應用程式 → 已安裝的應用程式 照樣列得到,`Remove-AppxPackage` 也照樣能用。
 **擴展的探索也不受影響**:CmdPal 走的是 `AppExtensionCatalog`,認的是
 `windows.appExtension` 註冊,跟應用程式清單可見性無關 —— 加上這一行之後重新部署,
-`tools/VerifyRegistration` 照樣列得到 Inkling,四個命令也照樣在。
+`tools/VerifyRegistration` 照樣列得到 Inkling,五個命令也照樣在。
 
 <a id="ui-language"></a>
 
@@ -1255,7 +1267,7 @@ Reload 或重新登入才會重讀。
 
 ## 圖示
 
-原始檔是 `assets/icon/` 底下的八個 SVG(七個進套件,加一個 GitHub social preview),`src/Inkling/Assets/*.png` 全部由
+原始檔是 `assets/icon/` 底下的九個 SVG(八個進套件,加一個 GitHub social preview),`src/Inkling/Assets/*.png` 全部由
 `tools/render-icons.ps1` 產生 —— **不要手改那些 PNG**,改圖示請改 SVG 再跑一次腳本。
 
 構圖是「一道有壓感的下筆 + 一顆句點」:起筆重、收筆輕,最後點一下收尾。

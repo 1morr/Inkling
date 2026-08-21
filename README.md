@@ -82,7 +82,7 @@ type `coffee machine idea` → Enter. Saved, hands never left the keyboard.
 | Source view | `Ctrl+U` toggles between rendered and raw text; **the state is global and remembered**. Pasted HTML / SVG that vanishes when rendered is visible here ([details](docs/design-notes.md#source-mode)) |
 | Edit | Form-based editing (`Ctrl+E`), Tab to "Save" and press Enter; or "Open in default editor" (`Ctrl+O`) and edit outside |
 | Copy body / Open file location | `Ctrl+Shift+C` copies the body (without front matter, **the palette stays open**); `Ctrl+L` selects the `.md` in File Explorer |
-| After jumping out | After `Ctrl+O` or `Ctrl+L` hands off to another app, the palette only steps aside — the hotkey brings it back **on the same page** ([why](docs/design-notes.md#open-external-return)). If the file was renamed or moved, or nothing is registered to open `.md`, the reason shows at the bottom instead of silently doing nothing |
+| After jumping out | After `Ctrl+O` or `Ctrl+L` hands off to another app, the palette only steps aside — the hotkey brings it back **on the same page** ([why](docs/design-notes.md#open-external-return)). Two pages are the exception and dismiss the palette instead: the edit form and the scratchpad, because both hold a copy you could still save over the file you just went out to edit. If the file was renamed or moved, or nothing is registered to open `.md`, the reason shows at the bottom instead of silently doing nothing |
 | Scratchpad | `Inkling: Scratchpad` is one permanent sticky note: it opens with whatever you left there, no title required. **No autosave** (CmdPal cannot do it, [why](docs/design-notes.md#scratchpad-no-autosave)): `Tab` → `Enter` saves, **shows "Saved to scratchpad" and dismisses the palette by itself** (Discard changes says so too); `Ctrl+O` opens it in the system's default editor, where autosave lives |
 | Delete | `Ctrl+D` on the list page; after confirming, the file **goes to the Recycle Bin** (not deleted permanently) |
 | Delete many / clear all | `Inkling: Delete notes` opens a page where `Enter` deletes (asks once) and `Ctrl+Enter` deletes immediately; "Delete all" on the same page lists which files it would remove first. Files not created by Inkling are always confirmed on both paths |
@@ -162,7 +162,8 @@ The data format is a promise. A few deliberate choices:
 
 ## Settings
 
-`Ctrl+K` → Settings on the list page, or CmdPal Settings → Extensions → Inkling.
+Select the **Inkling** row in the main search box and press `Ctrl+K` → Settings
+(`Ctrl+Enter` goes straight there), or CmdPal Settings → Extensions → Inkling.
 
 | Setting | Default | Notes |
 |---|---|---|
@@ -192,9 +193,10 @@ nothing is lost, the copy shows up in the list, you decide which to keep.
 **Changed a setting and nothing happened** — close the settings page and reopen it. That page is
 bound to one extension instance; if a reload or redeploy happened in between, Save silently does nothing.
 
-**An extra "Inkling" row in search results that does nothing on Enter** — that is the Windows
-app-list entry picked up by CmdPal's built-in app search, not a duplicate extension. The package's
-exe is a pure COM server; "launching" it was never going to do anything.
+**An extra "Inkling" row in search results that does nothing on Enter** — only if you are upgrading
+from a build made before the package stopped registering a Start menu entry. That row is the Windows
+app-list entry picked up by CmdPal's built-in app search, not a duplicate extension: the package's
+exe is a pure COM server, so "launching" it was never going to do anything. Reinstalling clears it.
 
 **Wrong UI language** — the language follows the Windows **display language** (not the "regional
 format" setting) and there is no override. After changing the display language, sign out and back in.

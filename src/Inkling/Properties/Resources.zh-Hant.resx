@@ -280,10 +280,10 @@
     <value>刪除全部 {0} 則筆記？</value>
   </data>
   <data name="DeleteAllConfirmDescription" xml:space="preserve">
-    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒。</value>
+    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒。隨手草稿不受影響。</value>
   </data>
   <data name="DeleteAllConfirmDescriptionWithExternal" xml:space="preserve">
-    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒,其中 {1} 則不是 Inkling 建立的。</value>
+    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒,其中 {1} 則不是 Inkling 建立的。隨手草稿不受影響。</value>
   </data>
   <data name="DeleteAllItemTitle" xml:space="preserve">
     <value>刪除全部 {0} 則</value>
@@ -292,7 +292,7 @@
     <value>{0}(含子資料夾)</value>
   </data>
   <data name="DeleteAllScope" xml:space="preserve">
-    <value>底下(含子資料夾)所有的 `.md`,目前 {0} 則,**全部都會刪掉**。</value>
+    <value>底下(含子資料夾)所有的 `.md`,目前 {0} 則,**全部都會刪掉**。隨手草稿不受影響。</value>
   </data>
   <data name="DeleteAllScopeExternalSuffix" xml:space="preserve">
     <value>

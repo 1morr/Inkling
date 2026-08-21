@@ -307,11 +307,11 @@
     <comment>{0} 是筆記總數。</comment>
   </data>
   <data name="DeleteAllConfirmDescription" xml:space="preserve">
-    <value>Every .md under {0} (including subfolders) will be moved to the Recycle Bin.</value>
-    <comment>{0} 是筆記資料夾的路徑。</comment>
+    <value>Every .md under {0} (including subfolders) will be moved to the Recycle Bin. The scratchpad is not touched.</value>
+    <comment>{0} 是筆記資料夾的路徑。刪除範圍來自 GetAll(),而 Load() 明確跳過根目錄的 scratchpad.md —— 行為是安全的方向,但文案不講的話,想「清空重來」的人會以為草稿也沒了。</comment>
   </data>
   <data name="DeleteAllConfirmDescriptionWithExternal" xml:space="preserve">
-    <value>Every .md under {0} (including subfolders) will be moved to the Recycle Bin, {1} of which were not created by Inkling.</value>
+    <value>Every .md under {0} (including subfolders) will be moved to the Recycle Bin, {1} of which were not created by Inkling. The scratchpad is not touched.</value>
     <comment>{0} 是資料夾路徑,{1} 是外來檔案的則數。</comment>
   </data>
   <data name="DeleteAllItemTitle" xml:space="preserve">
@@ -323,7 +323,7 @@
     <comment>{0} 是筆記資料夾的路徑。</comment>
   </data>
   <data name="DeleteAllScope" xml:space="preserve">
-    <value>Every `.md` underneath (including subfolders) — {0} right now — **will be deleted**.</value>
+    <value>Every `.md` underneath (including subfolders) — {0} right now — **will be deleted**. The scratchpad is not touched.</value>
     <comment>Markdown。{0} 是筆記總數。</comment>
   </data>
   <data name="DeleteAllScopeExternalSuffix" xml:space="preserve">

@@ -1,7 +1,12 @@
 # 手動驗證清單
 
-> **預期結果對照:CmdPal 0.11.11762.0 + Inkling `fbf7d40`(含其後未提交的審查修正),
-> 最後全量驗證:尚未 —— 本輪改動之後還沒全量跑過。**
+> **預期結果對照:CmdPal 0.11.11762.0 + Inkling 目前的 `master`。
+> 最後全量驗證:尚未 —— 這份清單從來沒有被完整跑過一遍。**
+>
+> 對照基準以前寫的是某一個 commit,而那個號碼落後 HEAD 三十幾個 commit
+> (中間有隨手草稿、`Ctrl+N`、`Ctrl+U` 上預覽頁、`Enter` 語意改動)——
+> 一個過期的基準比沒有基準更糟,它讓人以為對照過了。發版前跑一次全量,
+> **跑完才把這裡改成當時的 commit**。
 > 每次全量跑完就更新這一行。這份清單的預期結果高度依賴 CmdPal **安裝版**的行為
 > (`main` 有、安裝版沒有的前科見 CLAUDE.md〈已知落差〉),CmdPal 更新之後,
 > 標著 ⚠版本敏感 的項目要全部重驗。
@@ -75,12 +80,13 @@ provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清�
 
 ## 1. 擴展載入
 
-本節 🤖 6 項 / 👀 1 項。
+本節 🤖 5 項 / 👀 1 項。
 
 - [ ] 🤖 叫出 Command Palette,往下捲(或按一次 `↑`)能看到 **Inkling**
-- [ ] 🤖 也能看到 **Inkling：快速記下**、**Inkling：新增筆記** 與 **Inkling：刪除筆記**
+- [ ] 🤖 也能看到 **Inkling：快速記下**、**Inkling：新增筆記**、**Inkling：隨手草稿**
+      與 **Inkling：刪除筆記**
 - [ ] 🤖 **進到頁面之後標題就不帶前綴了** —— 前綴是頂層那一列的需求(主搜尋框裡要跟
-      別的擴展區分),頁面裡不需要。四列各按一次 Enter,看底部命令列左邊那塊:
+      別的擴展區分),頁面裡不需要。五列各按一次 Enter,看底部命令列左邊那塊:
       **Inkling**(清單頁是擴展的首頁,唯一留品牌名的那一個)、**快速記下**、
       **新增筆記**、**隨手草稿**、**刪除筆記**。裡面混進「Inkling：」代表頂層那條字串
       又被借去當頁面標題了 —— 見 `InklingCommandsProvider` 與 `QuickCapturePage` 的註解。
@@ -88,7 +94,7 @@ provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清�
 - [ ] 🤖 印出來的 CommandId 是 `Notelet.QuickCapturePage`(還是改名前的字串,故意的 ——
       見 design-notes〈命令 Id 為什麼要寫死〉),
       而不是 `Inkling_…!App!Inkling` 後面接一串數字
-- [ ] 🤖 **總共只有這四列**,四列以外沒有第五個 Inkling。多出來的話先分辨是哪一種:
+- [ ] 🤖 **總共只有這五列**,五列以外沒有第六個 Inkling。多出來的話先分辨是哪一種:
 
       ```powershell
       Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }
@@ -301,7 +307,7 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
 
 ## 4. 原始文字切換(`Ctrl+U`)
 
-本節 🤖 17 項 / 👀 4 項。
+本節 🤖 22 項 / 👀 4 項。
 
 **狀態是全域的而且會存進 `settings.json`**(`Inkling.ShowSource`),所以這一節跑完
 記得切回渲染模式,免得下一節看到的畫面跟預期不一樣。
@@ -680,7 +686,7 @@ $dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
 
 ## 7e. 隨手草稿
 
-本節 🤖 16 項 / 👀 4 項。考證見
+本節 🤖 20 項 / 👀 3 項。考證見
 [設計考證〈隨手草稿為什麼沒有自動儲存〉](design-notes.md#scratchpad-no-autosave)。
 
 開起來的樣子:
@@ -740,7 +746,8 @@ $dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
 
 本節 🤖 25 項 / 👀 4 項。
 
-- [ ] 🤖 在 Inkling 上按 `Ctrl+K` → 設定,設定頁打開
+- [ ] 🤖 **在主搜尋框**選中「Inkling」那一列按 `Ctrl+K` → 設定,設定頁打開
+      (那一項掛在頂層那一列上,不是進了清單頁之後才有;`Ctrl+Enter` 也直接到)
 - [ ] 🤖 有三個設定項,由上到下:筆記資料夾、快速記下的分隔符、記下後先看一眼
       (`QuickCaptureEnabled` / `QuickCapturePrefix` 隨 fallback 一起移除,
       `DetailsWidth` 隨面板寬度寫死一起移除。舊的 settings.json 裡可能還留著這幾個鍵,
@@ -928,7 +935,7 @@ Get-Content "$ls\diagnostic.log" -Encoding utf8 |
 **換一種語言實測**(改 Windows 設定 → 時間與語言 → 語言與地區 → Windows 顯示語言,
 要重新登入;測完記得改回來):
 
-- [ ] 🤖 改成英文之後,頂層四個命令變成 `Inkling` / `Inkling: Quick capture` /
+- [ ] 🤖 改成英文之後,頂層五個命令變成 `Inkling` / `Inkling: Quick capture` /
       `Inkling: New note` / `Inkling: Delete notes`
 - [ ] 🤖 **alias 還在、還能用** —— 這是命令 Id 寫死的回歸測試,換語言不該讓使用者的
       alias 失效(標題變了,`Id` 沒變)
@@ -943,7 +950,7 @@ Get-Content "$ls\diagnostic.log" -Encoding utf8 |
 `ResourceParityTests` 只擋 key 缺失與佔位符,擋不住翻譯品質。zh-Hans 與 zh-Hant
 字長相近,「長字串塞不下」的主要風險英文已涵蓋,所以抽查最小範圍即可):
 
-- [ ] 🤖 Windows 顯示語言切到**簡體中文**(重新登入),頂層四個命令是簡體
+- [ ] 🤖 Windows 顯示語言切到**簡體中文**(重新登入),頂層五個命令是簡體
       (`Inkling：快速记下` / `Inkling：新建笔记` / `Inkling：删除笔记`)
 - [ ] 🤖 設定頁三個欄位的標籤與說明都是簡體,沒有截斷
 - [ ] 🤖 快速記下頁的提示句是簡體,分隔符還是使用者設的那個

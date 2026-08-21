@@ -15,5 +15,12 @@
 *.png binary
 *.gif binary
 
+# 這些 PNG 是 tools/render-icons.ps1 從 assets/icon/*.svg 產出來的,不是手寫的。
+# 標成 generated 之後 GitHub 的語言統計與 diff 會把它們摺起來 —— 手改它們沒有意義
+# (下一次跑腳本就被蓋掉),也就不該在 review 裡佔版面。
+src/Inkling/Assets/*.png linguist-generated=true
+assets/gallery/icon.png linguist-generated=true
+assets/social-preview.png linguist-generated=true
+
 # resx 是 XML 文字,走 text=auto 的預設即可,這行只是把意圖寫明白。
 *.resx text

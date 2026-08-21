@@ -215,8 +215,11 @@ docs/                design-notes.md(設計考證)、development.md(這一份)�
 **手改的話要小心格式。** toolkit 的載入是一個沒有逐項 `try/catch` 的迴圈(`Settings.Update`):
 某一項解析失敗,例外一路拋到 `LoadSettings` 的 `catch`,**排在它後面的設定項連碰都碰不到**,
 靜靜退回預設值,沒有任何錯誤訊息。最容易踩的是「記下後先看一眼」:`ToggleSetting` 存的是
-**字串** `"true"` / `"false"`(`Input.Toggle` 回傳的就是字串),寫成 JSON 的 `true` 就會炸 ——
-所以它在 `Settings.Add` 裡刻意排最後,寫錯只影響它自己。
+**字串** `"true"` / `"false"`(`Input.Toggle` 回傳的就是字串),寫成 JSON 的 `true` 就會炸。
+所以 `Settings.Add` 的順序是照「**壞掉的代價小的排後面**」排的,而不是隨便排:
+兩個字串項在前,「記下後先看一眼」在後(它是設定頁上看得到、使用者可能手改的那一個),
+最後是 `Inkling.ShowSource` —— 那只是 `Ctrl+U` 的檢視狀態,再按一次就回來,
+是這幾項裡唯一丟了也不痛的。
 
 **更新擴展不會動到它。** `Identity` 的 `Name` 與 `Publisher` 不變,套件家族名就不變,
 `LocalState` 就是同一個資料夾。`tools/deploy.ps1` 切換佈局時的 `Remove-AppxPackage` 帶了
@@ -248,7 +251,7 @@ docs/                design-notes.md(設計考證)、development.md(這一份)�
 
 **搜尋結果裡多出一列 Inkling,按 Enter 沒反應** — 那不是重複的 provider,是 Windows
 的應用程式清單項被 CmdPal 內建的應用程式搜索列了進來(副標會是 manifest 的英文
-`Description` 而不是我們的資源字串,而且只多一列不是多四列)。分辨方式:
+`Description` 而不是我們的資源字串,而且只多一列不是多五列)。分辨方式:
 
 ```powershell
 Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }
