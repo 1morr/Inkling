@@ -3,6 +3,12 @@
 Inkling is a small, opinionated project. This is the short version of what to know before
 opening an issue or a pull request.
 
+**Before you follow any link below: the docs are not all in English.** The two READMEs are
+English and Traditional Chinese; everything else linked from here — the maintainer docs and
+the code comments — is Traditional Chinese only, deliberately
+([CLAUDE.md](CLAUDE.md#docs-language) explains the split). English-only contributions are
+still welcome; the translation is handled on the way in.
+
 ## Issues
 
 - **Bugs and feature requests**: use the issue templates. For bugs, the Inkling and Command
@@ -47,7 +53,3 @@ The rules that bite:
   promises to users** — renaming them wipes people's aliases, hotkeys, and settings.
 - **Commit messages** follow Conventional Commits: imperative, lower-case subject, no trailing
   period, ≤ 72 characters.
-
-Language: the READMEs come in English and Traditional Chinese; the rest of the docs and the
-code comments are in Traditional Chinese. English-only contributions are fine — the
-translation can be handled on the way in.

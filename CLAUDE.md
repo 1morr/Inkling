@@ -270,7 +270,30 @@ Version 的症狀)。
   語言跟著 `CultureInfo.CurrentUICulture`(= Windows 顯示語言)走,**沒有設定項**,
   理由見 [設計考證〈介面語言跟著 Windows 走〉](docs/design-notes.md#ui-language)。**Core 不碰資源檔**:那一層連例外訊息都是英文,
   因為它會被 UI 包進「刪除失敗：{0}」裡,而同一個位置平常裝的是 .NET 自己的英文訊息。
-- **文檔、程式碼註釋一律繁體中文**;識別符、字串常量、log、commit message 用英文。
+- <a id="docs-language"></a>**文檔語言分層。** 判準只有一條:**讀者是不是維護者以外的人。**
+  - **對外的一律英文** —— `README.md`(預設語言)、`CONTRIBUTING.md`、`SECURITY.md`、
+    `.github/ISSUE_TEMPLATE/*`、`docs/gallery/extension.json`、Store / WinGet 的欄位。
+    這幾個的讀者是陌生人,而散佈管道(CmdPal gallery、Microsoft Store、WinGet、
+    GitHub 搜尋與 og description)全部英文優先。`SECURITY.md` 特別容易被漏掉:
+    GitHub 把它掛在 Security 分頁與「Report a vulnerability」流程裡,給的是**任何人**。
+  - **維護者文檔只有繁體中文,不翻** —— 這一份、`docs/*.md`、`CHANGELOG.md`、
+    `.claude/skills/*`、以及所有程式碼註釋。
+  - **`README` 是唯一的雙語** —— 同步規則見下面〈改了指令、設定項、資料格式或對外行為〉
+    那一條。它值得雙語是因為**短而且改得慢**(正文 245 行),其他文檔兩個條件都不成立。
+  - **永遠英文,跟上面無關**:識別符、字串常量、log 訊息、commit message、分支名。
+
+  **不要把維護者文檔翻成英文或做成雙語。** 量過:全 repo churn 前四名全是文檔
+  (`README.md` 50、`docs/manual-test-checklist.md` 50、這一份 44、`CHANGELOG.md` 28,
+  總共才 113 個 commit),中文維護者文檔合計 **3759 行**。雙語等於一次性翻 3759 行,
+  然後**往後每一次改動都乘二**,而且改在最高頻的檔案上 —— 漂移是必然的,
+  而且是不會報錯的那種。全部改成英文則是拿掉維護者自己最需要讀的東西,
+  換來「想深入研究一個小眾 CmdPal 擴展內部考證的英文讀者」,那個人數約等於零。
+
+  **`CHANGELOG.md` 維持繁中**,對外那兩個欄位在發版時才譯(GitHub Release 正文其實不用譯,
+  `--generate-notes` 從英文 commit message 產;Store 的「What's new」要手寫英文)——
+  見 [`docs/release-checklist.md` §3](docs/release-checklist.md)。
+
+  新增文檔時先問這一條,別憑檔案放在哪決定。
 - 註釋寫「為什麼」,特別是繞過 CmdPal 限制的地方 —— 這個 repo 的註釋密度刻意偏高,
   因為那些取捨從程式碼本身看不出來,半年後會被當成多餘而刪掉。
 - `TreatWarningsAsErrors` + `AnalysisMode=Recommended` 全域開啟。測試專案只關掉

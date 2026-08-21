@@ -1,10 +1,16 @@
-# 安全性政策
+# Security Policy
 
-Inkling 會在使用者指定的資料夾裡寫入 Markdown 檔,刪除筆記時會把檔案送進資源回收筒。
-如果你發現會造成資料損毀、刪錯檔案,或其他安全層面的問題,請**不要**開公開 issue。
+<!-- 這一份刻意是英文,而且是這個 repo 裡唯一「維護者文檔以外還要翻」的破例:
+     GitHub 把它掛在 Security 分頁與「Report a vulnerability」流程裡,讀者是任何人,
+     不是維護者。10 行、幾乎不會改,所以翻譯成本接近零。
+     規則見 CLAUDE.md〈文檔語言分層〉。 -->
 
-請到這個 repo 的 **Security** 分頁按 **Report a vulnerability**
-([直接連結](../../security/advisories/new))通報 —— 那份回報只有你和維護者看得到,
-細節可以照實寫。我們會在確認後儘快處理。
+Inkling writes Markdown files into a folder you choose, and sends notes to the Recycle Bin
+when you delete them. If you find something that can corrupt data, delete the wrong file, or
+otherwise compromise security, please do **not** open a public issue.
 
-一般的 bug 與功能建議請走公開的 [Issues](../../issues)。
+Report it from this repository's **Security** tab → **Report a vulnerability**
+([direct link](../../security/advisories/new)). That report is visible only to you and the
+maintainer, so it is safe to spell out the details. We will respond once it is confirmed.
+
+For ordinary bugs and feature requests, use the public [Issues](../../issues).

@@ -92,6 +92,15 @@
 ## 3. 發版流程(身分與簽章都定案之後)
 
 1. 把 `CHANGELOG.md` 的 `[Unreleased]` 內容移到新版本段落,標上日期。
+   **`CHANGELOG.md` 本身維持繁體中文** —— 它是維護者紀錄,而且是這個 repo
+   churn 前四名的檔案,雙語等於每個 commit 都要翻兩次(見
+   [CLAUDE.md 〈文檔語言分層〉](../CLAUDE.md#docs-language))。對外那兩個欄位才用英文,
+   而且一個版本只寫一次:
+   - **GitHub Release 的正文** —— 不用手寫也不要手寫。release.yml 用 `--generate-notes`,
+     GitHub 從 commit message 產生,而那些本來就是英文(Conventional Commits)。
+     **不要把 `CHANGELOG.md` 貼進去**,那會把一段中文推到每一個下載頁面上。
+   - **Partner Center 的「What's new in this version」** —— 這一欄要自己寫英文,
+     從當次的 CHANGELOG 段落譯過去(第 5 步送審時)。
 2. 跑過 `docs/manual-test-checklist.md`(至少發版相關的段落)。
 3. 打 tag:`git tag v0.2.0 && git push origin v0.2.0`。
 4. release.yml 自動:跑測試 → 建 x64 + ARM64(trimmed publish)→ 注入版本 → 組 msix →
