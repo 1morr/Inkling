@@ -3,6 +3,15 @@ name: release
 on:
   push:
     tags: ['v*']
+  # 打真的 tag 之前先試跑一次。打包這一段(stage 佈局 → makeappx pack → bundle)
+  # 在 tag 出現之前沒有任何機會被執行過,而它壞掉的代價是「tag 已經推上去了,
+  # 重跑還得先把 tag 刪掉」。dispatch 跑完整條路,只跳過最後建 Release 那一步。
+  workflow_dispatch:
+    inputs:
+      dry_run_version:
+        description: '試跑用的版本號(v<major>.<minor>.<patch> 的數字部分)'
+        required: false
+        default: '0.0.0'
 
 # 預設唯讀,寫入權限只給真的要建 Release 的那個 job —— build job 會跑
 # dotnet publish 與 makeappx,不需要能改這個 repo。
@@ -23,8 +32,13 @@ jobs:
       # 簽章佔位:走自購 OV 憑證路線時,把 PFX 以 base64 存進 repo secret
       # SIGNING_CERT_BASE64、密碼存進 SIGNING_CERT_PASSWORD,下面的簽章步驟就會啟用。
       # 走 Store 代簽路線則不需要 —— 直接拿這裡產出的未簽章 bundle 上傳 Partner Center。
-      SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
-      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+      #
+      # 這裡**只放一個布林旗標,不放憑證本身**:job 層的 env 每一個步驟都讀得到,
+      # 包含 dotnet publish 與 makeappx —— 那些步驟會跑到第三方的 MSBuild 目標與
+      # 還原下來的套件,沒有理由讓它們看得到私鑰。憑證只掛在真的要簽的那一步。
+      # 旗標非用 job 層 env 不可:GitHub 明講 `secrets` 在步驟的 `if:` 裡讀不到,
+      # 官方給的解法就是先映射成 job 層的 env 再比對。
+      HAS_SIGNING_CERT: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -36,12 +50,19 @@ jobs:
         id: ver
         shell: pwsh
         run: |
-          $tag = '${{ github.ref_name }}' -replace '^v', ''
+          # workflow_dispatch 時 github.ref_name 是分支名,不是 tag —— 改用輸入的版本。
+          $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            '${{ inputs.dry_run_version }}'
+          } else {
+            '${{ github.ref_name }}' -replace '^v', ''
+          }
           if ($tag -notmatch '^\d+\.\d+\.\d+$') {
-            throw "tag 必須是 v<major>.<minor>.<patch>,實際是 '${{ github.ref_name }}'"
+            throw "版本必須是 <major>.<minor>.<patch>,實際是 '$tag'"
           }
           # MSIX 版本是四段,而且第四段必須是 0(Store 的規定)。
           "appx_version=$tag.0" >> $env:GITHUB_OUTPUT
+          # 資產檔名用得到:tag 那條路是 v0.2.0,dispatch 那條路是 v0.0.0。
+          "tag_name=v$tag" >> $env:GITHUB_OUTPUT
 
       - name: Inject version into Package.appxmanifest
         shell: pwsh
@@ -66,15 +87,13 @@ jobs:
       - name: Stage package layout
         shell: pwsh
         run: |
-          # 與 tools/deploy.ps1 相同的佈局邏輯:publish 輸出 + build 佈局才會產生的
-          # AppxManifest.xml。resources.pri 與 Assets 已在 publish 輸出裡。
+          # 佈局邏輯與 tools/deploy.ps1 共用同一支腳本 —— 以前兩邊各寫一份,
+          # 而這條路在打 tag 之前不會被執行,漂掉了也沒人會發現。
           $tfm = 'net10.0-windows10.0.26100.0'
-          $publish = "src/Inkling/bin/Release/$tfm/win-${{ matrix.arch }}/publish"
-          $buildLayout = "src/Inkling/bin/${{ matrix.platform }}/Release/$tfm/win-${{ matrix.arch }}"
-          $stage = "artifacts/stage-${{ matrix.arch }}"
-          New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          Copy-Item "$publish/*" $stage -Recurse -Force
-          Copy-Item "$buildLayout/AppxManifest.xml" $stage -Force
+          ./tools/stage-layout.ps1 `
+            -PublishDir "src/Inkling/bin/Release/$tfm/win-${{ matrix.arch }}/publish" `
+            -BuildLayoutDir "src/Inkling/bin/${{ matrix.platform }}/Release/$tfm/win-${{ matrix.arch }}" `
+            -StageDir "artifacts/stage-${{ matrix.arch }}"
 
       - name: Pack .msix
         shell: pwsh
@@ -93,8 +112,12 @@ jobs:
         # 需要憑證:目前還沒有公開信任的程式碼簽章憑證(決策見 docs/release-checklist.md)。
         # 未設定 secret 時這一步整個跳過,產出的是未簽章套件 —— 只能拿去 Store 送審
         # (Store 會代簽),不能給一般使用者側載(Windows 會以 0x800B0109 擋下)。
-        if: env.SIGNING_CERT_BASE64 != ''
+        if: env.HAS_SIGNING_CERT == 'true'
         shell: pwsh
+        # 憑證只在這一步存在,不放 job 層 —— job 層的 env 連 dotnet publish 都讀得到。
+        env:
+          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
           $pfx = New-TemporaryFile
           try {
@@ -124,8 +147,8 @@ jobs:
     env:
       # 與 build job 同一組 secret:bundle 也要簽,否則 Release 上掛的是
       # 「裡面每個 .msix 都簽好、外面那層沒簽」的東西,側載照樣被 Windows 擋下。
-      SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
-      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+      # 同樣只放旗標,憑證掛在簽章那一步自己的 env。
+      HAS_SIGNING_CERT: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -137,9 +160,14 @@ jobs:
         id: ver
         shell: pwsh
         run: |
-          # 格式已經在 build job 驗過(這個 job needs: build),這裡只去掉 v 前綴。
-          $tag = '${{ github.ref_name }}' -replace '^v', ''
+          # 格式已經在 build job 驗過(這個 job needs: build),這裡只還原同一個值。
+          $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            '${{ inputs.dry_run_version }}'
+          } else {
+            '${{ github.ref_name }}' -replace '^v', ''
+          }
           "appx_version=$tag.0" >> $env:GITHUB_OUTPUT
+          "tag_name=v$tag" >> $env:GITHUB_OUTPUT
 
       - name: Bundle .msixbundle
         shell: pwsh
@@ -150,15 +178,18 @@ jobs:
           # 會用打包當下的日期時間」(<年>.<月日>.<時分>.<秒毫秒>),於是同一個 tag
           # 每次重跑都產出不同版本,而且跟 .msix 裡的版本對不上。
           & $makeappx bundle /o /bv ${{ steps.ver.outputs.appx_version }} `
-            /d artifacts/msix /p "artifacts/Inkling_${{ github.ref_name }}.msixbundle"
+            /d artifacts/msix /p "artifacts/Inkling_${{ steps.ver.outputs.tag_name }}.msixbundle"
           if ($LASTEXITCODE -ne 0) { throw "makeappx bundle 失敗($LASTEXITCODE)" }
 
       - name: Sign .msixbundle
         # 跟 build job 的 Sign 同一個條件:沒有憑證就整步跳過,產出未簽章的 bundle
         # (只能送 Store 代簽)。有憑證的話這一步是必要的 —— 簽章不會從裡面的 .msix
         # 傳遞到外層 bundle。
-        if: env.SIGNING_CERT_BASE64 != ''
+        if: env.HAS_SIGNING_CERT == 'true'
         shell: pwsh
+        env:
+          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
           $pfx = New-TemporaryFile
           try {
@@ -167,7 +198,7 @@ jobs:
               Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
             & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
               /f $pfx.FullName /p $env:SIGNING_CERT_PASSWORD `
-              "artifacts/Inkling_${{ github.ref_name }}.msixbundle"
+              "artifacts/Inkling_${{ steps.ver.outputs.tag_name }}.msixbundle"
             if ($LASTEXITCODE -ne 0) { throw "signtool sign 失敗($LASTEXITCODE)" }
           }
           finally {
@@ -175,6 +206,8 @@ jobs:
           }
 
       - name: Create GitHub Release
+        # 試跑到這裡就停:前面已經把 stage → pack → bundle 整條路跑過一遍,那才是要驗的。
+        if: github.event_name != 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -189,8 +222,8 @@ jobs:
           # 要給使用者側載,必須先完成簽章(見 build job 的 Sign 步驟註解)。
           # PowerShell 不會對原生指令展開萬用字元,資產路徑要自己展開再傳。
           $assets = Get-ChildItem artifacts/msix/*.msix | ForEach-Object FullName
-          $bundle = (Resolve-Path "artifacts/Inkling_${{ github.ref_name }}.msixbundle").Path
-          gh release create '${{ github.ref_name }}' `
-            --title '${{ github.ref_name }}' `
+          $bundle = (Resolve-Path "artifacts/Inkling_${{ steps.ver.outputs.tag_name }}.msixbundle").Path
+          gh release create '${{ steps.ver.outputs.tag_name }}' `
+            --title '${{ steps.ver.outputs.tag_name }}' `
             --generate-notes `
             @assets $bundle

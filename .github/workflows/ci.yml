@@ -44,3 +44,42 @@ jobs:
 
       - name: Publish Release win-arm64 (trimmed)
         run: dotnet publish src/Inkling/Inkling.csproj -c Release -p:Platform=ARM64 -p:PublishProfile=win-arm64
+
+      # 打包這一段以前只存在於 release.yml,而那條路只有推 tag 時才會跑 —— 也就是
+      # manifest 與資產的驗證從來沒有在 PR 上把關過。實際代價付過:release job 少了
+      # checkout、makeappx bundle 少了 /bv、bundle 沒簽章,三個問題全落在同一段
+      # 沒跑過的程式碼裡。這裡只做到 pack(不簽章、不上傳),當成驗證用。
+      #
+      # makeappx 刻意不加 /nv:要的就是它完整的套件驗證 —— manifest 的 schema、
+      # 資產檔在不在、圖示尺寸對不對,問題在這裡就擋下來。
+      - name: Pack .msix (validation only)
+        shell: pwsh
+        run: |
+          $tfm = 'net10.0-windows10.0.26100.0'
+          ./tools/stage-layout.ps1 `
+            -PublishDir "src/Inkling/bin/Release/$tfm/win-x64/publish" `
+            -BuildLayoutDir "src/Inkling/bin/x64/Release/$tfm/win-x64" `
+            -StageDir 'artifacts/stage-x64'
+
+          $makeappx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makeappx) { throw '在 Windows Kits 底下找不到 makeappx.exe' }
+
+          New-Item -ItemType Directory -Force -Path artifacts/out | Out-Null
+          & $makeappx pack /o /d 'artifacts/stage-x64' /p 'artifacts/out/ci-validation.msix'
+          if ($LASTEXITCODE -ne 0) { throw "makeappx pack 失敗($LASTEXITCODE)" }
+
+      # 宣告的語言必須是三種、而且第一項(預設)是 en-US。這一段的產生方式會**靜靜地**
+      # 跟著建置機器的顯示語言跑(見 Inkling.csproj 的 DefaultLanguage 註解),
+      # 錯了不會有任何步驟失敗,只會讓 Store 把三語擴展登記成單語。
+      - name: Check declared package languages
+        shell: pwsh
+        run: |
+          $tfm = 'net10.0-windows10.0.26100.0'
+          [xml]$m = Get-Content "src/Inkling/bin/x64/Release/$tfm/win-x64/AppxManifest.xml"
+          $langs = @($m.Package.Resources.Resource | ForEach-Object { $_.Language })
+          $expected = @('EN-US', 'ZH-HANT', 'ZH-HANS')
+          if (Compare-Object $langs $expected -SyncWindow 0) {
+            throw "AppxManifest 宣告的語言是 [$($langs -join ', ')],預期 [$($expected -join ', ')]"
+          }
+          Write-Host "宣告的語言:$($langs -join ', ')" 

@@ -31,6 +31,18 @@
       NeutralResourcesLanguage —— 寫錯不會報錯,只會 CA1824 說你沒標。)
     -->
     <NeutralLanguage>en</NeutralLanguage>
+
+    <!--
+      MSIX/PRI 的預設語言。跟上面的 NeutralLanguage 是兩回事,兩個都要設:
+      NeutralLanguage 管 .NET 的資源查找(附屬組件),DefaultLanguage 管 MRT 產生
+      PRI 時寫進 priconfig.xml 的 Language 限定詞。
+
+      不設的話 WinAppSdkGetDefaultResourceLanguage 會回退到**建置機器的顯示語言** ——
+      實測這台機器產出 `<qualifier name="Language" value="zh-TW" />`,而 GitHub Actions
+      的 windows-latest 會產 en-US。也就是同一份原始碼在不同機器建出不同的套件,
+      本機驗過的 manifest 跟發版的不是同一份。
+    -->
+    <DefaultLanguage>en-US</DefaultLanguage>
   </PropertyGroup>
 
   <!--
@@ -147,4 +159,27 @@
     <PublishTrimmed>true</PublishTrimmed>
     <ILLinkTreatWarningsAsErrors>false</ILLinkTreatWarningsAsErrors>
   </PropertyGroup>
+
+  <!--
+    第三方的偵錯符號不進套件。Microsoft.CommandPalette.Extensions.pdb 一個就 2.61 MB,
+    佔未壓縮套件的 8.5%,而它對我們毫無用處 —— 那是別人組件的行號,我們既不會拿它
+    除錯,使用者更不會。
+
+    **自家的兩個 pdb 刻意留著**(Inkling.pdb / Inkling.Core.pdb,合計 70 KB):
+    擴展沒有主控台,唯一的現場線索是例外的堆疊,少了 pdb 就只剩沒有行號的方法名。
+
+    用 NuGetPackageId 分辨而不是比對檔名:凡是從套件還原下來的 ResolvedFileToPublish
+    都帶著這個中繼資料,自家專案的產出沒有。改用檔名前綴的話,哪天多一個叫
+    Inkling.Something 的第三方套件就會靜靜地漏掉。
+
+    只掛在 publish:Debug 走的是 build 佈局(deploy.ps1 直接註冊它),那條路不在乎體積,
+    而且多留符號反而方便。
+  -->
+  <Target Name="TrimThirdPartySymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+        Remove="@(ResolvedFileToPublish)"
+        Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb' and '%(ResolvedFileToPublish.NuGetPackageId)' != ''" />
+    </ItemGroup>
+  </Target>
 </Project>

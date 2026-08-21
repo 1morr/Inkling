@@ -33,8 +33,17 @@
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
   </Dependencies>
 
+  <!-- 三種語言明確列出來,**第一項就是預設**。
+
+       不要換回官方模板的 `x-generate`:那會讓 MRT 拿 PRI 裡實際存在的語言限定詞去展開,
+       而我們的介面字串走的是 .NET 的 .resx 附屬組件、不是 PRI —— PRI 裡一個語言資源
+       都沒有,於是它退回「預設語言」那一個,產出物就變成單語(實測作者機器產 ZH-TW、
+       Actions 的 windows-latest 會產 EN-US)。Store 與 gallery 讀的就是這一段,
+       一個三語擴展會被登記成單語。csproj 的 <DefaultLanguage> 同時釘住 PRI 那一邊。 -->
   <Resources>
-    <Resource Language="x-generate"/>
+    <Resource Language="en-US"/>
+    <Resource Language="zh-Hant"/>
+    <Resource Language="zh-Hans"/>
   </Resources>
 
   <Applications>

@@ -177,7 +177,31 @@
   **bundle 自己也要簽**(簽章不會從裡面的 `.msix` 傳遞到外層,只簽裡面的話側載一樣被擋)、
   發版前先跑一次 `dotnet test`(tag 可能打在沒過 CI 的 commit 上)。
 - **兩個 workflow 的 `permissions` 收緊**:預設改成 `contents: read`,
-  寫入權限只給真的要建 Release 的那個 job。
+  寫入權限只給真的要建 Release 的那個 job。簽章憑證與密碼也從 job 層的 `env`
+  收到真的要簽的那兩個步驟自己身上 —— job 層的 `env` 連 `dotnet publish` 都讀得到,
+  而那一步會跑到第三方的 MSBuild 目標。(旗標仍留在 job 層:GitHub 明講 `secrets`
+  在步驟的 `if:` 裡讀不到,官方給的解法就是先映射成 job 層的 env。)
+- **打包整段現在有 CI 覆蓋,而且發版流程可以先試跑。** `makeappx` 以前只存在於
+  `release.yml`,而那條路只有推 tag 時才會跑 —— 也就是 manifest 與資產的驗證從來
+  沒有在 PR 上把關過。上面那四個發版問題全部落在同一段沒跑過的程式碼裡,不是巧合。
+  現在 `ci.yml` 每次都組一次套件佈局並跑 `makeappx pack`(不簽章、不上傳,純驗證),
+  `release.yml` 也加了 `workflow_dispatch`,可以在真的打 tag 之前把 stage → pack →
+  bundle 整條路跑完,只跳過最後建 Release 那一步。
+- **套件佈局的組法抽成 `tools/stage-layout.ps1`**,`deploy.ps1` 與 `release.yml` 共用。
+  以前兩邊各寫一份,而 CI 那一份沒有人跑得到,漂掉了也不會有人發現。腳本另外確認
+  `AppxManifest.xml` / `resources.pri` / `Assets` / `Inkling.exe` 四樣都在 ——
+  少了 `resources.pri` 套件照樣註冊得起來,只是所有本地化資源都讀不到。
+- **套件現在明確宣告三種語言(en-US / zh-Hant / zh-Hans),而且第一項是 en-US。**
+  manifest 原本照官方模板寫 `x-generate`,而那會讓 MRT 拿 PRI 裡實際存在的語言去展開 ——
+  我們的介面字串走的是 .NET 附屬組件、不是 PRI,於是它退回「預設語言」那一個,
+  而預設語言取的是**建置機器的 Windows 顯示語言**:作者機器產出 `ZH-TW`、
+  GitHub Actions 會產 `EN-US`。同一份原始碼在不同機器建出不同的套件,而 Store 與
+  gallery 讀的就是這一段 —— 一個三語擴展會被登記成單語。`ci.yml` 加了一條檢查釘住它。
+- **第三方的偵錯符號不再進套件**,未壓縮體積少 2.6 MB(30.8 → 28.2 MB)。
+  自家那兩個 pdb 刻意留著:擴展沒有主控台,唯一的現場線索就是例外的堆疊。
+- `tools/deploy.ps1` 補上 `cmdpal-ui.ps1` 早就有的那道守門:一台機器上出現兩個同名
+  Inkling 套件時直接中止。`Get-AppxPackage` 回陣列的話,底下每一個 `.InstallLocation`
+  比對都不會相等,於是每次部署都先移除再註冊,而「移除的是哪一個」不確定。
 - `tools/cmdpal-ui.ps1` **不再照視窗標題找 CmdPal 的視窗**。標題跟著 Windows 顯示語言走,
   而腳本比對的是寫死的 `Command Palette` / `Command Palette Toast`,旁邊還註著
   「在 zh-TW 機器上實測仍是英文」—— 那句話在某次 CmdPal 進程重啟之後就不成立了

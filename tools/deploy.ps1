@@ -112,19 +112,10 @@ if ($Configuration -eq 'Release') {
     $publishOutput = Join-Path $repoRoot "src\Inkling\bin\Release\$targetFramework\win-x64\publish"
     $layout = Join-Path $repoRoot 'src\Inkling\bin\stage-Release'
 
-    if (-not (Test-Path $publishOutput)) { throw "找不到 publish 輸出:$publishOutput" }
-
     Write-Step "組出可註冊的 trimmed 佈局"
-    if (Test-Path $layout) { Remove-Item $layout -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path $layout | Out-Null
-
-    Copy-Item "$publishOutput\*" $layout -Recurse -Force
-
-    # publish 輸出沒有 AppxManifest.xml,那是 build 才會產生的。
-    Copy-Item (Join-Path $buildLayout 'AppxManifest.xml') $layout -Force
-
-    $size = [math]::Round(((Get-ChildItem $layout -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 1)
-    Write-Host "    $layout  ($size MB)" -ForegroundColor DarkGray
+    # 與 release.yml 的打包共用同一支腳本,避免兩邊各寫一份然後漂掉。
+    & (Join-Path $PSScriptRoot 'stage-layout.ps1') `
+        -PublishDir $publishOutput -BuildLayoutDir $buildLayout -StageDir $layout | Out-Null
 }
 else {
     $layout = $buildLayout
@@ -141,7 +132,17 @@ if (-not (Test-Path $manifest)) {
 # 在 Debug 與 Release 之間切換時這會讓人白忙很久,所以位置不同就先移除舊註冊。
 # -PreserveApplicationData 是為了保住 LocalState 裡的擴展設定,不然每次部署設定都會被清掉。
 $targetLocation = (Resolve-Path $layout).Path
-$existing = Get-AppxPackage -Name $packageName
+
+# 同一台機器上出現兩個同名套件是真的會發生的(重新註冊之後 CmdPal 沒有去重,
+# 見 CLAUDE.md 第 6 條)。`Get-AppxPackage` 回陣列時,底下每一個 `.InstallLocation`
+# 都會變成陣列 —— 比對永遠不相等,於是每次部署都先移除再註冊,而「移除的是哪一個」
+# 不確定。cmdpal-ui.ps1 早就有這道守門,兩支腳本問的是同一件事,答案不該不一樣。
+$installed = @(Get-AppxPackage -Name $packageName)
+if ($installed.Count -gt 1) {
+    throw "找到不只一個 $packageName 套件($($installed.PackageFullName -join ', ')),請先清掉重複的再部署。"
+}
+
+$existing = if ($installed.Count -eq 1) { $installed[0] } else { $null }
 
 if ($existing -and $existing.InstallLocation -ne $targetLocation) {
     Write-Step "已註冊的位置不同,先移除舊註冊"
@@ -165,8 +166,8 @@ catch {
     if ($_.Exception.Message -notmatch '0x80073CFB') { throw }
 
     Write-Host "    manifest 變了,先移除註冊再登錄一次" -ForegroundColor DarkGray
-    $stale = Get-AppxPackage -Name $packageName
-    if ($stale) { Remove-AppxPackage -Package $stale.PackageFullName -PreserveApplicationData }
+    $stale = @(Get-AppxPackage -Name $packageName)
+    if ($stale.Count -eq 1) { Remove-AppxPackage -Package $stale[0].PackageFullName -PreserveApplicationData }
     Add-AppxPackage -Register $manifest
 }
 

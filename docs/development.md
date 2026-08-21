@@ -183,19 +183,56 @@ assets/icon/         圖示的原始檔(SVG);src/Inkling/Assets 的 PNG 全部�
                      時 SVG 與 render-icons.ps1 的 $targets 兩邊都要補。
                      assets/gallery/icon.png(gallery 投稿 + README 頂部)與
                      assets/social-preview.png(GitHub social preview)也是它產的
-docs/images/         兩份 README 共用的截圖與 GIF(真機拍的,重拍流程見下方)
 tests/               Inkling.Core.Tests(xUnit)
 tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
                      ApiDump(印 SDK 型別的實際簽章)、cmdpal-ui.ps1(真機驅動
-                     CmdPal 畫面)、render-icons.ps1(SVG→PNG)
+                     CmdPal 畫面)、render-icons.ps1(SVG→PNG)、
+                     stage-layout.ps1(組出可註冊 / 可打包的套件佈局;
+                     deploy.ps1 與 release.yml 共用同一份)
 docs/                design-notes.md(設計考證)、development.md(這一份)、
-                     manual-test-checklist.md、release-checklist.md
+                     manual-test-checklist.md、release-checklist.md、
+                     images/(兩份 README 共用的截圖與 GIF,真機拍的,重拍流程見上方)、
+                     gallery/(CmdPal Extension Gallery 的投稿草稿)
+.github/             workflows/ci.yml 與 workflows/release.yml(見下一節)、
+                     ISSUE_TEMPLATE/
 .claude/skills/      CmdPal 官方模板的 API 速查與工作流程,都加了「本專案的例外」;
                      另有自己寫的 verify-cmdpal-ui,見 .claude/skills/README.md
 ```
 
 分層的界線是「能不能自動化測試」:`Inkling.Core` 不知道 Command Palette 的存在,
 容易寫錯的邏輯都在那一層,因此都有單元測試涵蓋。新增行為時先問「這段邏輯能不能放進 Core」。
+
+<a id="workflows"></a>
+
+### CI 覆蓋到哪裡
+
+兩個 workflow,都在 `windows-latest` 上跑:
+
+| | 何時跑 | 做什麼 |
+|---|---|---|
+| `ci.yml` | push 到 master / main、每個 pull request | Debug 建擴展 → 建兩支工具 → `dotnet test` → 兩個 RID 各 publish 一次(trimmed)→ **組套件佈局 + `makeappx pack`** → 檢查 manifest 宣告的語言 |
+| `release.yml` | 推 `v*` tag,或手動 `workflow_dispatch` | 解析版本 → 注入 manifest → `dotnet test` → publish → 組佈局 → `makeappx pack` →(有憑證才)簽 → 組 bundle(帶 `/bv`)→(有憑證才)簽 → 建 GitHub Release |
+
+兩件事值得記住:
+
+- **`ci.yml` 的打包那兩步是後來才補的,而它們補的是一個真的付過代價的缺口。**
+  `makeappx` 以前只存在於 `release.yml`,而那條路在推 tag 之前一次都不會執行 ——
+  於是「release job 沒有 checkout」「`makeappx bundle` 少了 `/bv`」「bundle 沒簽章」
+  三個問題全部安安靜靜地躺在那裡,要到第一次發版當天才會一起爆,而那時 tag 已經推上去了。
+  CI 那一步刻意**不加 `/nv`**:要的就是 makeappx 完整的套件驗證。
+- **`release.yml` 的 `workflow_dispatch` 是拿來試跑的**,填一個版本號(預設 `0.0.0`),
+  它會把 stage → pack → bundle 整條路跑完,只跳過最後建 Release 那一步。
+  改過打包相關的東西就跑一次,不要拿真的 tag 當測試。
+
+佈局那段兩邊共用 `tools/stage-layout.ps1`:**publish 輸出裡沒有 `AppxManifest.xml`**
+(那是 build 佈局才會產生的),而 trimming 只在 publish 生效 —— 兩邊各有一半,得併起來。
+
+`Package.appxmanifest` 的 `<Resources>` **刻意不用官方模板的 `x-generate`**:
+那會讓 MRT 拿 PRI 裡實際存在的語言限定詞去展開,而我們的介面字串走 .NET 的附屬組件、
+不是 PRI,於是它退回「預設語言」那一個 —— 而預設語言取的是**建置機器的顯示語言**。
+同一份原始碼在作者機器上產出 `ZH-TW`、在 Actions 上產 `EN-US`,而 Store 與 gallery
+讀的就是這一段。現在三種語言明確列出來,`Inkling.csproj` 的 `<DefaultLanguage>`
+同時釘住 PRI 那一邊,`ci.yml` 最後一步檢查產出物真的是那三種。
 
 <a id="settings-file"></a>
 
