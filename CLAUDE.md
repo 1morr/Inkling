@@ -314,6 +314,10 @@ Version 的症狀)。
   壓回去過一次)。改了 build、部署腳本或圖示流程,更新的是 `docs/development.md`。
   `CONTRIBUTING.md`(英文)是對外的薄入口,只指路、不重複規則 —— 規則在這份與
   `docs/development.md`,README 的文檔表對外列的是它而不是這份。
+  **「查過、量過,然後決定不做」的東西也進 `design-notes.md`**,收在
+  [〈評估過但沒有做〉](docs/design-notes.md#deferred) ——
+  沒寫下來的話,每隔一陣子就會有人重新想到同一個點子再走一遍同樣的路。
+  每一條都要寫「什麼變了才該重新考慮」,否則那節會變成一張看不出還算不算數的否決清單。
 
 - **圖示的原始檔是 `assets/icon/*.svg`**,`src/Inkling/Assets/*.png` 是
   `tools/render-icons.ps1` 產生的,不要手改 PNG。同一支腳本還產 `assets/gallery/icon.png`

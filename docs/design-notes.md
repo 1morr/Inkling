@@ -1358,6 +1358,79 @@ Inkscape / rsvg,而 .NET 不會解 SVG。重點是它**以目標尺寸直接向�
 `IconHelpers.FromRelativePath` 也一樣讀不到 —— 它組的是 `BaseDirectory` 底下的實體路徑,
 不走 MRT,所以 CmdPal 清單裡那一列也會是空的。
 
+<a id="deferred"></a>
+
+## 評估過但沒有做
+
+這一節收的是**查過、量過,然後決定不做**的東西。它們不是待辦 —— 沒有寫下來的話,
+每隔一陣子就會有人(包括半年後的自己)重新想到同一個點子,再把同樣的路走一遍。
+每一條都寫了「什麼變了才該重新考慮」;前提沒變就不要動。
+
+<a id="no-isloading"></a>
+
+### 清單第一次開啟沒有載入指示
+
+`ListPage.IsLoading` 在 `src/` 底下零命中。清單頁第一次 `GetItems()` 會走到
+`FileSystemNoteRepository.Load()`,同步掃完整個資料夾(含子資料夾)再讀完每一個 `.md`。
+
+**本機 SSD 上量過:3000 則、Release 組態,冷掃 108–125 ms。** 那個數字撐不起一個載入指示。
+
+真正的風險在別處:**OneDrive Files On-Demand 的 dehydrated 檔案,`File.ReadAllText`
+會觸發雲端下載** —— 而雲端資料夾正是 README 主打的用法(README 自己在同步那一節警告過)。
+那時使用者看到的是一個空白、沒有任何進度的面板。
+
+**還是沒做,因為那條路的延遲從來沒被量過。** 手上沒有 dehydrated 狀態的測試資料夾,
+「會觸發下載」是從 Files On-Demand 的機制推的,不是實測。而且修法不是加一個旗標就好:
+`IsLoading` 要有意義,載入本身得先變成非同步的,那是把 `GetItems` 那條同步路整個翻掉。
+**要動之前先量**:弄一個真的 dehydrated 的資料夾,量冷開啟。量出來還是一百多毫秒就別做。
+
+<a id="no-dock-band"></a>
+
+### 沒有實作 dock band
+
+`GetDockBands` / `DockViewModel` / `DockWindow` 在安裝版的 `Microsoft.CmdPal.UI.exe` 裡
+byte-scan 都掃得到,SDK 的 winmd 也有 `ICommandProvider2` —— **技術上做得到**,
+而「快速記下」確實是最適合放上 dock 的動作。
+
+**沒做。** dock 是常駐在畫面上的東西,而 Inkling 的整個立論是「叫出面板 → 打字 → Enter」,
+那條路的鍵數已經是最低的了 —— dock 換來的是滑鼠可及性,不是更少的按鍵。
+而且**沒有實跑驗過**:byte-scan 只證明那些型別存在,不證明擴展掛上去長什麼樣、
+也不證明使用者沒開 dock 時不會白佔一個註冊。
+
+要重新考慮的前提:有人真的提出需求,或 dock 變成 CmdPal 的主要入口。
+真要做的時候不必從頭查 —— 做法已經寫在 `.claude/skills/add-dock-band/`,
+那份 skill 留著的原因就是這個:**沒做不等於沒查過**。
+
+<a id="two-translations"></a>
+
+### 只有兩個翻譯
+
+`src/Inkling/Properties/` 底下是中性(英文)加 zh-Hant、zh-Hans。有一人維護的社群擴展做到五種語言。
+
+**基礎建設不是障礙** —— resx 那一套加上 `ResourceParityTests` 已經比它們完備,
+加一個語言就是加一個檔案,漏掉的鍵與對不上的佔位符會被測試擋下。
+
+**沒加,因為沒有人要。** 成本不在第一次,在往後**每一次改字串都要多改一份** ——
+而這個 repo 的介面字串還在動。**收到請求再加**,那時至少知道加的是對的語言,
+而不是照使用人數表猜一個出來。
+
+<a id="no-dispose-test"></a>
+
+### 「Dispose 之後不准再掛 watcher」沒有測試
+
+`EnsureWatcher` 開頭那個 `_disposed` 守衛是修過的 bug:換筆記資料夾時 provider 會釋放舊
+repository,但 CmdPal 手上的舊頁面還活著,它一呼叫 `GetAll` 就會生出一個沒有人會再去釋放的
+`FileSystemWatcher` —— 換幾次資料夾就漏幾個,每個都還盯著舊目錄發事件。
+
+**沒有測試,而不是忘了寫。** `_watcher` 是 **private**;`Inkling.Core` 確實開了
+`InternalsVisibleTo` 給 `Inkling.Core.Tests`,但那只放行 `internal`,碰不到 private 欄位。
+兩條路都不划算:為了測試把欄位放寬成 `internal`,是讓測試改變它要測的那個型別的形狀;
+用反射去掏,則是這個測試專案裡唯一一處反射(13 個測試檔目前一個 `BindingFlags` 都沒有)。
+
+從公開 API 唯一觀察得到的形狀是「Dispose 之後寫一個檔案,`Changed` 不應該再響」——
+那是在測一個**不會發生的事件**,只能靠等,而等多久都不構成證明,還會偶爾紅。
+寧可留那段講清楚為什麼的註解。
+
 <a id="dev-notes"></a>
 
 ## 開發考證
