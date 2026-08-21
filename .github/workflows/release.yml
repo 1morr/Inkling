@@ -49,12 +49,20 @@ jobs:
       - name: Resolve version from tag
         id: ver
         shell: pwsh
+        env:
+          # **不要把 ${{ }} 直接內插進 PowerShell 原始碼。** 這兩個值一個來自 ref 名、
+          # 一個來自手動輸入,而內插是在 shell 看到腳本之前就做完的字串替換 ——
+          # 值裡有引號就改變了程式的結構。經由 env 傳進去,PowerShell 只當它是資料。
+          # (tag 那條路格式下面還會驗一次,這裡是不讓它有機會先變成程式碼。)
+          REF_NAME: ${{ github.ref_name }}
+          DRY_RUN_VERSION: ${{ inputs.dry_run_version }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          # workflow_dispatch 時 github.ref_name 是分支名,不是 tag —— 改用輸入的版本。
-          $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
-            '${{ inputs.dry_run_version }}'
+          # workflow_dispatch 時 ref 名是分支名,不是 tag —— 改用輸入的版本。
+          $tag = if ($env:EVENT_NAME -eq 'workflow_dispatch') {
+            $env:DRY_RUN_VERSION
           } else {
-            '${{ github.ref_name }}' -replace '^v', ''
+            $env:REF_NAME -replace '^v', ''
           }
           if ($tag -notmatch '^\d+\.\d+\.\d+$') {
             throw "版本必須是 <major>.<minor>.<patch>,實際是 '$tag'"
@@ -165,12 +173,20 @@ jobs:
       - name: Resolve version from tag
         id: ver
         shell: pwsh
+        env:
+          # **不要把 ${{ }} 直接內插進 PowerShell 原始碼。** 這兩個值一個來自 ref 名、
+          # 一個來自手動輸入,而內插是在 shell 看到腳本之前就做完的字串替換 ——
+          # 值裡有引號就改變了程式的結構。經由 env 傳進去,PowerShell 只當它是資料。
+          # (tag 那條路格式下面還會驗一次,這裡是不讓它有機會先變成程式碼。)
+          REF_NAME: ${{ github.ref_name }}
+          DRY_RUN_VERSION: ${{ inputs.dry_run_version }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           # 格式已經在 build job 驗過(這個 job needs: build),這裡只還原同一個值。
-          $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
-            '${{ inputs.dry_run_version }}'
+          $tag = if ($env:EVENT_NAME -eq 'workflow_dispatch') {
+            $env:DRY_RUN_VERSION
           } else {
-            '${{ github.ref_name }}' -replace '^v', ''
+            $env:REF_NAME -replace '^v', ''
           }
           "appx_version=$tag.0" >> $env:GITHUB_OUTPUT
           "tag_name=v$tag" >> $env:GITHUB_OUTPUT

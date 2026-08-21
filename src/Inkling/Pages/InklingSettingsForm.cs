@@ -44,6 +44,12 @@ internal sealed partial class InklingSettingsForm : FormContent
     /// <inheritdoc cref="DirectoryBinding" />
     private const string SeparatorBinding = "${" + SeparatorField + "}";
 
+    /// <summary>
+    /// 挑完資料夾那則提示留多久。預設是 2500 毫秒(實際 new 一個出來讀到的),
+    /// 對這條路太短 —— 見 <c>Browse</c> 裡的說明。
+    /// </summary>
+    private const int FolderPickedToastMs = 8000;
+
     /// <summary>按鈕靠 <c>Action.Submit</c> 的 data 表明自己是誰 —— 兩顆按鈕走的是同一個 SubmitForm。</summary>
     private const string ActionKey = "action";
     private const string BrowseAction = "browse";
@@ -152,7 +158,16 @@ internal sealed partial class InklingSettingsForm : FormContent
                 // 送出表單那條路本來就只有它,兩邊分開的話,哪天事件那頭壞了也只會
                 // 壞掉一半,反而更難查。
                 _settings.Apply(picked, separator, preview);
-                new ToastStatusMessage(Strings.Format(Resources.SettingsFolderPicked, picked)).Show();
+
+                // **這一則提示是盡力而為的,不是保證看得到。** 它畫在 CmdPal 的主面板上,
+                // 而那個面板在對話框拿到焦點的當下就把自己藏起來了(第 7 條那個機制)——
+                // 使用者挑完資料夾回到 CmdPal 時,預設的 2500 毫秒多半已經走完。
+                // 撐長一點讓它有機會還在,但**真正可靠的確認是卡片本身**:Apply 之後
+                // provider 會叫設定頁重讀,回到這一頁時資料夾欄位顯示的就是剛挑的那個。
+                new ToastStatusMessage(Strings.Format(Resources.SettingsFolderPicked, picked))
+                {
+                    Duration = FolderPickedToastMs,
+                }.Show();
             },
             // 對話框開不起來也要講一聲,否則「瀏覽…」看起來像壞掉 —— 之前只有 DiagnosticLog
             // 留一行字,而它預設是關的。用 InfoBadge:不開視窗、不關面板,表單留在原地。
