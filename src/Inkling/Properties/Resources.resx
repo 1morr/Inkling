@@ -391,6 +391,11 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
     <value>Copied</value>
     <comment>掛在清單那一列右邊的標籤,短一點比較好。</comment>
   </data>
+  <!-- 同上,這也是掛在那一列上的標籤,長度要跟「已複製」一個量級。
+       塞不下下一步,而下一步就是再按一次,使用者自然會做。 -->
+  <data name="CopyFailed" xml:space="preserve">
+    <value>Copy failed</value>
+  </data>
   <data name="FormTitleLabel" xml:space="preserve">
     <value>Title</value>
   </data>
@@ -463,6 +468,11 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   </data>
   <data name="SettingsSaved" xml:space="preserve">
     <value>Settings saved</value>
+  </data>
+  <!-- 值已經在這個工作階段生效,只是沒寫進 settings.json —— 重啟後會還原,
+       所以不能只說「存檔失敗」,要講清楚現在是什麼狀態。 -->
+  <data name="SettingsSaveFailed" xml:space="preserve">
+    <value>Applied for now, but not written to disk — settings revert on restart. Try again; if it keeps failing, check free space and permissions</value>
   </data>
   <data name="SettingsFolderPickerTitle" xml:space="preserve">
     <value>Choose the notes folder</value>

@@ -862,9 +862,14 @@ toast 關掉,也比默默少刪好。
 反過來 `main` 那套 toast 改寫(`TransparentWindow` / `TransientSurface` / `ToastPosition`)
 安裝版**一個都掃不到** —— 又一個不能照 `main` 寫文檔的例子。
 
-所以存檔提示照樣用它(`NoteFormContent`、`InklingSettingsForm`),
-而 `docs/manual-test-checklist.md` 那條「跳出『已儲存』的 toast **並回到上一頁**」
-本身就是證據:面板要是被關掉,那一項當初不會通過。
+所以存檔提示照樣用它(`NoteFormContent`、`InklingSettingsForm`)。
+
+~~而 `docs/manual-test-checklist.md` 那條「跳出『已儲存』的 toast **並回到上一頁**」
+本身就是證據:面板要是被關掉,那一項當初不會通過。~~ **這句推理是錯的,留著當警告。**
+`ExtensionHost` 從來沒接到 host(git 全歷史 `-S ExtensionHost.Initialize` 只有修掉它的
+那一個 commit),所以那句「已儲存」根本沒出現過 —— 而「回到上一頁」是
+`CommandResult.GoHome()` 做的,跟提示無關。那條驗證項當初會通過,是因為它真正檢查的
+只有後半段。**「沒有反例」不能拿來當「有作用」的證據**,尤其是在一個失敗完全靜默的通道上。
 
 <a id="copy-feedback"></a>
 

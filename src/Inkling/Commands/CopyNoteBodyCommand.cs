@@ -62,25 +62,67 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
             // **沒有傳 report 的呼叫端也要講。** 類別註解給那兩頁靜默的理由是
             // 「那一頁本來就整頁顯示著剛複製的內容」—— 而空內文時什麼都沒被複製,
             // 那個理由在這條路上不成立(實機驗過:預覽頁按下去 UIA 樹前後一字不差)。
-            // 走 ToastStatusMessage 的 InfoBadge 而不是 ShowToast:不開視窗、不搶焦點、
-            // 不收面板,而面板此時就在前景,所以讀得到。成功那條路維持靜默。
-            if (_report is null)
-            {
-                new ToastStatusMessage(Resources.CopyNoBody).Show();
-            }
-            else
-            {
-                _report(Resources.CopyNoBody);
-            }
-
+            // 回饋走哪一條交給 Announce 決定,兩條都不會把面板收掉。成功那條路維持靜默。
+            Announce(Resources.CopyNoBody);
             return CommandResult.KeepOpen();
         }
 
         // base.Invoke 是同步的(ClipboardHelper 自己開一條 STA 執行緒再 Join),
         // 所以走到下一行時剪貼簿真的已經寫好了,回報不會比事實早。
         var result = base.Invoke();
-        _report?.Invoke(Resources.CopyDone);
+
+        if (WroteToClipboard())
+        {
+            // 成功時沒有 report 的那兩頁維持靜默 —— 它們整頁顯示著剛複製的內容。
+            _report?.Invoke(Resources.CopyDone);
+        }
+        else
+        {
+            Announce(Resources.CopyFailed);
+        }
 
         return result;
+    }
+
+    /// <summary>
+    /// 剪貼簿裡現在真的是這段文字嗎。
+    ///
+    /// <c>ClipboardHelper.SetText</c> 回 <c>void</c>,失敗在 toolkit 裡就被吞掉了 ——
+    /// 讀回來比一次是唯一能確認的方式。剪貼簿是全機共用的資源,被別的進程鎖住時寫入
+    /// 會失敗,而這裡本來**無條件**回報「已複製」:那比靜默更糟,它主動說了一句假話。
+    ///
+    /// 讀回來剛好相等但其實是別人寫的(或本來就一樣)也算成功 —— 使用者要的是
+    /// 「剪貼簿裡是這段文字」,那個條件確實成立。
+    /// </summary>
+    private bool WroteToClipboard()
+    {
+        try
+        {
+            return string.Equals(ClipboardHelper.GetText(), Text, StringComparison.Ordinal);
+        }
+        catch (Exception)
+        {
+            // 讀不回來就是確認不了,當成沒成功。這裡攔全部:剪貼簿的失敗形狀跨版本
+            // 不一致(COM、Win32、逾時),而漏接一種就等於讓一個唯讀的確認動作
+            // 把整個命令弄爆。
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 講一句話,而且**不管在哪一頁都要講得到**。清單頁在那一列打標籤
+    /// (<c>ListItem.Tags</c>),沒有清單列的頁面走底部的狀態訊息。
+    /// 兩條都不開視窗、不搶焦點、不收面板。
+    /// </summary>
+    private void Announce(string message)
+    {
+        if (_report is null)
+        {
+            new ToastStatusMessage(message).Show();
+        }
+        else
+        {
+            _report(message);
+        }
     }
 }

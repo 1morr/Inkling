@@ -347,6 +347,9 @@
   <data name="CopyDone" xml:space="preserve">
     <value>已複製</value>
   </data>
+  <data name="CopyFailed" xml:space="preserve">
+    <value>複製不成功</value>
+  </data>
   <data name="FormTitleLabel" xml:space="preserve">
     <value>標題</value>
   </data>
@@ -409,6 +412,9 @@
   </data>
   <data name="SettingsSaved" xml:space="preserve">
     <value>設定已儲存</value>
+  </data>
+  <data name="SettingsSaveFailed" xml:space="preserve">
+    <value>暫時生效了,但沒寫進磁碟 —— 重啟之後會還原。再存一次;一直失敗的話檢查磁碟空間與權限</value>
   </data>
   <data name="SettingsFolderPickerTitle" xml:space="preserve">
     <value>選擇筆記資料夾</value>

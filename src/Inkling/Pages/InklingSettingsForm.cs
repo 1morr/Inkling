@@ -99,6 +99,13 @@ internal sealed partial class InklingSettingsForm : FormContent
                 new ToastStatusMessage(Resources.SettingsDirectoryRejected).Show();
                 return CommandResult.KeepOpen();
 
+            case SettingsManager.ApplyResult.SaveFailed:
+                // 值在這個工作階段生效了,但沒寫進 settings.json —— 重啟就還原。
+                // 留在原地(KeepOpen):使用者打的東西還在卡片上,排掉問題再送一次就好,
+                // 而 GoHome 會讓那句話跟著這一頁一起走掉。
+                new ToastStatusMessage(Resources.SettingsSaveFailed).Show();
+                return CommandResult.KeepOpen();
+
             case SettingsManager.ApplyResult.AppliedToMissingFolder:
                 // 存是存了,但資料夾還不存在 —— 當場講,「打錯一個字就換了家」才不會無聲發生。
                 new ToastStatusMessage(

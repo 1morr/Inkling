@@ -67,7 +67,13 @@ internal sealed partial class CapturedNotePage : ContentPage
 
     private Note? _note;
     private string? _error;
-    private bool _captured;
+
+    /// <summary>
+    /// 已經寫過檔了(0 = 還沒)。用 int 走 <see cref="Interlocked"/> 而不是 bool:
+    /// <see cref="GetContent"/> 是 CmdPal 跨進程叫進來的,同一頁面實例被同時要兩次
+    /// 內容並不是不可能,而「檢查再設值」中間裂開的代價是同一則想法存成兩個檔案。
+    /// </summary>
+    private int _captured;
 
     public CapturedNotePage(INoteRepository repository, QuickCaptureDraft draft, ISourceModeStore sourceMode)
     {
@@ -136,16 +142,15 @@ internal sealed partial class CapturedNotePage : ContentPage
     /// </summary>
     private void Capture()
     {
-        if (_captured)
+        // 換走並檢查是同一個原子動作 —— 兩條路同時進來時只有一條拿得到 0。
+        if (Interlocked.Exchange(ref _captured, 1) != 0)
         {
             return;
         }
 
-        // 先立起來再寫。順序是刻意的:寫檔中途又被要一次內容時,寧可漏掉一次重試,
-        // 也不要把同一則想法存成兩個檔案 —— 漏掉的那次使用者再按一次就有,
-        // 多出來的那個檔案使用者得自己去刪。
-        _captured = true;
-
+        // 上面那一行同時完成了「檢查」與「立旗標」。順序是刻意的:寫檔中途又被要一次
+        // 內容時,寧可漏掉一次重試,也不要把同一則想法存成兩個檔案 —— 漏掉的那次
+        // 使用者再按一次就有,多出來的那個檔案使用者得自己去刪。
         try
         {
             var note = _repository.Create(_draft.Title, _draft.Body);
@@ -189,7 +194,7 @@ internal sealed partial class CapturedNotePage : ContentPage
             _error = ex.Message;
 
             // 放掉旗標,下一次進來才會真的再寫一次檔(理由見方法註解)。
-            _captured = false;
+            Volatile.Write(ref _captured, 0);
 
             // Enter 改成回快速記下頁:剛打的那句話還在搜尋框裡,可以直接重試。
             _done.Name = Resources.CommandGoBack;

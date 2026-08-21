@@ -115,6 +115,16 @@ internal sealed partial class SettingsManager
 
         /// <summary>拒絕:不是完整路徑。整筆都沒存(分隔符與預覽開關也一樣)。</summary>
         RejectedRelativePath,
+
+        /// <summary>
+        /// 值在這個工作階段生效了,但 <c>settings.json</c> 寫不進去 —— 重啟之後會還原。
+        ///
+        /// 這條路以前完全偵測不到:<see cref="Save"/> 把例外記進 DiagnosticLog 就算了,
+        /// 沒有回傳給呼叫端,於是磁碟滿了、LocalState 權限壞掉的時候,使用者看到的仍然是
+        /// 「設定已儲存」,下次打開卻是舊值。而 diagnostic.log 預設是關的,
+        /// 也就是說那個失敗對使用者等於不存在。
+        /// </summary>
+        SaveFailed,
     }
 
     /// <summary>
@@ -172,7 +182,7 @@ internal sealed partial class SettingsManager
         _captureSeparator.Value = separator;
         _capturePreview.Value = showCapturePreview;
 
-        Save("Apply");
+        var saved = Save("Apply");
         DiagnosticLog.Write(
             $"Apply: 資料夾='{directory}' 分隔符='{separator}' 記下後預覽={showCapturePreview}");
 
@@ -192,6 +202,13 @@ internal sealed partial class SettingsManager
             CapturePreviewChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        // 寫不進磁碟優先講:那一句涵蓋的問題比「資料夾還不存在」嚴重
+        // (值在這個工作階段還是生效的,但重啟就沒了)。
+        if (!saved)
+        {
+            return ApplyResult.SaveFailed;
+        }
+
         // 不存在的完整路徑不擋 —— repository 本來就會在第一次存檔時把它建出來。
         // 但回給呼叫端講一聲,讓「打錯一個字就靜靜換了家」當場可見,而不是下次才發現。
         return Directory.Exists(directory)
@@ -205,18 +222,23 @@ internal sealed partial class SettingsManager
     /// toolkit 的 <see cref="JsonSettingsManager.SaveSettings"/> 自己把例外吞掉,
     /// 只往 CmdPal 的 log 丟一行字。設定存不起來的時候使用者看到的是「按了 Save 什麼都沒發生」,
     /// 查不出原因 —— 實際被這件事咬過一次,所以這裡自己記一筆。
+    ///
+    /// <returns>有沒有真的寫進磁碟。<b>回傳值一定要往上傳</b> —— 只記進 diagnostic.log
+    /// 的話,對使用者等於沒發生:那個 log 預設是關的,而設定頁照樣說「設定已儲存」。</returns>
     /// </summary>
-    private void Save(string reason)
+    private bool Save(string reason)
     {
         try
         {
             SaveSettings();
             DiagnosticLog.Write($"SaveSettings({reason}): 已寫入 {FilePath}");
+            return true;
         }
         catch (Exception ex)
         {
             // 設定存不起來不該讓整個擴展掛掉,但也不能無聲無息。
             DiagnosticLog.Write($"SaveSettings({reason}) 失敗:{ex}");
+            return false;
         }
     }
 

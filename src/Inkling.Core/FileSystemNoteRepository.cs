@@ -79,9 +79,25 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             _ =>
             {
                 // 回呼在執行緒池上跑,Dispose 之後仍可能被叫到 —— 那時訂閱者多半已死。
-                if (!_disposed)
+                if (_disposed)
+                {
+                    return;
+                }
+
+                try
                 {
                     Changed?.Invoke(this, EventArgs.Empty);
+                }
+                catch (Exception)
+                {
+                    // **執行緒池上沒接住的例外會直接終止整個擴展進程。** 同一條規則這個檔案
+                    // 自己在 OnFileSystemChanged 的 ObjectDisposedException 上寫過,
+                    // 但只套用在那一條路。訂閱者是 UI 層的頁面,它們會呼叫 RaiseItemsChanged ——
+                    // 那是跨 COM 邊界的呼叫,CmdPal 那頭走掉之後 proxy 就死了。
+                    // 使用者看到的會是「Inkling 突然整個不見了」。
+                    //
+                    // 這裡不記 log:Core 不引用 UI 層的 DiagnosticLog(架構界線)。
+                    // 要留痕跡的話該由訂閱端自己包一層,那一層才有 log 可用。
                 }
             },
             null,
@@ -438,7 +454,11 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// </summary>
     private void EnsureWatcher()
     {
-        if (_watcher is not null || !Directory.Exists(_directory))
+        // **Dispose 之後不准再掛。** 換筆記資料夾時 provider 會釋放舊的 repository,
+        // 但舊頁面可能還活著(CmdPal 手上那個實例不會因為我們重建就換掉)。
+        // 它一呼叫 GetAll,這裡就會生出一個新的 FileSystemWatcher,而已經沒有人
+        // 會再去 Dispose 它了 —— 換幾次資料夾就漏幾個,每個都還盯著舊目錄發事件。
+        if (_disposed || _watcher is not null || !Directory.Exists(_directory))
         {
             return;
         }
