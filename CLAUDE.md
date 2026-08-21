@@ -256,14 +256,21 @@ Version 的症狀)。
   不要順手升級。
 - 資料格式是承諾:`id` 才是身分(改標題不重新命名檔案)、不認得的 front matter 欄位
   原樣保留、沒有 front matter 的外來 `.md` 也要能列出來。
-- 改了指令、設定項、資料格式或對外行為,同一輪更新 `README.md` 與
-  `docs/manual-test-checklist.md`。**文檔分三份,別放錯**:`README.md` 是使用者文檔
-  (怎麼用、有哪些鍵、筆記檔長什麼樣),`docs/development.md` 是建置/部署/專案結構/排錯,
-  `docs/design-notes.md` 是「為什麼是這樣」的考證 —— README 每一節只留結論加連結。
-  改了 build、部署腳本或圖示流程,更新的是 `docs/development.md`。
+- 改了指令、設定項、資料格式或對外行為,同一輪更新**兩份 README** 與
+  `docs/manual-test-checklist.md`。**README 有兩個語言版本**:`README.md` 英文是預設、
+  `README.zh-Hant.md` 繁中,是同一份文檔的兩個版本 —— 章節、表格的列、截圖都要對得上,
+  改一份就改另一份(英文 pitch 以 `README.md` 為準,Store listing 與 gallery 從那裡拿)。
+  **文檔分三份,別放錯**:README 是使用者文檔(怎麼用、有哪些鍵、筆記檔長什麼樣),
+  `docs/development.md` 是建置/部署/專案結構/排錯,`docs/design-notes.md` 是
+  「為什麼是這樣」的考證 —— README 每一節只留結論加連結(快速鍵那一節曾經漂回考證口吻,
+  壓回去過一次)。改了 build、部署腳本或圖示流程,更新的是 `docs/development.md`。
+  `CONTRIBUTING.md`(英文)是對外的薄入口,只指路、不重複規則 —— 規則在這份與
+  `docs/development.md`,README 的文檔表對外列的是它而不是這份。
 
 - **圖示的原始檔是 `assets/icon/*.svg`**,`src/Inkling/Assets/*.png` 是
-  `tools/render-icons.ps1` 產生的,不要手改 PNG。那些 PNG 必須帶
+  `tools/render-icons.ps1` 產生的,不要手改 PNG。同一支腳本還產 `assets/gallery/icon.png`
+  (gallery 投稿用,**兩份 README 頂部引用的就是它**)與 `assets/social-preview.png`
+  (GitHub repo 的 social preview,沒有上傳 API,要手動到 Settings 貼)。那些 PNG 必須帶
   `CopyToOutputDirectory`(見 `Inkling.csproj` 的註解)—— 少了它套件照樣註冊得起來,
   只是所有圖示變成 Windows 的預設灰方塊,而且 `IconHelpers.FromRelativePath` 讀不到檔。
 

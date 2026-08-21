@@ -10,8 +10,8 @@ gallery 的準備材料。**現在還不能送** —— `installSources` 需要�
 - `extension.json` — 投稿用中繼資料草稿。送出去之前要確認:
   - `installSources`:換成真實的 WinGet package identifier 或 msstore product ID
     (上架 Store / WinGet 之後才會有,先完成那一站再回來改這裡)。
-  - `homepage`:目前寫的是推測的 `https://github.com/1morr/Inkling`,repo 真的公開之後再核對。
-  - `author.url`:目前是 `https://github.com/1morr`,確認帳號頁面存在。
+  - `homepage`:`https://github.com/1morr/Inkling`,repo 已公開、路徑核對過。
+  - `author.url`:`https://github.com/1morr`,帳號頁面存在。
   - `id` 是 `1morr.inkling`,對應投稿 repo 裡的資料夾 `extensions/1morr/inkling/`,
     兩邊必須一致(CI 會驗)。
 - `icon.png` 不放在這裡 —— 由 `tools\render-icons.ps1` 產生在 `assets\gallery\icon.png`
@@ -25,7 +25,8 @@ gallery 的準備材料。**現在還不能送** —— `installSources` 需要�
 - `categories` 最多 3 個,只能從固定清單挑;Inkling 用 `productivity`。
 - `tags` 最多 5 個、每個 ≤30 字。
 - `icon`:PNG 或 JPEG(**SVG 不收**)、≤100 KB、建議 256×256,檔名要跟 `icon` 欄位一致。
-- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張,
+- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張
+  (README 用的 `docs/images/*.png` 直接拿得來用,投稿時複製過去並加前綴;GIF 不收),
   檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。
 
 ## 投稿流程

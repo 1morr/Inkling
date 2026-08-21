@@ -1232,7 +1232,7 @@ Reload 或重新登入才會重讀。
 
 ## 圖示
 
-原始檔是 `assets/icon/` 底下的七個 SVG,`src/Inkling/Assets/*.png` 全部由
+原始檔是 `assets/icon/` 底下的八個 SVG(七個進套件,加一個 GitHub social preview),`src/Inkling/Assets/*.png` 全部由
 `tools/render-icons.ps1` 產生 —— **不要手改那些 PNG**,改圖示請改 SVG 再跑一次腳本。
 
 構圖是「一道有壓感的下筆 + 一顆句點」:起筆重、收筆輕,最後點一下收尾。
@@ -1256,6 +1256,7 @@ OneNote 的符號,而「在 CmdPal 清單裡長得像它們」正是當初要改
 | `inkling-tile.svg` | 150×150 以上 | 標準比例 |
 | `inkling-tile-small.svg` | 88px 以下(工作列、CmdPal 清單) | 筆畫放大約 8%、粗細差拉開,句點從 `r=18` 放大到 `r=25` |
 | `inkling-wide.svg` | 寬磚與啟動畫面 | 標記縮到 70% 置中在寬底板上 |
+| `inkling-social.svg` | GitHub social preview(`assets/social-preview.png`,1280×640) | 標記放大 1.25 倍置中;不進套件,也不進 README(GitHub 自己拿去畫分享卡片) |
 | `inkling-cmd-list.svg` 等五個 | 五個頂層命令 | 24 格線單色,見下 |
 
 精細版的收筆端在 24px 只剩不到一像素,會直接斷掉;句點縮下去也剩不到兩像素。

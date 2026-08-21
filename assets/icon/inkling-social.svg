@@ -1,0 +1,24 @@
+<!--
+  Inkling 的 GitHub social preview(repo Settings → Social preview 上傳的那張圖)。
+
+  viewBox 是 1280×640,GitHub 建議的尺寸(顯示時裁成 2:1;至少 640×320)。
+  這張圖 GitHub 沒有 API 可以上傳,render-icons.ps1 產出 assets\social-preview.png 之後
+  要自己到 repo Settings → General → Social preview 貼上去。
+
+  構圖跟 inkling-wide.svg 一樣只有「滿版底色 + 置中的標記」,沒有字:
+  理由同那一份 —— SVG 不嵌字型,Chromium headless 拿到什麼系統字型不保證,
+  用 path 描字又會在改名時變成沒人敢動的死資料。repo 名字本來就會出現在卡片旁邊。
+
+  標記放大到 1.25 倍(256 × 1.25 = 320)再置中:
+  x = (1280 − 320) / 2 = 480,y = (640 − 320) / 2 = 160。
+  改標記尺寸時這兩個數字要一起重算,不然圖會偏。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <rect x="0" y="0" width="1280" height="640" fill="#101F38"/>
+  <g transform="translate(480 160) scale(1.25)">
+    <path d="M110 40 C128 36 146 46 147 66 C148 92 142 122 136 148 C130 174 122 190 116 198
+             C110 206 99 205 95 197 C91 189 95 179 100 164 C110 134 117 104 118 80
+             C118 66 114 60 106 58 C98 56 100 42 110 40 Z" fill="#F6F9FD"/>
+    <circle cx="172" cy="186" r="18" fill="#4CC2FF"/>
+  </g>
+</svg>

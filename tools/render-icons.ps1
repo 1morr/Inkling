@@ -14,6 +14,7 @@
       inkling-tile.svg        套件磚,精細版,150x150 以上
       inkling-tile-small.svg  套件磚,小尺寸版,88px 以下(工作列、CmdPal 清單)
       inkling-wide.svg        套件磚,寬幅版,寬磚與啟動畫面
+      inkling-social.svg      GitHub social preview(repo 卡片的圖),不進套件
       inkling-cmd-*.svg       五個頂層命令的單色圖示(清單 / 快速記下 / 新增 / 隨手草稿 / 刪除)
 
     命令圖示為什麼一個要產兩張:字形圖示是以文字繪製的,前景色自動跟主題走,PNG 不會。
@@ -22,7 +23,9 @@
     下面的 Fg 欄位就是餵給它的顏色。
 
     除了套件資產,另外產一張 CmdPal gallery 投稿用的圖示到 assets\gallery\icon.png
-    (256x256 PNG、≤100 KB —— microsoft/CmdPal-Extensions 的規則,SVG 不收)。
+    (256x256 PNG、≤100 KB —— microsoft/CmdPal-Extensions 的規則,SVG 不收),
+    以及一張 GitHub social preview 到 assets\social-preview.png(1280x640;GitHub 沒有
+    上傳 API,產完要自己到 repo Settings → Social preview 貼上去)。
 
 .EXAMPLE
     pwsh -NoProfile -File tools\render-icons.ps1
@@ -36,6 +39,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $svgDir = Join-Path $repoRoot 'assets\icon'
 $outDir = Join-Path $repoRoot 'src\Inkling\Assets'
 $galleryDir = Join-Path $repoRoot 'assets\gallery'
+$assetsDir = Join-Path $repoRoot 'assets'
 
 # Chrome 與 Edge 都是 Chromium,哪個在就用哪個。
 $browser = @(
@@ -79,6 +83,9 @@ $targets = @(
     @{ Name = 'SplashScreen.scale-200.png';                         Svg = 'inkling-wide.svg';       W = 1240; H = 600 }
     # gallery 投稿用:microsoft/CmdPal-Extensions 要 PNG/JPEG、≤100 KB、建議 256x256。
     @{ Name = 'icon.png';                                           Svg = 'inkling-tile.svg';       W = 256;  H = 256; Dir = $galleryDir; MaxKB = 100 }
+    # GitHub social preview:repo Settings → Social preview 上傳用,建議 1280x640。
+    # 不進套件也不進 gallery;README 不引用它(GitHub 自己會拿去畫分享卡片)。
+    @{ Name = 'social-preview.png';                                 Svg = 'inkling-social.svg';     W = 1280; H = 640; Dir = $assetsDir }
 
     # 五個頂層命令的圖示,每個兩張(淺色主題用深色前景、深色主題用白色前景)。
     # 48x48 而不是 24x24:CmdPal 清單列上大約 20px,但這台是 144 DPI(150%),
@@ -165,4 +172,4 @@ finally {
     Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "`n圖示已更新:$outDir(套件資產)+ $galleryDir(gallery 投稿用)" -ForegroundColor Green
+Write-Host "`n圖示已更新:$outDir(套件資產)+ $galleryDir(gallery 投稿用)+ $assetsDir\social-preview.png(GitHub social preview)" -ForegroundColor Green

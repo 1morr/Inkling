@@ -87,6 +87,11 @@ pwsh -NoProfile -File tools\render-icons.ps1
 那些 PNG 必須帶 `CopyToOutputDirectory`(見 `Inkling.csproj` 的註解)—— 少了它套件照樣註冊
 得起來,只是所有圖示變成 Windows 的預設灰方塊。
 
+同一支腳本還產兩張不進套件的圖:`assets/gallery/icon.png`(gallery 投稿用,
+**兩份 README 頂部引用的就是它**,所以改 SVG 重跑一次 README 就跟著換)與
+`assets/social-preview.png`(GitHub repo 的 social preview;GitHub 沒有上傳 API,
+要自己到 repo Settings → General → Social preview 貼上去)。
+
 ### 在真機上驗畫面
 
 CmdPal 沒有提供 UI 自動化介面,但清單內容、快速鍵、placeholder、有沒有跳 toast 這些可以
@@ -99,6 +104,56 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
 ```
 
 顏色、圖示長相、游標位置只能靠眼睛,那些收在 [manual-test-checklist.md](manual-test-checklist.md)。
+
+### 重拍截圖與 GIF
+
+兩份 README 共用 `docs/images/` 裡的 PNG 與 GIF,全部是真機上用 `cmdpal-ui.ps1` 的 `shot`
+動作拍的(`PrintWindow`,1200×720)。改了圖示、命令標題或版面就要重拍,兩份 README 一起換。
+
+1. **先把筆記資料夾指到 demo 資料夾**,別把真的筆記放進公開 repo。備份
+   `%LOCALAPPDATA%\Packages\<PFN>\LocalState\settings.json`(`<PFN>` 用
+   `(Get-AppxPackage Inkling).PackageFamilyName` 查),把 `Inkling.NotesDirectory` 改成
+   `%TEMP%\inkling-demo`,裡面放幾則英文的 demo 筆記(帶 front matter,標題像真的),
+   `Stop-Process -Name Inkling` 再 `Start-Process 'x-cmdpal://reload'`,
+   用 `-Steps "notes"` 確認清單讀到的是 demo。
+2. **拍**,一整串在同一次呼叫裡。三張 PNG 分別是主搜尋框打 `Inkling` 的結果、快速記下頁打完字、
+   清單頁;GIF 是快速記下那條路連拍(`$g` 是放格子的資料夾):
+
+   ```powershell
+   pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|wait:900|type:! |wait:1500|shot:$g\f02.png|type:coffee |wait:450|shot:$g\f03.png|type:machine |wait:450|shot:$g\f04.png|type:idea|wait:1200|shot:$g\f05.png|key:Enter|wait:2000|shot:$g\f06.png|esc|wait:700|esc|wait:700|esc"
+   ```
+
+   **不要拿 `show` 之後那一張當第一格**:主頁會帶著上一次的查詢字與使用者自己的應用程式 /
+   最近項目,那是使用者的東西,從快速記下頁那一格開始。剪貼簿有多行文字時會多一列
+   「內文取自剪貼簿」,那是真的功能,留著沒關係。
+3. **合成**(ffmpeg,`winget install ffmpeg`)。concat demuxer 給每一格自己的停留秒數,
+   palettegen / paletteuse 兩段式壓成 256 色,縮到 960 寬(GitHub 的 README 欄位本來就不到這個寬):
+
+   ```text
+   # list.txt —— 最後一格要再列一次,否則 concat 會吃掉它的 duration
+   file 'f02.png'
+   duration 1.3
+   file 'f03.png'
+   duration 0.45
+   file 'f04.png'
+   duration 0.45
+   file 'f05.png'
+   duration 1.6
+   file 'f06.png'
+   duration 3.0
+   file 'f06.png'
+   ```
+
+   ```powershell
+   ffmpeg -y -f concat -safe 0 -i list.txt -vf "fps=10,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" -loop 0 docs\images\quick-capture.gif
+   ```
+
+   目前那張是 5 格、9.8 秒、960×576、約 130 KB。
+4. **換回去**:把備份蓋回 `settings.json`,再 `Stop-Process -Name Inkling` + reload,
+   `-Steps "notes"` 確認回到真的資料夾;demo 資料夾刪掉。
+
+`quick-capture.png`(靜態的那張)README 已經不引用,留著是給 gallery 投稿的 `screenshots/`
+用(那邊不收 GIF),見 [gallery/README.md](gallery/README.md)。
 
 <a id="structure"></a>
 
@@ -125,7 +180,10 @@ src/
 assets/icon/         圖示的原始檔(SVG);src/Inkling/Assets 的 PNG 全部由
                      tools/render-icons.ps1 產生,不要手改。五個頂層命令各一個
                      inkling-cmd-*.svg,每個輸出淺 / 深兩張 PNG —— 加新的頂層命令
-                     時 SVG 與 render-icons.ps1 的 $targets 兩邊都要補
+                     時 SVG 與 render-icons.ps1 的 $targets 兩邊都要補。
+                     assets/gallery/icon.png(gallery 投稿 + README 頂部)與
+                     assets/social-preview.png(GitHub social preview)也是它產的
+docs/images/         兩份 README 共用的截圖與 GIF(真機拍的,重拍流程見下方)
 tests/               Inkling.Core.Tests(xUnit)
 tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
                      ApiDump(印 SDK 型別的實際簽章)、cmdpal-ui.ps1(真機驅動
@@ -274,6 +332,8 @@ UTF-8 與 UTF-16 都要掃)與已知落差清單見 [CLAUDE.md](../CLAUDE.md) �
 | | |
 |---|---|
 | [CLAUDE.md](../CLAUDE.md) | 架構、跟 CmdPal 打交道的硬規則、慣例。**動手改程式前先讀這份** |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | 對外的貢獻入口(英文),只指路,規則不在那裡 |
+| [README.md](../README.md) / [README.zh-Hant.md](../README.zh-Hant.md) | 使用者文檔的兩個語言版本,改一份就改另一份 |
 | [design-notes.md](design-notes.md) | 「為什麼是這樣」的完整考證 |
 | [manual-test-checklist.md](manual-test-checklist.md) | 只能靠眼睛驗的項目 |
 | [release-checklist.md](release-checklist.md) | 首次公開發佈、套件身分與簽章 |

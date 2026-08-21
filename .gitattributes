@@ -13,6 +13,7 @@
 
 # 明確宣告二進位,不讓任何 text 屬性覆蓋污染圖示資產。
 *.png binary
+*.gif binary
 
 # resx 是 XML 文字,走 text=auto 的預設即可,這行只是把意圖寫明白。
 *.resx text
