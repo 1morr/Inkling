@@ -45,10 +45,15 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   `src\Inkling\bin\stage-Release\Inkling.dll` 的 `LastWriteTime`;不是的話 `Stop-Process -Name Inkling`,
   再不行就連 `Microsoft.CmdPal.UI` 一起停掉重來。
 - 擴展沒有主控台,`Debug.WriteLine` 在 Release 被編掉。要確認某段程式有沒有跑到,
-  用 `DiagnosticLog`:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`
+  用 `DiagnosticLog.Write`:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`
   建一個空檔 `diagnostic.on`,Reload,然後看同目錄的 `diagnostic.log`。
   `<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查 —— 不要把它寫死進文檔,
   換套件身分時那些字串會靜靜失效(讀不到檔案不報錯,只會讓驗證失明)。
+  **失敗要用 `DiagnosticLog.Failure`**:上面那個檔預設是關的,而使用者回報問題時
+  失敗現場多半沒被記下來。`Failure` 會另外送一份到 CmdPal 自己的 log
+  (`%LOCALAPPDATA%\Microsoft\PowerToys\CmdPal\Logs\<版本>\`),那份永遠開著,
+  訊息帶 `[Inkling]` 前綴(所有擴展共用同一份)。**只有真的失敗才用它** ——
+  追蹤性質的訊息塞進去會把別的擴展的線索淹掉。實測見 `docs/development.md`。
 
 ## 架構
 

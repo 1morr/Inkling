@@ -44,8 +44,9 @@ internal sealed partial class InklingSettingsPage : ContentPage
     ///
     /// 1. **會觸發的情境沒了。** 當初每按一次 <c>Ctrl+D</c>(那時詳細面板寬度是可調的)
     ///    就重讀一次表單,人卻在主視窗翻筆記 —— 背景視窗因此一直跳。現在
-    ///    <see cref="Refresh"/> 只有兩個呼叫點,都源自使用者在設定表單上的操作
-    ///    (按儲存、或按「瀏覽…」選完資料夾),人本來就在設定頁上。
+    ///    <see cref="Refresh"/> 只有一個呼叫點(provider 收到 <c>Applied</c> 之後),
+    ///    而那一定源自使用者在設定表單上的操作(按儲存、或按「瀏覽…」選完資料夾),
+    ///    人本來就在設定頁上。
     /// 2. **那個判斷在安裝版裡根本不存在。** byte-scan 過
     ///    <c>Microsoft.CmdPal.UI.exe</c>(0.11.11762.0):同一條路上的
     ///    <c>ContentFormControl</c> / <c>OnFrameworkElementLoaded</c> /
@@ -63,12 +64,15 @@ internal sealed partial class InklingSettingsPage : ContentPage
         DiagnosticLog.Write("SettingsPage.GetContent: 重新產生表單");
 
         // 每次都給新的表單物件:值是建構時就烤進卡片的,重用等於永遠顯示第一次的值。
-        return [new InklingSettingsForm(_settings, Refresh)];
+        return [new InklingSettingsForm(_settings)];
     }
 
     /// <summary>
     /// 值變了(送出表單,或是在表單裡按「瀏覽…」選完資料夾),叫 CmdPal 重拿表單 ——
     /// 卡片的值是建構時就烤進 <c>DataJson</c> 的,不重拿它永遠停在舊值。
+    ///
+    /// 唯一的呼叫者是 <c>InklingCommandsProvider.OnSettingsApplied</c>,兩條路
+    /// (儲存、瀏覽…)都經過 <c>SettingsManager.Apply</c>,所以都會走到這裡。
     /// </summary>
     public void Refresh()
     {

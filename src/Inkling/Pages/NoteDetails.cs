@@ -38,7 +38,7 @@ internal static class NoteDetails
     /// 內文部分:空的給佔位文字;其餘的換行處理要跟預覽頁一致,
     /// 否則同一則筆記在兩個地方長得不一樣。
     /// </summary>
-    public static string BodyFor(Note note, bool showSource = false)
+    private static string BodyFor(Note note, bool showSource = false)
     {
         if (note.Body.Length == 0)
         {

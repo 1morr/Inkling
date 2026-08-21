@@ -49,13 +49,10 @@ internal sealed partial class InklingSettingsForm : FormContent
     private const string BrowseAction = "browse";
 
     private readonly SettingsManager _settings;
-    private readonly Action _refreshPage;
 
-    /// <param name="refreshPage">選完資料夾之後叫設定頁重畫,否則輸入框裡還是舊路徑。</param>
-    public InklingSettingsForm(SettingsManager settings, Action refreshPage)
+    public InklingSettingsForm(SettingsManager settings)
     {
         _settings = settings;
-        _refreshPage = refreshPage;
 
         TemplateJson = BuildTemplate(settings);
 
@@ -150,10 +147,12 @@ internal sealed partial class InklingSettingsForm : FormContent
                 // 其他欄位一起套用,因為那就是使用者按下「瀏覽…」當下卡片上顯示的值 ——
                 // 表單既然會消失,壓在上面的改動就只有這一次機會存下來。
                 // 傳回值不用看:挑選器回來的一定是存在的完整路徑,兩條拒絕/提醒的路都踩不到。
+                // Apply 會同步發 Applied,provider 收到就叫設定頁重讀 —— 這條路以前
+                // 在這裡又自己叫了一次,同一次挑選把卡片重建兩遍。要靠的是同一個機制:
+                // 送出表單那條路本來就只有它,兩邊分開的話,哪天事件那頭壞了也只會
+                // 壞掉一半,反而更難查。
                 _settings.Apply(picked, separator, preview);
                 new ToastStatusMessage(Strings.Format(Resources.SettingsFolderPicked, picked)).Show();
-
-                _refreshPage();
             },
             // 對話框開不起來也要講一聲,否則「瀏覽…」看起來像壞掉 —— 之前只有 DiagnosticLog
             // 留一行字,而它預設是關的。用 InfoBadge:不開視窗、不關面板,表單留在原地。

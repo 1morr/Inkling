@@ -188,6 +188,9 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// </summary>
     private string GenerateUniqueId(DateTimeOffset now)
     {
+        // 這裡的 GetById 走的是 GetAll 的快取,不是每抽一次就重掃一遍資料夾 ——
+        // 而且走到這裡的路徑(快速記下頁、新增筆記頁)都已經先列過清單,快取是熱的。
+        // 看起來像「每存一則都掃全部」,量過之後不是,別為此改成別的形狀。
         var id = _idGenerator(now);
         while (GetById(id) is not null)
         {

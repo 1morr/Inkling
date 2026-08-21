@@ -19,6 +19,12 @@ public sealed class NoteNotFoundException : Exception
     {
     }
 
+    /// <summary>
+    /// 找不到的那個 id。**生產程式碼目前沒有人讀它**,留著是因為它是這個例外唯一帶得出
+    /// 現場的東西:兩個丟出點(Update / Delete)都在「使用者按了鍵、而那則筆記剛好被
+    /// 別的程式移走」的競態上,而 UI 只把 Message 包進「刪除失敗:{0}」。真的要查的時候
+    /// 沒有它就只剩一句話。不要因為「沒人用」把它拿掉。
+    /// </summary>
     public string? Id { get; private init; }
 
     /// <remarks>

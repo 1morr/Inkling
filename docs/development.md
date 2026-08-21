@@ -351,10 +351,30 @@ New-Item -ItemType File "$ls\diagnostic.on"
 Get-Content "$ls\diagnostic.log" -Encoding utf8 -Wait   # 邊操作邊看
 ```
 
-沒有 `diagnostic.on` 時每次呼叫只是一個布林判斷。用完把 `.on` 檔刪掉即可。
+沒有 `diagnostic.on` 時 `DiagnosticLog.Write` 的每次呼叫只是一個布林判斷。
+用完把 `.on` 檔刪掉即可。
 
 (`dotnet run --project tools\ApiDump -- --paths` 印的是**未封裝**身分下的路徑,
 跟上面那個不是同一個,別搞混。)
+
+**失敗不走上面那條路,走 `DiagnosticLog.Failure`。** 理由是這個檔預設是關的 ——
+使用者回報問題時,失敗現場多半根本沒被記下來,而要他先建一個空檔、Reload、再重現一次,
+門檻高到大部分人不會做。`Failure` 另外送一份給 CmdPal 自己的 log,那份**永遠開著**:
+
+```powershell
+$log = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\PowerToys\CmdPal\Logs" -Recurse -Filter 'Log_*.log' |
+  Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Get-Content $log.FullName | Select-String '\[Inkling\]'
+```
+
+**實測**(2026-08-22,`diagnostic.on` 沒建、`diagnostic.log` 不存在):把筆記資料夾指到
+一個建不出來的路徑再快速記下,那一行連同完整堆疊(**含行號** —— 自家的 pdb 有進套件,
+見 `Inkling.csproj` 的 `TrimThirdPartySymbolsFromPublish`)出現在
+`CmdPal\Logs\0.100.2.0\Log_<日期>.log` 裡。
+
+那份 log 是所有擴展共用的,所以:訊息一律帶 `[Inkling]` 前綴(否則不知道是誰寫的),
+而且**只有真的失敗才寫** —— 追蹤性質的訊息走 `Write`,把每次 `GetItems` 都寫進去
+只會把別人的線索淹掉。
 
 ## 查 SDK 與 CmdPal 的實際行為
 
