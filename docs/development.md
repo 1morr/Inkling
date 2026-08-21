@@ -50,7 +50,20 @@ Get-Process Inkling | Select-Object StartTime                       # 要晚於�
 dotnet build src\Inkling\Inkling.csproj -p:Platform=x64   # 擴展(進程活著時會鎖輸出)
 dotnet test                                               # Core 層的全部行為
 dotnet test --filter "FullyQualifiedName~QuickCapture"    # 單一測試類別/方法
+
+# 擴展層。刻意不在方案裡,所以要指定專案(理由見下)
+dotnet test tests\Inkling.Tests\Inkling.Tests.csproj -p:Platform=x64
 ```
+
+**擴展層的測試專案為什麼不在 `Inkling.slnx` 裡:** 它引用 `src/Inkling`,而那是 MSIX
+專案 —— 必須 x64、而且 publish profile 讓它是 self-contained,所以測試專案也得跟上。
+方案層級走 AnyCPU,把它加進去只會讓每次 `dotnet test` 都印一個 NETSDK1150
+(self-contained 與非 self-contained 不能互相引用),Core 的測試照樣跑、但輸出多一個錯誤。
+兩條 CI 路徑都各跑一次那個專案,不會漏掉。
+
+那一層測得到的只有「不需要 CmdPal 在跑」的部分:頁面的命令順序與快速鍵、三個清單頁的
+快取鍵、`Dispose` 有沒有把訂閱退乾淨。它看得到 internal 是靠 `Inkling.csproj` 的
+`InternalsVisibleTo`,不是把型別改成 public。
 
 **方案層級建不了擴展。** `dotnet build Inkling.slnx` 走 AnyCPU,會撞 MSIX 打包目標的
 「Packaged .NET applications with an app host exe cannot be ProcessorArchitecture neutral」——
@@ -184,7 +197,8 @@ assets/icon/         圖示的原始檔(SVG);src/Inkling/Assets 的 PNG 全部�
                      時 SVG 與 render-icons.ps1 的 $targets 兩邊都要補。
                      assets/gallery/icon.png(gallery 投稿 + README 頂部)與
                      assets/social-preview.png(GitHub social preview)也是它產的
-tests/               Inkling.Core.Tests(xUnit)
+tests/               Inkling.Core.Tests(xUnit,跟著方案跑)、
+                     Inkling.Tests(擴展層,x64,刻意不在方案裡 —— 見〈只建擴展、只跑測試〉)
 tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
                      ApiDump(印 SDK 型別的實際簽章)、cmdpal-ui.ps1(真機驅動
                      CmdPal 畫面)、render-icons.ps1(SVG→PNG)、

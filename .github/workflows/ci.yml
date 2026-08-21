@@ -37,6 +37,12 @@ jobs:
       - name: Test Core
         run: dotnet test
 
+      # 擴展層的測試專案**刻意不在 Inkling.slnx 裡**:它引用 MSIX 專案,所以必須是
+      # x64 且 self-contained,而方案層級走 AnyCPU —— 加進去只會讓每次 dotnet test
+      # 都印一個 NETSDK1150。要跑它就指定專案。
+      - name: Test extension layer
+        run: dotnet test tests/Inkling.Tests/Inkling.Tests.csproj -p:Platform=x64
+
       # trimming 只在 publish 生效,兩個 RID 各建一次,確認 trimming 沒有把東西砍壞。
       # Release 的 IL2104 警告(Windows SDK 投影自身)是已知的,不視為失敗。
       - name: Publish Release win-x64 (trimmed)

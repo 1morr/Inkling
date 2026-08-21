@@ -22,10 +22,12 @@ obvious-looking ideas have already been tried, measured, and written down in
 Before you start:
 
 1. Read [docs/development.md](docs/development.md) — build, deploy, project layout,
-   troubleshooting. Everything under `src/Inkling.Core` is unit-tested; `src/Inkling` is the
-   thin Command Palette layer and is verified by hand
-   ([docs/manual-test-checklist.md](docs/manual-test-checklist.md), driven by
-   `tools\cmdpal-ui.ps1`).
+   troubleshooting. Everything under `src/Inkling.Core` is unit-tested. `src/Inkling`, the
+   thin Command Palette layer, has tests too (`tests/Inkling.Tests`, run separately — it is
+   deliberately outside the solution), but they only cover what does not need Command Palette
+   running: command order and shortcuts, cache keys, unsubscribing on dispose. The screen
+   itself is verified by hand ([docs/manual-test-checklist.md](docs/manual-test-checklist.md),
+   driven by `tools\cmdpal-ui.ps1`).
 2. Read [CLAUDE.md](CLAUDE.md). Despite the name it is the repository's rulebook — the
    architecture, the hard-won rules for dealing with Command Palette, and the conventions —
    written for AI coding assistants and humans alike.

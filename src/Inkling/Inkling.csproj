@@ -99,6 +99,16 @@
     <ProjectReference Include="..\Inkling.Core\Inkling.Core.csproj" />
   </ItemGroup>
 
+  <!--
+    這一層幾乎整個是 internal(它只對 CmdPal 開放,沒有第三方消費者),
+    而測試要看得到頁面的命令順序、快速鍵與快取鍵 —— 那些正是最會漂、
+    而且從外面完全觀察不到的東西。開一條給測試專案的縫,不是把型別改成 public:
+    公開等於承諾,而這裡沒有要對誰承諾。
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Inkling.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.CommandPalette.Extensions" />
     <PackageReference Include="Microsoft.Windows.CsWinRT" />

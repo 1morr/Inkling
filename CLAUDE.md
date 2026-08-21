@@ -11,6 +11,7 @@ out-of-process COM server 裡,把想法存成資料夾裡的 Markdown 檔。使�
 ```powershell
 dotnet test                                             # Core 全部行為
 dotnet test --filter "FullyQualifiedName~QuickCapture"  # 單一測試類別/方法
+dotnet test tests\Inkling.Tests\Inkling.Tests.csproj -p:Platform=x64   # 擴展層(不在方案裡,見下)
 dotnet build src\Inkling\Inkling.csproj -p:Platform=x64 # 只建擴展(進程活著時會鎖輸出,見下方)
 
 .\tools\deploy.ps1 -Configuration Release -Reload       # 日常部署(trimmed + 自動重載)
@@ -65,7 +66,13 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   「內文的第一行有效文字」收在 `NoteBody`(清單摘要、外來檔案的推導標題、
   預覽判斷「內文是否已含標題」三處共用),曾經各寫一份而且字元集已經漂移過。
 - **`src/Inkling`** — MSIX COM server,只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
-  CmdPal 沒有提供 UI 自動化介面,這一層的驗證靠 `docs/manual-test-checklist.md`;
+  這一層**有測試**(`tests/Inkling.Tests`),但只測「不需要 CmdPal 在跑」的那部分:
+  頁面的命令順序與快速鍵(底部工具列那兩顆按鈕是位置鍵,插一項就換掉 `Enter` 的意思)、
+  三個清單頁的快取鍵、`Dispose` 有沒有把訂閱退乾淨。那個專案**刻意不在 `Inkling.slnx` 裡**
+  —— 它引用 MSIX 專案,所以必須 x64 且 self-contained,而方案層級走 AnyCPU,加進去只會讓
+  每次 `dotnet test` 都印一個 NETSDK1150。跑法是上面那條指定專案的指令,CI 兩條路都有跑。
+  能看到 internal 是靠 `Inkling.csproj` 裡的 `InternalsVisibleTo`,不是把型別改成 public。
+  畫面本身(顏色、圖示、游標位置、有沒有跳 toast)還是靠 `docs/manual-test-checklist.md`;
   清單內容、快速鍵、placeholder、有沒有跳 toast 這些**可以**用
   `tools\cmdpal-ui.ps1` 驅動 Windows 的 UI Automation 驗掉(見
   `.claude/skills/verify-cmdpal-ui/`),但顏色、圖示長相、游標位置只能靠眼睛。
