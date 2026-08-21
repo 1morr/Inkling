@@ -11,14 +11,26 @@
     PowerShell 進程都可能把它打斷 —— 那正是要用 -Steps "a|b|c" 而不是連續呼叫三次的原因。
 
     **不會把按鍵送到別的視窗。** SendInput 指定不了目標視窗,它送到的永遠是
-    當下的前景視窗 —— 所以每一個會送按鍵的步驟在送出**之前**都先確認
-    CmdPal 在前景,不在就中止整串,並把當時的前景視窗是誰印出來。
+    當下的前景視窗 —— 所以 type / key / tree / shot 在送出**之前**都先確認
+    CmdPal 在前景,不在就中止整串,並把當時的前景視窗是誰印出來;esc 則是直接跳過
+    (CmdPal 已經不在前景,那個 Esc 想達成的事就已經發生了)。
+
+    **唯一的例外是 show**,它送的是 CmdPal 註冊的**全域**熱鍵 —— 那組鍵本來就是要在
+    別的視窗有焦點時按的,而全域熱鍵由系統攔截,不會落進前景視窗。只有在 CmdPal
+    整個沒在跑、熱鍵因此沒註冊的時候它才會打進別人的視窗,所以 show 會先確認進程在,
+    不在就用 x-cmdpal:// 把它拉起來再送。
 
     要用 pwsh(PowerShell 7)跑。這個檔案是無 BOM 的 UTF-8,Windows PowerShell 5.1
     會照系統 ANSI 讀,中文全部變亂碼。
 
 .PARAMETER Steps
-    用 | 串起來的動作序列。動作與參數之間用第一個 : 分開:
+    用 | 串起來的動作序列。動作與參數之間用第一個 : 分開。
+
+    **| 沒有轉義,任何參數裡都不能出現它** —— `type:a|b` 會被切成兩步,第二步的動作
+    名是 `b`,腳本以「不認得的動作」中止(至少不會靜靜地打錯字)。要輸入 | 的話只能
+    改腳本;驗證用的字串裡目前沒有這個需求。
+
+    動作:
 
       show            叫出 CmdPal(熱鍵從 CmdPal 自己的 settings.json 讀,不寫死)
       esc             送 Esc(退一層頁面;在主頁等於關掉面板)
@@ -40,6 +52,16 @@
     **重跑是從第一步開始**,已經送出的按鍵會再送一遍 —— 序列裡有存檔、
     刪除這類有副作用的步驟時,重跑等於再做一次(真的重跑了會在輸出裡警告)。
     全部試完還是沒跑完的話,腳本以**非零結束**。
+
+    **序列的預期結果本來就是「面板收起來」的話,帶 -Retries 1。** 編輯頁的 Enter
+    (開外部編輯器並 dismiss)、記下並預覽頁的「完成」都是這種 —— 面板收掉之後
+    後面的步驟一定判定不可用,預設值會讓整串跑滿 4 次,那個開外部程式的動作
+    也就做了 4 次。
+
+.PARAMETER MaxText
+    tree 印出來的每個 Name / Value 最多留幾個字,超過就截斷並補上「…(共 N 字)」。
+    預設 120。要確認長內文有沒有被 UI 截掉時調大,樹太大只想看結構時調小。
+    (換行在 tree 裡一律顯示成 ⏎,所以一個節點永遠只佔一行。)
 
 .EXAMPLE
     pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Inkling|wait:800|tree:6"
@@ -122,16 +144,32 @@ public class CmdPalNative {
     // 用 SetProcessDpiAwarenessContext(Win10 1703+);拿不到就退回 SetProcessDPIAware
     // (舊版 API,system-aware 而非 per-monitor,單螢幕情境夠用)。兩者都必須在
     // 進程碰到任何視窗座標**之前**呼叫,設定之後不能改。
+    //
+    // **回傳的是實際生效的等級,不是那兩個 Set 的回傳值。** 它們在「已經設過了」的
+    // 情況也會回 false,光看回傳值分不出「設失敗」與「本來就是了」——而這裡真正
+    // 要知道的是截圖會不會缺一塊,那只有 GetThreadDpiAwarenessContext 問得到。
+    // 0=unaware(會缺)1=system 2=per-monitor;-1 = 這台機器沒有那組查詢 API。
     public const int DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
 
     [DllImport("user32.dll")] private static extern bool SetProcessDpiAwarenessContext(IntPtr ctx);
     [DllImport("user32.dll")] private static extern bool SetProcessDPIAware();
+    [DllImport("user32.dll")] private static extern IntPtr GetThreadDpiAwarenessContext();
+    [DllImport("user32.dll")] private static extern int GetAwarenessFromDpiAwarenessContext(IntPtr ctx);
 
-    public static void MakeDpiAware() {
+    public static int DpiAwareness() {
+        try { return GetAwarenessFromDpiAwarenessContext(GetThreadDpiAwarenessContext()); }
+        catch (EntryPointNotFoundException) { return -1; }
+    }
+
+    public static int MakeDpiAware() {
+        bool ok = false;
         try {
-            if (SetProcessDpiAwarenessContext((IntPtr)DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)) { return; }
+            ok = SetProcessDpiAwarenessContext((IntPtr)DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         } catch (EntryPointNotFoundException) { }
-        try { SetProcessDPIAware(); } catch (EntryPointNotFoundException) { }
+        if (!ok) {
+            try { SetProcessDPIAware(); } catch (EntryPointNotFoundException) { }
+        }
+        return DpiAwareness();
     }
 
     // PrintWindow 抓的是視窗自己的內容,不是螢幕像素 —— CopyFromScreen 會抓到蓋在
@@ -155,7 +193,12 @@ public class CmdPalNative {
 "@
 
 # 進程一啟動就宣告 DPI 感知 —— 必須早於任何視窗座標的讀取(見 CmdPalNative.MakeDpiAware)。
-[CmdPalNative]::MakeDpiAware()
+# 設不起來不會讓腳本停下來(tree / state 那些都還是準的),但一定要講出來:
+# 這正是這個檔案自己描述的那種失敗 —— 截圖不報錯、乍看正常,只有拿去跟畫面對照
+# 才發現右邊與下面少了一塊。不講的話,那張圖會被當成證據。
+if ([CmdPalNative]::MakeDpiAware() -eq 0) {
+    Write-Output '!! DPI 感知設不起來,這個進程仍是 unaware —— 螢幕縮放不是 100% 時 shot 會缺右邊與下面一塊(而且看起來很正常),tree 與其他步驟不受影響'
+}
 
 # ---------------------------------------------------------------- 路徑與常數
 
@@ -314,6 +357,24 @@ function Test-CmdPalForeground {
     return ((Find-CmdPalPanel) -ne [IntPtr]::Zero)
 }
 
+<#
+    面板不能用的時候,說出**是哪一種**不能用。
+
+    Test-CmdPalReady 把三件事綁在一起(前景是不是 CmdPal、面板視窗在不在、UIA 讀不讀得到),
+    但訊息以前一律寫「CmdPal 不在前景」。實測撞過:編輯頁的 Enter 會開外部編輯器並收掉面板
+    (那是那條路的正常結果),於是訊息說「不在前景」,底下卻印著前景就是 Microsoft.CmdPal.UI ——
+    訊息跟它自己附的證據互相打臉,查的人會往完全錯的方向走。
+#>
+function Get-CmdPalNotReadyReason {
+    $targetPid = Get-CmdPalPid
+    if (-not $targetPid) { return 'CmdPal 進程不在' }
+    if ([CmdPalNative]::ForegroundPid() -ne [uint32]$targetPid) { return 'CmdPal 不在前景' }
+    if ((Find-CmdPalPanel) -eq [IntPtr]::Zero) {
+        return '前景是 CmdPal,但面板已經收起來了(上一步的命令自己 dismiss,或使用者按了 Esc)'
+    }
+    return '面板在、前景也對,但 UIA 讀不到內容(多半還在轉場)'
+}
+
 # 失焦時要能一眼看出「那串字跑到哪去了」,所以把前景視窗是誰印出來。
 function Get-ForegroundDescription {
     $fgPid = [CmdPalNative]::ForegroundPid()
@@ -397,7 +458,7 @@ function Assert-CmdPalFocus {
         if (Wait-CmdPalReady -TimeoutMs 500) { return }
     }
 
-    Write-Output "  !! CmdPal 不在前景,'$Verb' **沒有送出**(送了會打進別的視窗)"
+    Write-Output "  !! $(Get-CmdPalNotReadyReason),'$Verb' **沒有送出**(送了會打進別的視窗)"
     Write-Output "     目前前景:$(Get-ForegroundDescription)"
     $script:FocusOk = $false
 }
@@ -699,10 +760,17 @@ function Save-CmdPalScreenshot {
     try {
         $hdc = $graphics.GetHdc()
         # 旗標 2 = PW_RENDERFULLCONTENT,WinUI 3 的 DirectComposition 內容要靠它才抓得到。
-        [CmdPalNative]::PrintWindow($hwnd, $hdc, 2) | Out-Null
+        $printed = [CmdPalNative]::PrintWindow($hwnd, $hdc, 2)
         $graphics.ReleaseHdc($hdc)
         $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
-        Write-Output "  已存 $Path (${width}x${height})"
+        if ($printed) {
+            Write-Output "  已存 $Path (${width}x${height})"
+        } else {
+            # PrintWindow 失敗時點陣圖是全黑的,而 Save 照樣會成功 —— 只印「已存」的話
+            # 那張黑圖會被當成證據。檔案還是留著(尺寸與時間點偶爾看得出問題),
+            # 但這裡要講清楚它沒拍到東西。
+            Write-Output "  !! PrintWindow 失敗,$Path 這張是空的(${width}x${height})—— 檔案有存,但不要拿它當證據"
+        }
     } catch {
         Write-Output "  !! 截圖存不進去($Path):$($_.Exception.Message)"
     } finally {
@@ -945,7 +1013,10 @@ for ($attempt = 1; $attempt -le $Retries; $attempt++) {
 # 全部重試都沒跑完就**以非零結束**。原本這裡什麼都不做,腳本照樣 exit 0 ——
 # 呼叫端(人或 agent)會以為驗證通過了,而實際上整串根本沒跑完。
 if ($lostFocus) {
-    throw "跑了 $Retries 次都沒能讓 CmdPal 保持在前景,整串沒有完成(沒有任何按鍵被送到別的視窗)。" +
+    throw "跑了 $Retries 次面板都沒能保持可用,整串沒有完成(沒有任何按鍵被送到別的視窗)。" +
         "常見原因:有別的視窗一直在搶焦點(工作管理員、通知、另一個自動化腳本)," +
-        "或 CmdPal 的熱鍵被改掉了。上面每一次失敗都印了當時的前景視窗是誰。"
+        "或 CmdPal 的熱鍵被改掉了。**另一種是序列本身要的就是面板收起來**" +
+        "(編輯頁的 Enter 會開外部編輯器並 dismiss、記下並預覽頁的「完成」也是)——" +
+        "那不是失敗,但重跑會把有副作用的步驟再做一遍,所以那類驗證要帶 -Retries 1。" +
+        "上面每一次失敗都印了原因與當時的前景視窗是誰。"
 }
