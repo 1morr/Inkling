@@ -130,7 +130,10 @@ public class FileSystemNoteRepositoryTests
         // 免得把舊事件誤當成後面那個檔案觸發的。
         await Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
 
-        using var fired = new SemaphoreSlim(0, 1);
+        // 上限不能設 1。watcher 對同一次異動常常發不只一個事件,第二次 Release()
+        // 會丟 SemaphoreFullException —— 那個例外在事件的回呼執行緒上,
+        // 直接讓整個測試進程收掉,而不是讓這一條測試紅。
+        using var fired = new SemaphoreSlim(0);
         repository.Changed += (_, _) => fired.Release();
 
         temp.WriteFile("later.md", "---\nid: later\ntitle: 後來新增\n---\n\n內文");
@@ -640,7 +643,10 @@ public class FileSystemNoteRepositoryTests
         // 先讀一次,資料夾監看是在這時候才掛上去的。
         repository.GetAll();
 
-        using var fired = new SemaphoreSlim(0, 1);
+        // 上限不能設 1。watcher 對同一次異動常常發不只一個事件,第二次 Release()
+        // 會丟 SemaphoreFullException —— 那個例外在事件的回呼執行緒上,
+        // 直接讓整個測試進程收掉,而不是讓這一條測試紅。
+        using var fired = new SemaphoreSlim(0);
         repository.Changed += (_, _) => fired.Release();
 
         temp.WriteFile("從別台機器同步過來.md", "---\nid: remote-1\ntitle: 遠端筆記\n---\n\n內文");
@@ -770,6 +776,59 @@ public class FileSystemNoteRepositoryTests
 
         repository.Invalidate();
         Assert.NotEqual(afterUpdate, repository.Version);
+    }
+
+    [Fact]
+    public async Task Version_DoesNotMoveASecondTimeFromOurOwnWrite()
+    {
+        // 自己的寫入在當下就 Invalidate 過了(丟快取、進版本、發 Changed)。
+        // watcher 幾毫秒後為同一個檔案再發一次事件的話,同一次存檔會讓正開著的頁面
+        // 重建兩遍,而第二遍還晚 250 ms(去抖動)才到 —— 畫面會多閃一下。
+        // 這一條也是兩條 Version 測試偶發紅掉的成因。
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+
+        // 先讀一次,資料夾監看是在這時候才掛上去的。
+        repository.GetAll();
+
+        // **一次存十則,不是一則。** 實測回音只有三成左右的機率出現(同一支測試在
+        // 修正前跑八次紅三次)—— 只存一則的話這條測試有六成機率在壞掉的程式碼上變綠,
+        // 那種守門等於沒有。十則把漏網率壓到 1% 以下,而且只等一次。
+        var before = repository.Version;
+
+        for (var i = 0; i < 10; i++)
+        {
+            repository.Create($"標題 {i}", "內文");
+        }
+
+        // 比去抖動的 250 ms 長,回音真的存在的話這段時間內一定到了。
+        await Task.Delay(TimeSpan.FromMilliseconds(800), TestContext.Current.CancellationToken);
+
+        Assert.Equal(before + 10, repository.Version);
+    }
+
+    [Fact]
+    public async Task Version_StillMovesWhenTheSameFileIsTouchedFromOutsideLater()
+    {
+        // 上一條的反面:抑制是有時效的。過了那扇窗,同一個檔案被外部工具改動照樣要收到 ——
+        // 否則「別台機器同步下來的修改」會在剛存過的那則筆記上永久失聯。
+        using var temp = new TempDirectory();
+        using var repository = CreateRepository(temp, out _);
+        repository.GetAll();
+
+        var note = repository.Create("標題", "內文");
+
+        using var fired = new SemaphoreSlim(0);
+
+        // 等抑制過期之後才開始聽,免得收到的是自己那一次的回音。
+        await Task.Delay(TimeSpan.FromMilliseconds(900), TestContext.Current.CancellationToken);
+        repository.Changed += (_, _) => fired.Release();
+
+        File.WriteAllText(note.FilePath, "---\nid: outside-1\ntitle: 別人改的\n---\n\n內文");
+
+        Assert.True(
+            await fired.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken),
+            "抑制過期之後,同一個檔案的外部異動仍然沒有觸發 Changed");
     }
 
     [Fact]

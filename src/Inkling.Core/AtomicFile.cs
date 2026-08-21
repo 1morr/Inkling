@@ -24,13 +24,31 @@ internal static class AtomicFile
         var temp = path + ".tmp";
         File.WriteAllText(temp, content);
 
-        if (File.Exists(path))
+        try
         {
+            // overwrite: true 對「目標還不存在」也是合法的,不必先 Exists 分兩條路。
             File.Move(temp, path, overwrite: true);
         }
-        else
+        catch
         {
-            File.Move(temp, path);
+            // 換上去失敗 —— 防毒軟體正在掃那個檔、雲端同步佔著、磁碟滿了。
+            // 暫存檔留著的話會躺在使用者的筆記資料夾裡,而掃描只看 *.md,
+            // 所以沒有任何畫面會提到它,它就這樣一直在那裡。
+            // 清不掉就算了:真正要往外傳的是原本那個失敗,不是清理的失敗。
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (IOException)
+            {
+                // 刪不掉也只能留著。
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // 同上。
+            }
+
+            throw;
         }
     }
 }

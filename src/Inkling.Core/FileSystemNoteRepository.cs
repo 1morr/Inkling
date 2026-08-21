@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 
 namespace Inkling.Core;
@@ -17,12 +18,36 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// </summary>
     private const int ChangeDebounceMs = 250;
 
+    /// <summary>
+    /// 自己剛寫過的檔案,在這段時間內收到的 watcher 事件當成自己的回音忽略掉。
+    /// 抓得比實際延遲寬鬆(實測是幾毫秒),但要明顯短於使用者可能在外部編輯器
+    /// 改完同一個檔案再存回來的時間。
+    /// </summary>
+    private const int SelfWriteEchoWindowMs = 500;
+
     private readonly string _directory;
     private readonly TimeProvider _timeProvider;
     private readonly IFileDeleter _fileDeleter;
     private readonly Func<DateTimeOffset, string> _idGenerator;
     private readonly Lock _gate = new();
     private readonly System.Threading.Timer _changeDebounce;
+
+    /// <summary>
+    /// Inkling 自己剛寫過(或剛刪掉)的路徑 → 忽略到什麼時候(<see cref="Environment.TickCount64"/>)。
+    ///
+    /// 自己的寫入在當下就 <see cref="Invalidate"/> 過了 —— 丟快取、進版本、發 Changed 一次做完。
+    /// 但 watcher 幾毫秒後會為同一個檔案再發一次事件,於是同一次存檔讓正開著的頁面
+    /// 重建兩遍,第二遍還晚 250 ms(去抖動)才到,畫面會多閃一下。
+    ///
+    /// **按路徑記,不是按時間段全域關掉** —— 同一段時間裡別的檔案被外部工具改了照樣要收到。
+    /// 同一個檔案在這 500 ms 內真的被外部改動則會漏掉一次通知,那是刻意的取捨:
+    /// 事件本身分不出是誰寫的,而快取已經丟掉了,下一次 GetAll 讀到的仍是磁碟上的最新內容。
+    ///
+    /// 用 ConcurrentDictionary 而不是 _gate:這個字典會在 watcher 執行緒上讀,
+    /// 而 _gate 在整個資料夾掃描期間都被持有 —— 讓 watcher 的回呼卡在那個鎖上,
+    /// 它的事件緩衝區會溢位(那正是 OnWatcherError 要處理的災難)。
+    /// </summary>
+    private readonly ConcurrentDictionary<string, long> _selfWrites = new(StringComparer.OrdinalIgnoreCase);
 
     private List<Note>? _cache;
     private FileSystemWatcher? _watcher;
@@ -124,12 +149,19 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         {
             Id = GenerateUniqueId(now),
             Title = title.Trim(),
-            Body = body,
+
+            // 正規化要在**回傳的物件上**做,不能只在寫檔那一頭做:Serialize 會 ToLf,
+            // 所以磁碟上永遠是 LF,再讀回來也是 LF。這裡不做的話,剛存好那一則
+            // 在記憶體裡帶著呼叫端給的 CRLF(Adaptive Cards 甚至是裸 CR),
+            // 跟從磁碟讀回來的同一則不相等 —— 預覽頁比對「內文是否已含標題」、
+            // 快取比對這類地方就會得到莫名其妙的結果。
+            Body = Newlines.ToLf(body),
             Created = now,
             Updated = now,
             FilePath = NoteFileName.CreateUniquePath(_directory, now, title),
         };
 
+        NoteSelfWrite(note.FilePath);
         AtomicFile.Write(note.FilePath, NoteFile.Serialize(note));
         Invalidate();
 
@@ -164,10 +196,13 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         var updated = existing with
         {
             Title = title.Trim(),
-            Body = body,
+
+            // 與 Create 同一個理由:回傳的物件要跟磁碟上的那一份對得起來。
+            Body = Newlines.ToLf(body),
             Updated = _timeProvider.GetLocalNow(),
         };
 
+        NoteSelfWrite(updated.FilePath);
         AtomicFile.Write(updated.FilePath, NoteFile.Serialize(updated));
         Invalidate();
 
@@ -179,6 +214,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         var existing = GetById(id)
             ?? throw NoteNotFoundException.ForId(id);
 
+        NoteSelfWrite(existing.FilePath);
         _fileDeleter.Delete(existing.FilePath);
         Invalidate();
     }
@@ -193,6 +229,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         {
             try
             {
+                NoteSelfWrite(note.FilePath);
                 _fileDeleter.Delete(note.FilePath);
                 deleted++;
             }
@@ -297,8 +334,11 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             // 回傳已掃到的部分,總比讓例外穿出頁面的 GetItems、整頁變成擴展錯誤好。
         }
 
-        notes.Sort((a, b) => b.Updated.CompareTo(a.Updated));
-        return notes;
+        // **Updated 只到秒。** 快速記下連打兩則、或別台機器一次同步下來一批,
+        // 時間戳就是相等的 —— 而 List<T>.Sort 是不穩定排序,相等元素的先後由實作決定,
+        // 同一個資料夾在不同機器上可能排出不同順序。用 id 當第二鍵讓順序完全確定
+        // (id 本身也帶著時間與亂數後綴,所以次序仍然合理)。
+        return [.. notes.OrderByDescending(n => n.Updated).ThenBy(n => n.Id, StringComparer.Ordinal)];
     }
 
     private Note? TryReadNote(string path)
@@ -345,7 +385,12 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             }
             catch (IOException)
             {
-                Thread.Sleep(ReadRetryDelayMs);
+                // 最後一輪不睡。這段迴圈跑在持有 _gate 的掃描裡,那一次白睡是所有
+                // 等著拿清單的呼叫端一起付的 —— 而睡完只會直接 return null。
+                if (attempt < ReadRetries - 1)
+                {
+                    Thread.Sleep(ReadRetryDelayMs);
+                }
             }
             catch (UnauthorizedAccessException)
             {
@@ -450,6 +495,31 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         _watcher = null;
     }
 
+    /// <summary>
+    /// 記下「這個路徑等一下會發事件,那是我們自己造成的」。
+    /// **要在動手寫之前叫** —— 事件有可能在 File.Move 還沒返回時就送到 watcher 執行緒。
+    /// </summary>
+    private void NoteSelfWrite(string path) =>
+        _selfWrites[path] = Environment.TickCount64 + SelfWriteEchoWindowMs;
+
+    private bool IsSelfWriteEcho(string path)
+    {
+        var now = Environment.TickCount64;
+
+        // 一次寫入常常發不只一個事件(Created 之後還有 Changed),所以命中之後
+        // **不移除**,讓它自己過期 —— 移除的話第二個事件照樣會穿過去。
+        // 過期的順手清掉:這個字典只在寫入路徑上長,但不該無限長。
+        foreach (var entry in _selfWrites)
+        {
+            if (entry.Value <= now)
+            {
+                _selfWrites.TryRemove(entry.Key, out _);
+            }
+        }
+
+        return _selfWrites.TryGetValue(path, out var until) && until > now;
+    }
+
     private void OnFileSystemChanged(object sender, FileSystemEventArgs e)
     {
         // 隨手草稿的檔案不在清單裡,它的寫入不該讓每一個開著的清單頁白重掃一遍 ——
@@ -459,6 +529,12 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         //
         // e 要先擋 null —— OnWatcherError 是拿 null! 呼叫進來的。
         if (e is not null && ScratchpadStore.IsScratchpad(_directory, e.FullPath))
+        {
+            return;
+        }
+
+        // 自己剛寫的那個檔案的回音。理由與取捨見 _selfWrites。
+        if (e is not null && IsSelfWriteEcho(e.FullPath))
         {
             return;
         }
