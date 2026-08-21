@@ -132,7 +132,7 @@
     <value>Inkling: Scratchpad</value>
   </data>
   <data name="ProviderScratchpadSubtitle" xml:space="preserve">
-    <value>One page that keeps whatever you left there</value>
+    <value>Pick up where you left off, no title needed</value>
   </data>
   <data name="ScratchpadDiscard" xml:space="preserve">
     <value>Discard changes</value>
@@ -491,10 +491,10 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
     <comment>{0} 是選好的路徑。</comment>
   </data>
   <data name="SettingsPickerAlreadyOpen" xml:space="preserve">
-    <value>A “Choose folder” window is already open</value>
+    <value>A “Choose folder” window is already open — switch to it from the taskbar</value>
   </data>
   <data name="SettingsFolderPickerFailed" xml:space="preserve">
-    <value>Could not open the folder picker</value>
+    <value>Could not open the folder picker — type the path into the field instead</value>
     <comment>對話框開不起來(CoCreateInstance / Show 失敗、STA 執行緒拋例外)時給的回饋;細節在 DiagnosticLog。使用者按取消不算失敗,不會顯示這句。</comment>
   </data>
   <data name="SettingsDirectoryRejected" xml:space="preserve">

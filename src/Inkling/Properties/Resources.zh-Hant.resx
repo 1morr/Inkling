@@ -128,7 +128,7 @@
     <value>Inkling：隨手草稿</value>
   </data>
   <data name="ProviderScratchpadSubtitle" xml:space="preserve">
-    <value>一塊便條紙,打開就接著上次寫</value>
+    <value>打開就接著上次寫,不必取標題</value>
   </data>
   <data name="ScratchpadDiscard" xml:space="preserve">
     <value>捨棄變更</value>
@@ -179,7 +179,7 @@
     <value>不進預覽頁也能選取、複製原始 Markdown</value>
   </data>
   <data name="ToggleSourcePageSubtitle" xml:space="preserve">
-    <value>檔案裡真正的字元:縮排、HTML 與 SVG 都原樣顯示</value>
+    <value>檔案裡真正的字元：縮排、HTML 與 SVG 都原樣顯示</value>
   </data>
   <data name="NoBody" xml:space="preserve">
     <value>_(沒有內文)_</value>
@@ -393,7 +393,7 @@
     <value>改用預設編輯器開啟</value>
   </data>
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
-    <value>內文很長時比表單好用;這張卡片上未儲存的修改不會帶過去</value>
+    <value>內文很長時比表單好用；這張卡片上未儲存的修改不會帶過去</value>
   </data>
   <data name="CapturePageTitle" xml:space="preserve">
     <value>快速記下</value>
@@ -420,7 +420,7 @@
     <value>設定已儲存</value>
   </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
-    <value>暫時生效了,但沒寫進磁碟 —— 重啟之後會還原。再存一次;一直失敗的話檢查磁碟空間與權限</value>
+    <value>暫時生效了,但沒寫進磁碟 —— 重啟之後會還原。再存一次；一直失敗的話檢查磁碟空間與權限</value>
   </data>
   <data name="SettingsFolderPickerTitle" xml:space="preserve">
     <value>選擇筆記資料夾</value>
@@ -429,10 +429,10 @@
     <value>筆記資料夾：{0}</value>
   </data>
   <data name="SettingsPickerAlreadyOpen" xml:space="preserve">
-    <value>已經有一個「選擇資料夾」的視窗開著了</value>
+    <value>已經有一個「選擇資料夾」的視窗開著了 —— 到工作列把它切出來</value>
   </data>
   <data name="SettingsFolderPickerFailed" xml:space="preserve">
-    <value>開不了資料夾選擇對話框</value>
+    <value>開不了資料夾選擇對話框 —— 直接把路徑打進欄位</value>
   </data>
   <data name="SettingsDirectoryRejected" xml:space="preserve">
     <value>沒有儲存 —— 筆記資料夾要填完整路徑,例如「C:\Notes」</value>
@@ -444,13 +444,13 @@
     <value>筆記資料夾</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
-    <value>放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Inkling 自己不做同步。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。要填完整路徑;資料夾還不存在的話,第一次存檔時會建立。清空這個欄位就回到預設資料夾。</value>
+    <value>放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Inkling 自己不做同步。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。要填完整路徑；資料夾還不存在的話,第一次存檔時會建立。清空這個欄位就回到預設資料夾。</value>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">
     <value>快速記下的分隔符</value>
   </data>
   <data name="SettingSeparatorDescription" xml:space="preserve">
-    <value>快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號;常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。半形全形算同一個：設定填「;;」、打字打「；；」照樣切得開。</value>
+    <value>快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號；常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。半形全形算同一個：設定填「;;」、打字打「；；」照樣切得開。</value>
   </data>
   <data name="SettingPreviewLabel" xml:space="preserve">
     <value>記下後先看一眼</value>

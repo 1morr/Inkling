@@ -128,7 +128,7 @@
     <value>Inkling：随手草稿</value>
   </data>
   <data name="ProviderScratchpadSubtitle" xml:space="preserve">
-    <value>一块便条纸,打开就接着上次写</value>
+    <value>打开就接着上次写,不必取标题</value>
   </data>
   <data name="ScratchpadDiscard" xml:space="preserve">
     <value>放弃更改</value>
@@ -149,7 +149,7 @@
     <value>还没有任何笔记</value>
   </data>
   <data name="ListPageEmptySubtitle" xml:space="preserve">
-    <value>用「{0}」记下第一则</value>
+    <value>用“{0}”记下第一则</value>
   </data>
   <data name="ListPageNoMatchTitle" xml:space="preserve">
     <value>没有符合的笔记</value>
@@ -179,7 +179,7 @@
     <value>不进预览页也能选取、复制原始 Markdown</value>
   </data>
   <data name="ToggleSourcePageSubtitle" xml:space="preserve">
-    <value>文件里真正的字符:缩进、HTML 与 SVG 都原样显示</value>
+    <value>文件里真正的字符：缩进、HTML 与 SVG 都原样显示</value>
   </data>
   <data name="NoBody" xml:space="preserve">
     <value>_(没有正文)_</value>
@@ -191,7 +191,7 @@
     <value>删除这则笔记？</value>
   </data>
   <data name="DeleteConfirmDescription" xml:space="preserve">
-    <value>「{0}」会被移到回收站。</value>
+    <value>“{0}”会被移到回收站。</value>
   </data>
   <data name="ProviderCapturePageTitle" xml:space="preserve">
     <value>Inkling：快速记下</value>
@@ -200,7 +200,7 @@
     <value>打字记下想法,{0} 后面接正文…</value>
   </data>
   <data name="QuickCaptureHint" xml:space="preserve">
-    <value>「买咖啡机{0}比较过几台」—— {0} 前面是标题,后面是正文</value>
+    <value>“买咖啡机{0}比较过几台”—— {0} 前面是标题,后面是正文</value>
   </data>
   <data name="QuickCaptureEmptyTitle" xml:space="preserve">
     <value>打字就记下</value>
@@ -268,7 +268,7 @@
     <value>删除这个文件？</value>
   </data>
   <data name="DeleteExternalConfirmDescription" xml:space="preserve">
-    <value>「{0}」不是 Inkling 创建的,会被移到回收站。</value>
+    <value>“{0}”不是 Inkling 创建的,会被移到回收站。</value>
   </data>
   <data name="DeleteQuickTitle" xml:space="preserve">
     <value>直接删除</value>
@@ -393,7 +393,7 @@
     <value>改用默认编辑器打开</value>
   </data>
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
-    <value>正文很长时比表单好用;这张卡片上未保存的修改不会带过去</value>
+    <value>正文很长时比表单好用；这张卡片上未保存的修改不会带过去</value>
   </data>
   <data name="CapturePageTitle" xml:space="preserve">
     <value>快速记下</value>
@@ -420,7 +420,7 @@
     <value>设置已保存</value>
   </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
-    <value>暂时生效了,但没写进磁盘 —— 重启之后会还原。再保存一次;一直失败的话检查磁盘空间与权限</value>
+    <value>暂时生效了,但没写进磁盘 —— 重启之后会还原。再保存一次；一直失败的话检查磁盘空间与权限</value>
   </data>
   <data name="SettingsFolderPickerTitle" xml:space="preserve">
     <value>选择笔记文件夹</value>
@@ -429,13 +429,13 @@
     <value>笔记文件夹：{0}</value>
   </data>
   <data name="SettingsPickerAlreadyOpen" xml:space="preserve">
-    <value>已经有一个「选择文件夹」的窗口开着了</value>
+    <value>已经有一个“选择文件夹”的窗口开着了 —— 到任务栏把它切出来</value>
   </data>
   <data name="SettingsFolderPickerFailed" xml:space="preserve">
-    <value>无法打开文件夹选择对话框</value>
+    <value>无法打开文件夹选择对话框 —— 直接把路径打进字段</value>
   </data>
   <data name="SettingsDirectoryRejected" xml:space="preserve">
-    <value>未保存 —— 笔记文件夹要填完整路径,例如「C:\Notes」</value>
+    <value>未保存 —— 笔记文件夹要填完整路径,例如“C:\Notes”</value>
   </data>
   <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
     <value>已保存 —— 这个文件夹还不存在,第一次保存时会创建：{0}</value>
@@ -444,13 +444,13 @@
     <value>笔记文件夹</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
-    <value>放在 OneDrive 之类的云端硬盘底下,多端同步就交给它处理 —— Inkling 自己不做同步。换文件夹不会搬动已经写好的笔记,只是改成去读新的位置。要填完整路径;文件夹还不存在的话,第一次保存时会创建。清空这个字段就回到默认文件夹。</value>
+    <value>放在 OneDrive 之类的云端硬盘底下,多端同步就交给它处理 —— Inkling 自己不做同步。换文件夹不会搬动已经写好的笔记,只是改成去读新的位置。要填完整路径；文件夹还不存在的话,第一次保存时会创建。清空这个字段就回到默认文件夹。</value>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">
     <value>快速记下的分隔符</value>
   </data>
   <data name="SettingSeparatorDescription" xml:space="preserve">
-    <value>快速记下时,打在它前面的是标题、后面是正文。默认的「;;」不用按 Shift、连打两下最快,而连续两个分号在一般句子里不会出现,标题因此还是能自由使用单一个分号;常写 for (;;) 这种笔记的话换成「,,」,键位一样好按、撞得更少。半角全角算同一个：设置填「;;」、打字打「；；」照样切得开。</value>
+    <value>快速记下时,打在它前面的是标题、后面是正文。默认的“;;”不用按 Shift、连打两下最快,而连续两个分号在一般句子里不会出现,标题因此还是能自由使用单一个分号；常写 for (;;) 这种笔记的话换成“,,”,键位一样好按、撞得更少。半角全角算同一个：设置填“;;”、打字打“；；”照样切得开。</value>
   </data>
   <data name="SettingPreviewLabel" xml:space="preserve">
     <value>记下后先看一眼</value>
