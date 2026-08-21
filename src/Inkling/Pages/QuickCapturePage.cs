@@ -167,6 +167,10 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
             items.Add(fromClipboard);
         }
 
+        // 相似筆記從這一格開始。前面那幾列(記下、可能還有「內文取自剪貼簿」)不算,
+        // 而剪貼簿那一列在不在是浮動的 —— 寫死扣 1 的話,log 上的數字時準時不準。
+        var beforeSimilar = items.Count;
+
         // 用標題而不是整句原始輸入去比對:分號後面的內文可能很長,
         // 拿它一起去搜只會讓命中率降到零,提醒就失效了。
         foreach (var note in NoteSearch.Filter(_repository.GetAll(), draft.Title).Take(MaxSimilarNotes))
@@ -174,8 +178,13 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
             items.Add(CreateSimilarItem(note));
         }
 
+        // **內文只記字數,不記內容。** 這一行原本是拿來確認切分位置對不對的,字數就夠;
+        // 而 bug 範本會請使用者把整份 log 貼進**公開的** issue —— 那是這個 repo 裡唯一
+        // 會主動導致外洩的路徑,而內文正是使用者剛打完、最私密的那一段字。
+        // 標題與搜尋字串照樣記(少了它們就對不上是哪一則),範本那邊因此附了去識別化的提醒。
         DiagnosticLog.Write(
-            $"QuickCapturePage.BuildItems: 標題='{draft.Title}' 內文='{draft.Body}' 相似 {items.Count - 1} 則");
+            $"QuickCapturePage.BuildItems: 標題='{draft.Title}' 內文 {draft.Body.Length} 字,"
+                + $"相似 {items.Count - beforeSimilar} 則");
 
         return [.. items];
     }

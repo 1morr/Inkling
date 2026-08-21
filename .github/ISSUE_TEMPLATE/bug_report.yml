@@ -57,6 +57,11 @@ body:
     attributes:
       label: diagnostic.log
       description: |
+        ⚠️ **貼上來之前先看過一遍,把不想公開的字換掉。** 這是一個公開、會被搜尋引擎索引的
+        頁面,而這份 log 會逐字記下你的**筆記標題**、**搜尋字串**與**筆記資料夾的完整路徑**
+        (裡面通常有你的 Windows 使用者名稱)。內文本身不會被記下來(只記字數),
+        但標題往往已經足夠說明一件私事。換成 `note-1`、`aaa` 之類的佔位字不影響排錯。
+
         開啟方式:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` 建一個空檔 `diagnostic.on`
         (`<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查),
         在 Command Palette 執行 Reload,重現問題,
