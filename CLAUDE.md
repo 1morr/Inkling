@@ -98,10 +98,12 @@ Version 的症狀)。
 **順序有語意,而且兩種頁面的算法不一樣。** 底部工具列的主命令(`Enter`)與次命令
 (`Ctrl+Enter`)坐的是誰**只看排序**,跟命令自己的 `RequestedShortcut` 無關:
 `ListPage` 的一列是「那一列自己的命令 + `MoreCommands[0]`」,`ContentPage` 是
-「`Commands[0]` + `Commands[1]`」。三頁刻意讓 **`Ctrl+Enter` 一律是編輯**,所以兩個
-`ContentPage` 的前兩項固定是「完成」與「編輯」——**加新項目不要插進前兩個位置**
-(踩過:切換原始文字排到第二個,複製內文就被擠掉了)。考證見
-[設計考證〈`Ctrl+Enter` 三頁一律是「編輯」〉](docs/design-notes.md#secondary-command)。
+「`Commands[0]` + `Commands[1]`」。兩個 `ContentPage` 的前兩項是「編輯」與「完成」,
+**順序刻意相反**:預覽頁是「編輯、完成」(在清單裡找到某一則才進來的,下一步多半是改它),
+記下並預覽頁是「完成、編輯」(剛打完字看一眼,下一步是收工)。曾經兩頁都是「完成、編輯」
+好讓 `Ctrl+Enter` 跨頁同義,但那讓預覽頁的 `Enter` 變成「把面板收掉」,代價更大。
+**加新項目不要插進前兩個位置**(踩過:切換原始文字排到第二個,複製內文就被擠掉了)。考證見
+[設計考證〈兩個位置鍵:預覽頁與記下並預覽頁刻意相反〉](docs/design-notes.md#secondary-command)。
 
 `TopLevelCommands()` 絕不碰磁碟(CmdPal 啟動時就會呼叫),載入延後到使用者真的打開清單頁。
 

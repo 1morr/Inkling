@@ -14,15 +14,20 @@ namespace Inkling.Pages;
 /// 同一則筆記在兩個畫面上要能用同一組手勢。
 /// 少的只有「刪除」—— 刪掉正在看的東西沒有道理,而且刪完停在一個空的預覽頁上更奇怪。
 ///
-/// <para><b>兩個位置鍵:<c>Enter</c> 是「完成」,<c>Ctrl+Enter</c> 是「編輯」。</b></para>
+/// <para><b>兩個位置鍵:<c>Enter</c> 是「編輯」,<c>Ctrl+Enter</c> 是「完成」。</b></para>
 ///
 /// 那兩顆按鈕坐的是誰只看順序,不看命令自己綁的鍵(算法見 <see cref="NoteCommands"/>)。
-/// 這一頁的 <c>Enter</c> 曾經是編輯,而 <c>Ctrl+Enter</c> 就順位落在複製內文上 ——
-/// 於是同一個 <c>Ctrl+Enter</c> 在清單頁是編輯、在這一頁是複製,使用者得記兩套。
-/// 現在三個畫面**一律** <c>Ctrl+Enter</c> = 編輯,代價是這一頁的 <c>Enter</c> 讓給
-/// <see cref="NoteCommands.Done"/>(收起面板,跟記下並預覽頁同形):看完了就收工,
-/// 要改的話 <c>Ctrl+E</c> 或 <c>Ctrl+Enter</c> 都到得了。
-/// 複製內文因此只剩自己的 <c>Ctrl+Shift+C</c> —— 那個鍵本來就跨三頁一致。
+/// **這一頁跟記下並預覽頁剛好對調,是刻意的** —— 兩頁的動線不一樣:
+/// 這一頁是使用者在清單裡**找到了某一則**才進來的,下一步多半是改它;記下並預覽頁是
+/// 剛打完字回頭看一眼,下一步是收工。所以主命令各自給那條動線,另一個讓給 <c>Ctrl+Enter</c>。
+///
+/// 曾經兩頁都是「<c>Enter</c> 完成 / <c>Ctrl+Enter</c> 編輯」,為的是讓 <c>Ctrl+Enter</c>
+/// 三頁同義;代價是在這一頁按 <c>Enter</c> 會把面板整個收掉,而使用者剛剛才在清單裡搜到它。
+/// 那個代價比「<c>Ctrl+Enter</c> 得記兩套」大,所以換回來 ——
+/// 更早之前的那一版是 <c>Ctrl+Enter</c> 順位落在複製內文上,那才是真的沒道理的形狀,
+/// 現在它坐的是「完成」,兩顆按鈕仍然是同一組動作的兩個入口。
+/// 編輯還是三條路都到得了(<c>Enter</c> / <c>Ctrl+E</c> / 選單),
+/// 複製內文一律走自己的 <c>Ctrl+Shift+C</c>。
 /// </summary>
 internal sealed partial class NotePreviewPage : ContentPage
 {
@@ -61,14 +66,14 @@ internal sealed partial class NotePreviewPage : ContentPage
         // **前兩項的位置是有語意的,不要插隊**:第一項掛 Enter、第二項掛 Ctrl+Enter
         // (見類別註解與 NoteCommands)。第三項之後才是純選單。
         Commands = [
-            new CommandContextItem(NoteCommands.Done()),
-
             // 編輯頁存檔後會回呼 Refresh。
             //
             // 這裡刻意用回呼而不是訂閱 repository 的 Changed 事件:預覽頁是清單裡
             // 每個項目各建一個的,而清單每次搜索就重建一次。長壽事件抓著這些短命物件
             // 會一路累積訂閱,不只是記憶體洩漏,一次改動還會打出上百個刷新。
             NoteCommands.Edit(repository, note, Refresh),
+
+            new CommandContextItem(NoteCommands.Done()),
 
             _toggleSource.CreateItem(Resources.ToggleSourcePageSubtitle),
 

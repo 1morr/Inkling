@@ -64,8 +64,8 @@ CmdPal 設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 
 
 | 鍵 | 做什麼 | 清單頁 | 預覽頁 |
 |---|---|:-:|:-:|
-| `Enter` | 清單頁:打開預覽;預覽頁:完成(收起面板) | ✅ | ✅ |
-| `Ctrl+Enter` | 編輯 —— 底部工具列的次要命令,**三個畫面一律是它** | ✅ | ✅ |
+| `Enter` | 清單頁:打開預覽;預覽頁:編輯 | ✅ | ✅ |
+| `Ctrl+Enter` | 清單頁:編輯;預覽頁:完成(收起面板) | ✅ | ✅ |
 | `Ctrl+E` | 編輯(表單) | ✅ | ✅ |
 | `Ctrl+N` | 新增筆記(開表單) | ✅ | — |
 | `Ctrl+U` | 切換渲染結果 / 原始文字(全域,記得住) | ✅ | ✅ |
@@ -75,13 +75,14 @@ CmdPal 設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 
 | `Ctrl+D` | 刪除(先跳確認框) | ✅ | — |
 | `Ctrl+K` | 打開選單,上面每一項都寫著自己的鍵 | ✅ | ✅ |
 
-「記下並預覽」那一頁(快速記下的 Enter 落點)用同一組手勢。
+「記下並預覽」那一頁(快速記下的 Enter 落點)用同一組手勢,只有那兩個位置鍵**刻意相反**:
+它的 `Enter` 是完成、`Ctrl+Enter` 是編輯 —— 剛打完字回頭看一眼,下一步是收工。
 `Inkling：刪除筆記` 那一頁刻意是例外,兩個鍵是 `Enter` 刪除(先問一次)與 `Ctrl+Enter` 直接刪。
 
 **`Enter` 與 `Ctrl+Enter` 是「位置鍵」,不是綁在命令上的** —— 底部工具列固定有主命令與次命令
 兩顆按鈕,坐上去的是誰只看命令排序。所以同一個命令可能有兩個鍵能觸發(預覽頁的編輯就是
-`Ctrl+E` 與 `Ctrl+Enter`)。三個顯示筆記的畫面刻意讓次命令一律是「編輯」,代價是預覽頁的
-`Enter` 不再是編輯 —— 考證見[設計考證〈`Ctrl+Enter` 三頁一律是「編輯」〉](docs/design-notes.md#secondary-command)。
+`Ctrl+E` 與 `Enter`)。每一頁的 `Enter` 給的是那條動線上真正的下一步,考證(以及中間繞過的
+那一圈)見[設計考證〈兩個位置鍵:預覽頁與記下並預覽頁刻意相反〉](docs/design-notes.md#secondary-command)。
 
 **只有複製帶 Shift**:`Ctrl+C` 是搜尋框自己的複製鍵。哪些字母不能碰、為什麼刪除是 `Ctrl+D`,
 見[設計考證〈清單頁的快速鍵〉](docs/design-notes.md#list-shortcuts)與 `src/Inkling/Shortcuts.cs`。

@@ -28,9 +28,19 @@ namespace Inkling.Commands;
 /// <item><c>ContentPage</c>:<b><c>Commands[0]</c> 是主命令,<c>Commands[1]</c> 是次命令</b>。</item>
 /// </list>
 ///
-/// 三個畫面刻意讓 <b><c>Ctrl+Enter</c> 一律是「編輯」</b>,所以兩個 <c>ContentPage</c>
-/// (預覽頁、記下並預覽頁)的第一項都是 <see cref="Done"/>、第二項都是 <see cref="Edit"/>。
-/// 加新項目時**不要插進前兩個位置**,那會把編輯從 <c>Ctrl+Enter</c> 上擠掉
+/// 兩個 <c>ContentPage</c> 的前兩項是「編輯」與「完成」,**順序刻意相反**:
+///
+/// <list type="bullet">
+/// <item><see cref="Pages.NotePreviewPage"/>(從清單找到某一則進來的)—— <see cref="Edit"/> 在前:下一步多半是改它。</item>
+/// <item><see cref="Pages.CapturedNotePage"/>(剛記完看一眼)—— <see cref="Done"/> 在前:下一步是收工。</item>
+/// </list>
+///
+/// 也就是說 <c>Enter</c> 各自給那一頁真正的下一步,另一個動作退到 <c>Ctrl+Enter</c>。
+/// 曾經兩頁都是「完成 / 編輯」好讓 <c>Ctrl+Enter</c> 跨頁同義,但預覽頁的 <c>Enter</c>
+/// 因此變成「把面板收掉」,而使用者剛剛才搜到那一則 —— 代價比不一致大,考證見
+/// <see cref="Pages.NotePreviewPage"/>。
+///
+/// 加新項目時**不要插進前兩個位置**,那會把這兩顆按鈕擠掉
 /// (真的發生過:切換原始文字排到第二個,複製內文就被頂掉了)。
 /// </summary>
 internal static class NoteCommands
@@ -91,8 +101,8 @@ internal static class NoteCommands
         };
 
     /// <summary>
-    /// 「完成」:看完了,收起整個 Command Palette。**兩個 <c>ContentPage</c> 的 <c>Enter</c>
-    /// 都是它**(預覽頁、記下並預覽頁),為的是讓 <c>Ctrl+Enter</c> 空出來給編輯 ——
+    /// 「完成」:看完了,收起整個 Command Palette。記下並預覽頁的 <c>Enter</c> 是它
+    /// (剛記完,下一步就是收工);預覽頁把 <c>Enter</c> 讓給編輯,它退到 <c>Ctrl+Enter</c> ——
     /// 理由見 <see cref="Pages.NotePreviewPage"/> 上那段「兩個位置鍵」的說明。
     ///
     /// 回傳的是命令本身而不是選單項:記下並預覽頁在存檔失敗時要就地把它改成「返回」

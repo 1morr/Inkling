@@ -156,9 +156,9 @@ internal sealed partial class CapturedNotePage : ContentPage
 
     /// <summary>
     /// 存檔成功後的命令列。**前兩項的位置是有語意的,不要插隊**:第一項掛 <c>Enter</c>
-    /// (完成,收起面板),第二項掛 <c>Ctrl+Enter</c>(編輯)—— 三個顯示筆記的畫面
-    /// <c>Ctrl+Enter</c> 一律是編輯,算法與理由見 <see cref="NoteCommands"/> 與
-    /// <see cref="NotePreviewPage"/>。
+    /// (完成,收起面板),第二項掛 <c>Ctrl+Enter</c>(編輯)—— 這一頁是剛打完字回頭看一眼,
+    /// 下一步是收工,所以主命令給「完成」。<see cref="NotePreviewPage"/> 的前兩項**剛好相反**
+    /// (那一頁是在清單裡找到某一則才進來的),算法與理由見 <see cref="NoteCommands"/>。
     ///
     /// 其餘幾項與預覽頁、清單頁共用同一份組裝(<see cref="NoteCommands"/>),
     /// 鍵位因此自動一致 —— 這一頁是第三個顯示同一則筆記的畫面,手勢要跨頁通用。
