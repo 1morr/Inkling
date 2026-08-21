@@ -137,6 +137,12 @@ $svg
         if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
         $outPath = Join-Path $targetDir $target.Name
 
+        # **先刪掉舊的。** 底下靠 Test-Path 判斷渲染成不成功,而目標檔幾乎一定是
+        # 上一次跑留下來的 —— 不刪的話,瀏覽器整個沒跑起來(路徑找錯、--headless
+        # 被新版拿掉、SVG 是壞的)也會一路綠燈,而且產出的是**上一版的圖示**。
+        # 那正是這個 repo 反覆在防的靜默失敗:不報錯、檔案在、內容是舊的。
+        if (Test-Path $outPath) { Remove-Item $outPath -Force }
+
         # 路徑用 [uri] 轉成 file:/// 形式,免得自己處理反斜線。
         # --default-background-color=00000000 讓沒被圖蓋到的地方保持透明。
         # --force-device-scale-factor=1 避免跟著系統 DPI 放大(這台是 144 DPI)。
@@ -147,7 +153,13 @@ $svg
             --window-size="$($target.W),$($target.H)" `
             ([uri]$htmlPath).AbsoluteUri 2>$null | Out-Null
 
-        if (-not (Test-Path $outPath)) { throw "渲染失敗:$($target.Name)" }
+        # 結束碼只拿來讓訊息說得出原因:headless 的瀏覽器截圖成功時也不保證回 0,
+        # 拿它當唯一判準會冒出假失敗。真正的判準是上面剛清空的那個檔案有沒有長回來。
+        $browserExit = $LASTEXITCODE
+
+        if (-not (Test-Path $outPath)) {
+            throw "渲染失敗:$($target.Name)(瀏覽器結束碼 $browserExit,沒有產出檔案)"
+        }
 
         $bytes = [System.IO.File]::ReadAllBytes($outPath)
         $width = [BitConverter]::ToInt32($bytes[19..16], 0)
