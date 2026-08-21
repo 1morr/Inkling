@@ -79,6 +79,11 @@ public sealed partial class InklingCommandsProvider : CommandProvider
         // 新增筆記頁同樣是兩個地方掛同一個實例:頂層命令那一列,以及清單頁的 Ctrl+N。
         var newNotePage = new NewNotePage(repository);
 
+        // 隨手草稿不經過 repository —— 它寫的是筆記資料夾裡一個固定檔名的純文字檔,
+        // 而 repository 那一邊會把它排除在清單與搜索之外(見 ScratchpadStore.IsScratchpad)。
+        // 資料夾一變就整組重建,新的 store 自然指向新資料夾;舊草稿留在舊資料夾裡不搬。
+        var scratchpadPage = new ScratchpadPage(new ScratchpadStore(options));
+
         // 清單頁的空狀態會拿 capturePage 當那一列的命令(按 Enter 直接導覽過去),
         // 所以要先建。兩個地方掛同一個實例 —— 跟設定頁同一個做法。
         var listPage = new NoteListPage(repository, options, capturePage, newNotePage, _settingsManager);
@@ -91,7 +96,7 @@ public sealed partial class InklingCommandsProvider : CommandProvider
                 Subtitle = Resources.ProviderListSubtitle,
 
                 // 明確指定圖示,不要靠繼承 provider 的那張套件磚:
-                // 四個頂層命令是同一個單色家族(見 Icons.cs),漏掉這一行的話
+                // 頂層命令是同一個單色家族(見 Icons.cs),漏掉這一行的話
                 // 只有這一列會變成彩色方磚,跟其他三列對不起來。
                 Icon = Icons.TopLevelList,
 
@@ -111,6 +116,15 @@ public sealed partial class InklingCommandsProvider : CommandProvider
                 Title = Resources.ProviderNewNoteTitle,
                 Subtitle = Resources.ProviderNewNoteSubtitle,
                 Icon = Icons.TopLevelNew,
+            },
+            new CommandItem(scratchpadPage)
+            {
+                Title = Resources.ProviderScratchpadTitle,
+
+                // 排在「新增筆記」後面、「刪除筆記」前面:三個寫東西的入口排在一起,
+                // 會刪東西的那個殿後。
+                Subtitle = Resources.ProviderScratchpadSubtitle,
+                Icon = Icons.TopLevelScratchpad,
             },
             new CommandItem(deletePage)
             {

@@ -281,7 +281,7 @@ toast 視窗**本來就一直存在**(CmdPal 啟動時就建好了),所以要看
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:Inkling|wait:900|tree:7|shot:$env:TEMP\toplevel.png"
 ```
 
-四個頂層命令要都在。**圖示長什麼樣樹裡看不出來,一定要開 `shot` 出來的圖用眼睛確認** ——
+五個頂層命令要都在(清單 / 快速記下 / 新增筆記 / 隨手草稿 / 刪除筆記)。**圖示長什麼樣樹裡看不出來,一定要開 `shot` 出來的圖用眼睛確認** ——
 UIA 只會給你一個 `Image: ''`,空白佔位圖跟真圖示在樹裡完全一樣。
 
 **快速記下(第 2 節)**

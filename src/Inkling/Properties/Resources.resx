@@ -128,6 +128,16 @@
   <data name="ProviderNewNoteSubtitle" xml:space="preserve">
     <value>Open a form for longer notes</value>
   </data>
+  <data name="ProviderScratchpadTitle" xml:space="preserve">
+    <value>Inkling: Scratchpad</value>
+  </data>
+  <data name="ProviderScratchpadSubtitle" xml:space="preserve">
+    <value>One page that keeps whatever you left there</value>
+  </data>
+  <data name="ScratchpadDiscard" xml:space="preserve">
+    <value>Discard changes</value>
+    <comment>草稿板底部工具列的第一顆(Enter)。刻意不叫 Done —— 這一頁存檔會自己關掉面板,所以按到這一顆的意思是「這次打的不存」。講「變更」而不是「草稿」:被丟掉的是這一次的編輯,不是已經存在檔案裡的草稿。</comment>
+  </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
     <value>Delete a few, or clear them all</value>
   </data>
@@ -411,6 +421,9 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   </data>
   <data name="NewNotePageTitle" xml:space="preserve">
     <value>New note</value>
+  </data>
+  <data name="ScratchpadPageTitle" xml:space="preserve">
+    <value>Scratchpad</value>
   </data>
   <data name="SettingsPageName" xml:space="preserve">
     <value>Settings</value>

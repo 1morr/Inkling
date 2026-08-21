@@ -14,7 +14,7 @@
       inkling-tile.svg        套件磚,精細版,150x150 以上
       inkling-tile-small.svg  套件磚,小尺寸版,88px 以下(工作列、CmdPal 清單)
       inkling-wide.svg        套件磚,寬幅版,寬磚與啟動畫面
-      inkling-cmd-*.svg       四個頂層命令的單色圖示(清單 / 快速記下 / 新增 / 刪除)
+      inkling-cmd-*.svg       五個頂層命令的單色圖示(清單 / 快速記下 / 新增 / 隨手草稿 / 刪除)
 
     命令圖示為什麼一個要產兩張:字形圖示是以文字繪製的,前景色自動跟主題走,PNG 不會。
     所以每個命令各出淺色主題(深色前景)與深色主題(白色前景)兩張,由
@@ -80,7 +80,7 @@ $targets = @(
     # gallery 投稿用:microsoft/CmdPal-Extensions 要 PNG/JPEG、≤100 KB、建議 256x256。
     @{ Name = 'icon.png';                                           Svg = 'inkling-tile.svg';       W = 256;  H = 256; Dir = $galleryDir; MaxKB = 100 }
 
-    # 四個頂層命令的圖示,每個兩張(淺色主題用深色前景、深色主題用白色前景)。
+    # 五個頂層命令的圖示,每個兩張(淺色主題用深色前景、深色主題用白色前景)。
     # 48x48 而不是 24x24:CmdPal 清單列上大約 20px,但這台是 144 DPI(150%),
     # 24px 的來源會被放大到 30px 而糊掉。48 往下縮乾淨,往上也還撐得住 200%。
     # 檔名裡不要出現句點分段(例如 CommandList.light.png)—— 那是 MRT 的限定詞語法,
@@ -93,6 +93,8 @@ $targets = @(
     @{ Name = 'CommandNewDark.png';      Svg = 'inkling-cmd-new.svg';     W = 48; H = 48; Fg = '#FFFFFF' }
     @{ Name = 'CommandDeleteLight.png';  Svg = 'inkling-cmd-delete.svg';  W = 48; H = 48; Fg = '#1A1A1A' }
     @{ Name = 'CommandDeleteDark.png';   Svg = 'inkling-cmd-delete.svg';  W = 48; H = 48; Fg = '#FFFFFF' }
+    @{ Name = 'CommandScratchpadLight.png'; Svg = 'inkling-cmd-scratchpad.svg'; W = 48; H = 48; Fg = '#1A1A1A' }
+    @{ Name = 'CommandScratchpadDark.png';  Svg = 'inkling-cmd-scratchpad.svg'; W = 48; H = 48; Fg = '#FFFFFF' }
 )
 
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "inkling-icons-$PID"

@@ -539,6 +539,39 @@ public class FileSystemNoteRepositoryTests
     }
 
     [Fact]
+    public void GetAll_ExcludesTheScratchpad()
+    {
+        // 隨手草稿存在筆記資料夾裡(才跟得上雲端同步),但它不是筆記 —— 沒有標題也沒有 id,
+        // 列進來清單就會永遠多一列標題在跳動的半成品。
+        using var temp = new TempDirectory();
+        temp.WriteFile(ScratchpadStore.FileName, "還沒想清楚的東西");
+        temp.WriteFile("真的筆記.md", "---\nid: n-1\ntitle: 真的筆記\n---\n\n內文");
+
+        using var repository = CreateRepository(temp, out _);
+        var note = Assert.Single(repository.GetAll());
+
+        Assert.Equal("真的筆記", note.Title);
+
+        // 它不是「壞到讀不出來的檔案」,是我們自己決定不列的 —— 混進這個數字會讓
+        // 清單頁跳出「有幾個檔案讀不出來」的提示,而使用者根本沒有壞檔。
+        Assert.Equal(0, repository.SkippedFileCount);
+    }
+
+    [Fact]
+    public void GetAll_ScratchpadInASubdirectoryIsStillANote()
+    {
+        // 排除規則只認最上層那一個。子資料夾裡剛好同名的檔案是使用者自己的筆記,
+        // 照常列出來 —— 規則要講得出口,不然就成了無聲吃掉檔案的黑魔法。
+        using var temp = new TempDirectory();
+        temp.WriteFile("專案A/" + ScratchpadStore.FileName, "# 這是一則筆記\n\n內文");
+
+        using var repository = CreateRepository(temp, out _);
+        var note = Assert.Single(repository.GetAll());
+
+        Assert.Equal("這是一則筆記", note.Title);
+    }
+
+    [Fact]
     public void GetAll_IgnoresNonMarkdownFiles()
     {
         using var temp = new TempDirectory();

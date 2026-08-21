@@ -124,6 +124,15 @@
   <data name="ProviderNewNoteSubtitle" xml:space="preserve">
     <value>打开表单写比较长的内容</value>
   </data>
+  <data name="ProviderScratchpadTitle" xml:space="preserve">
+    <value>Inkling：随手草稿</value>
+  </data>
+  <data name="ProviderScratchpadSubtitle" xml:space="preserve">
+    <value>一块便条纸,打开就接着上次写</value>
+  </data>
+  <data name="ScratchpadDiscard" xml:space="preserve">
+    <value>放弃更改</value>
+  </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
     <value>挑几则删掉,或整个清空</value>
   </data>
@@ -367,6 +376,9 @@
   </data>
   <data name="NewNotePageTitle" xml:space="preserve">
     <value>新建笔记</value>
+  </data>
+  <data name="ScratchpadPageTitle" xml:space="preserve">
+    <value>随手草稿</value>
   </data>
   <data name="SettingsPageName" xml:space="preserve">
     <value>设置</value>

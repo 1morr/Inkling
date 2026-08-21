@@ -16,9 +16,9 @@ namespace Inkling;
 internal static class Icons
 {
     // ---------------------------------------------------------------------
-    // 四個頂層命令的圖示。這一組是自己畫的 PNG,不是字形。
+    // 五個頂層命令的圖示。這一組是自己畫的 PNG,不是字形。
     //
-    // 為什麼只有這四個自訂:它們是使用者在 CmdPal 主搜尋框裡會看到的東西,
+    // 為什麼只有這幾個自訂:它們是使用者在 CmdPal 主搜尋框裡會看到的東西,
     // 要一眼看得出是同一個產品。Ctrl+K 選單裡的編輯 / 複製 / 開啟位置那些
     // 繼續用 Segoe Fluent —— 那裡跟 CmdPal 內建命令混在一起,字形反而更協調,
     // 而且 16/20px 有專業 hinting,手畫的比不上。
@@ -45,10 +45,13 @@ internal static class Icons
     /// 頂層命令「Inkling:刪除筆記」。
     ///
     /// 這一個是刻意付的代價:垃圾桶(<see cref="Delete"/> 的 0xE74D)比「筆畫＋叉」
-    /// 一望即知,但四個頂層命令要是同一個家族。覺得誤刪風險比家族感重要的話,
+    /// 一望即知,但頂層命令要是同一個家族。覺得誤刪風險比家族感重要的話,
     /// 把這一行改回 <c>Glyph(0xE74D)</c> 就好,其他都不用動。
     /// </summary>
     public static IconInfo TopLevelDelete => Family("Delete");
+
+    /// <summary>頂層命令「Inkling:隨手草稿」。</summary>
+    public static IconInfo TopLevelScratchpad => Family("Scratchpad");
 
     private static IconInfo Family(string name) => IconHelpers.FromRelativePaths(
         $"Assets\\Command{name}Light.png",
@@ -72,6 +75,22 @@ internal static class Icons
 
     /// <summary>Add — 新增筆記(完整表單)。</summary>
     public static IconInfo Add => Glyph(0xE710);
+
+    /// <summary>
+    /// Cancel — 隨手草稿的「捨棄變更」。
+    ///
+    /// 不用 <see cref="Done"/> 的勾勾:那個符號說的是「成功了」,而按下去什麼都不會存。
+    /// 也不用 <see cref="Delete"/> 的垃圾桶 —— 沒有東西被刪掉,檔案裡的草稿原封不動。
+    /// </summary>
+    public static IconInfo Discard => Glyph(0xE711);
+
+    /// <summary>
+    /// Document — 隨手草稿那一頁本身(頂層那一列走 <see cref="TopLevelScratchpad"/>)。
+    ///
+    /// 沒有沿用 <see cref="Note"/> 的 QuickNote:隨手草稿不是一則筆記,兩者在
+    /// <c>Ctrl+K</c> 選單裡有機會並排,長一樣只會讓人以為點錯了。
+    /// </summary>
+    public static IconInfo Scratchpad => Glyph(0xE8A5);
 
     /// <summary>Edit — 編輯筆記。</summary>
     public static IconInfo Edit => Glyph(0xE70F);

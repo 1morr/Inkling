@@ -60,7 +60,7 @@ public static class NoteFile
         {
             // 沒有 front matter —— 整個檔案都是內文。這是使用者用別的工具
             // 丟進資料夾的普通 Markdown,照樣要能顯示。
-            return new ParsedNoteFile { Body = StripTrailingNewline(NormalizeNewlines(content)), HadFrontMatter = false };
+            return new ParsedNoteFile { Body = StripTrailingNewline(Newlines.ToLf(content)), HadFrontMatter = false };
         }
 
         var closingIndex = -1;
@@ -76,7 +76,7 @@ public static class NoteFile
         if (closingIndex < 0)
         {
             // 開頭有 "---" 卻沒有收尾。當成沒有 front matter,總比把整個檔案吞掉好。
-            return new ParsedNoteFile { Body = StripTrailingNewline(NormalizeNewlines(content)), HadFrontMatter = false };
+            return new ParsedNoteFile { Body = StripTrailingNewline(Newlines.ToLf(content)), HadFrontMatter = false };
         }
 
         var block = lines[1..closingIndex].Select(l => l.TrimEnd('\r')).ToArray();
@@ -328,7 +328,7 @@ public static class NoteFile
 
         builder.Append(Delimiter).Append('\n');
         builder.Append('\n');
-        builder.Append(NormalizeNewlines(note.Body));
+        builder.Append(Newlines.ToLf(note.Body));
 
         var text = builder.ToString();
 
@@ -339,7 +339,7 @@ public static class NoteFile
         }
 
         // Windows 上的編輯器對 CRLF 比較友善,統一輸出 CRLF。
-        return text.Replace("\n", "\r\n", StringComparison.Ordinal);
+        return Newlines.ToCrlf(text);
     }
 
     /// <summary>
@@ -348,10 +348,6 @@ public static class NoteFile
     /// </summary>
     private static string StripTrailingNewline(string text) =>
         text.EndsWith('\n') ? text[..^1] : text;
-
-    private static string NormalizeNewlines(string text) =>
-        text.Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n');
 
     /// <summary>
     /// 只在不加引號會讓 YAML 解讀錯誤時才加,不然人在編輯器裡看到滿滿的引號很煩。

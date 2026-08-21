@@ -130,7 +130,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             FilePath = NoteFileName.CreateUniquePath(_directory, now, title),
         };
 
-        WriteAtomic(note.FilePath, NoteFile.Serialize(note));
+        AtomicFile.Write(note.FilePath, NoteFile.Serialize(note));
         Invalidate();
 
         return note;
@@ -168,7 +168,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             Updated = _timeProvider.GetLocalNow(),
         };
 
-        WriteAtomic(updated.FilePath, NoteFile.Serialize(updated));
+        AtomicFile.Write(updated.FilePath, NoteFile.Serialize(updated));
         Invalidate();
 
         return updated;
@@ -272,6 +272,14 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
             foreach (var path in Directory.EnumerateFiles(_directory, "*" + NoteFileName.Extension, enumeration))
             {
+                // 隨手草稿的檔案不是筆記(沒有標題也沒有 id),列進來只會讓清單永遠多一列
+                // 標題在跳動的半成品。**刻意不計入 SkippedFileCount** —— 那個數字講的是
+                // 「有幾個檔案壞到讀不出來」,而這一個是我們自己決定不列的。
+                if (ScratchpadStore.IsScratchpad(_directory, path))
+                {
+                    continue;
+                }
+
                 var note = TryReadNote(path);
                 if (note is not null)
                 {
@@ -378,31 +386,6 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     }
 
     /// <summary>
-    /// 先寫暫存檔再換上去。直接覆寫的話,寫到一半中斷就等於毀掉一則既有筆記。
-    /// 暫存檔用 .tmp 副檔名,不會被 *.md 的掃描撿到。
-    /// </summary>
-    private static void WriteAtomic(string path, string content)
-    {
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, content);
-
-        if (File.Exists(path))
-        {
-            File.Move(temp, path, overwrite: true);
-        }
-        else
-        {
-            File.Move(temp, path);
-        }
-    }
-
-    /// <summary>
     /// 監看資料夾,任何變動就讓快取失效。
     ///
     /// 用「延遲失效」而不是「立即重載」有個好處:OneDrive 同步下來時是一陣爆發式的寫入,
@@ -469,6 +452,17 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
     private void OnFileSystemChanged(object sender, FileSystemEventArgs e)
     {
+        // 隨手草稿的檔案不在清單裡,它的寫入不該讓每一個開著的清單頁白重掃一遍 ——
+        // 隨手草稿每按一次儲存就寫一次檔,而一次重掃要讀完整個資料夾。
+        // 忽略它不會漏掉什麼:隨手草稿頁面每次 GetContent() 都自己重讀檔案,不靠這條路,
+        // 所以連「使用者用外部編輯器改了草稿」也照樣看得到。
+        //
+        // e 要先擋 null —— OnWatcherError 是拿 null! 呼叫進來的。
+        if (e is not null && ScratchpadStore.IsScratchpad(_directory, e.FullPath))
+        {
+            return;
+        }
+
         // 外部異動走去抖動:OneDrive 同步下來時是一陣爆發式的寫入,
         // 每個檔案都立刻通知一次的話,清單頁會在同步期間被重建幾十次。
         InvalidateCore(notifyImmediately: false);

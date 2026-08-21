@@ -72,8 +72,37 @@ internal static class NoteCommands
         };
 
     /// <summary>用系統預設的程式開啟這個 <c>.md</c>。</summary>
-    public static CommandContextItem OpenInEditor(Note note) =>
-        new(new OpenUrlCommand(note.FilePath))
+    public static CommandContextItem OpenInEditor(Note note) => OpenInEditor(note.FilePath);
+
+    /// <summary>
+    /// 同上,但直接吃路徑 —— 隨手草稿不是一則 <see cref="Note"/>(它沒有標題也沒有 id),
+    /// 卻要用同一個鍵位、同一個圖示、同一句話跳到外部編輯器。
+    /// </summary>
+    /// <param name="dismiss">
+    /// 開完要不要順手把面板收起來。<b>隨手草稿一定要傳 true。</b>
+    ///
+    /// 它是這一族裡唯一「畫面上有一份使用者還能按儲存的副本」的頁面:面板留著的話,
+    /// 使用者在外部編輯器改完回到 CmdPal,那張卡片還停在跳出去之前的舊值,再按一次儲存
+    /// 就把外部的修改整個蓋掉。收起來之後下次打開會重新 <c>GetContent()</c> 讀檔,
+    /// 看到的才是編輯器存下的那一版。
+    ///
+    /// 筆記那三頁不傳(維持 <see cref="OpenUrlCommand"/> 的預設 <c>KeepOpen</c>):
+    /// 它們顯示的是唯讀的預覽,沒有這個問題,而且要改行為的話是另一件事。
+    /// </param>
+    public static CommandContextItem OpenInEditor(string filePath, bool dismiss = false) =>
+        new(new OpenUrlCommand(filePath)
+        {
+            // Name 一定要自己換掉。底部工具列那兩顆按鈕顯示的是命令的 Name(不是這裡的
+            // Title),而 OpenUrlCommand 預設帶的是 toolkit 自己資源檔的 "Open" ——
+            // 跟著 CmdPal 的語言走,不見得跟我們一致。隨手草稿把這一項放在 Commands[1],
+            // 那正是工具列的位置,漏掉的話按鈕上就是一個英文的 Open(實機驗證時抓到的)。
+            // ShowFileInFolderCommand 早就為了同一件事這樣做,見 OpenFileLocation。
+            Name = Resources.CommandOpenInEditor,
+
+            // 顯式指定,不靠 toolkit 的預設 —— 那個預設(現在是 KeepOpen)是別人的實作細節,
+            // 而這裡選哪一個攸關會不會蓋掉使用者在外部編輯器寫的東西。
+            Result = dismiss ? CommandResult.Dismiss() : CommandResult.KeepOpen(),
+        })
         {
             Title = Resources.CommandOpenInEditor,
             Icon = Icons.OpenExternal,

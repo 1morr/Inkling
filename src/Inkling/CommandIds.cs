@@ -64,4 +64,12 @@ internal static class CommandIds
     /// 標題可以改(Id 有設就不會去算雜湊),Id 不行。
     /// </summary>
     public const string DeleteAll = "Notelet.DeleteAll";
+
+    /// <summary>
+    /// 隨手草稿那一頁(頂層命令「Inkling:隨手草稿」)。
+    ///
+    /// 新命令給新 Id。前綴照舊是 <c>Notelet.</c> —— 那是改名前的名字,現在的作用只剩
+    /// 「跟其他幾個 Id 長得一樣」,而使用者永遠看不到這些字串(見這個類別上面的說明)。
+    /// </summary>
+    public const string Scratchpad = "Notelet.Scratchpad";
 }

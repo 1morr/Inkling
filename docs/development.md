@@ -108,7 +108,9 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
 src/
   Inkling.Core/      純 net10.0 類別庫,不引用任何 CmdPal 型別 → 100% 可單元測試。
                      front matter 讀寫、id/檔名、搜索排序、標題/內文切分、
-                     摘要與推導標題(NoteBody)都在這一層
+                     摘要與推導標題(NoteBody)、隨手草稿的檔案讀寫(ScratchpadStore)
+                     都在這一層。原子寫檔(AtomicFile)與換行正規化(Newlines)
+                     是筆記與草稿共用的
   Inkling/           CmdPal 擴展(MSIX COM server),只負責把 Core 的結果
                      翻譯成 IListItem / IContent
     CommandIds        頂層命令的固定 Id(還叫 Notelet.*,改名前的名字,故意留著;
@@ -117,11 +119,13 @@ src/
     Shortcuts         鍵位集中在這裡(挑鍵的規則寫在檔案註解裡)
     Commands/NoteCommands  編輯 / 複製 / 開啟那幾項選單的唯一組裝處(三個頁面共用)
     RecycleBinFileDeleter / FolderPicker  資源回收筒、設定頁的「瀏覽…」對話框
-    Pages/            快速記下、記下後的預覽、清單、預覽、編輯、新增、刪除、設定
+    Pages/            快速記下、記下後的預覽、清單、預覽、編輯、新增、隨手草稿、刪除、設定
                       (進 Adaptive Cards 的字串一律經 CardText 做 JSON 跳脫;
                       項目快取的形狀三個清單頁共用,見 VersionedItemsCache)
 assets/icon/         圖示的原始檔(SVG);src/Inkling/Assets 的 PNG 全部由
-                     tools/render-icons.ps1 產生,不要手改
+                     tools/render-icons.ps1 產生,不要手改。五個頂層命令各一個
+                     inkling-cmd-*.svg,每個輸出淺 / 深兩張 PNG —— 加新的頂層命令
+                     時 SVG 與 render-icons.ps1 的 $targets 兩邊都要補
 tests/               Inkling.Core.Tests(xUnit)
 tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
                      ApiDump(印 SDK 型別的實際簽章)、cmdpal-ui.ps1(真機驅動
