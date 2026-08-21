@@ -94,8 +94,11 @@
 1. 把 `CHANGELOG.md` 的 `[Unreleased]` 內容移到新版本段落,標上日期。
 2. 跑過 `docs/manual-test-checklist.md`(至少發版相關的段落)。
 3. 打 tag:`git tag v0.2.0 && git push origin v0.2.0`。
-4. release.yml 自動:建 x64 + ARM64(trimmed publish)→ 注入版本 → 組 msix →
-   (有設憑證 secret 才)簽章 → 組 msixbundle → 建 GitHub Release 附資產。
+4. release.yml 自動:跑測試 → 建 x64 + ARM64(trimmed publish)→ 注入版本 → 組 msix →
+   (有設憑證 secret 才)簽 msix → 組 msixbundle(帶 `/bv`,版本跟著 tag)→
+   (有設憑證 secret 才)**再簽 bundle** → 建 GitHub Release 附資產。
+   **兩次簽章都要**:簽章不會從裡面的 `.msix` 傳遞到外層 bundle,只簽裡面的話
+   Release 上掛的 bundle 側載一樣會被 `0x800B0109` 擋下。
 5. 走 Store 路線:從 Release 資產拿下 msixbundle,上傳 Partner Center 送審。
 
 ## 4. WinGet 上架

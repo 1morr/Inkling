@@ -5,6 +5,11 @@ on:
     branches: [master, main]
   pull_request:
 
+# 這條路只是建置與測試,一個字都不用寫回 repo。不宣告的話拿到的是 repo 預設值,
+# 而 fork 的 pull_request 也會跑到這裡。
+permissions:
+  contents: read
+
 jobs:
   build-test:
     runs-on: windows-latest

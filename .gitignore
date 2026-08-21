@@ -17,6 +17,11 @@ BundleArtifacts/
 *.appx
 *.appxbundle
 bundle_mapping.txt
+
+# release workflow 的暫存佈局與產出目錄(.github/workflows/release.yml)。
+# CI 上是乾淨機器所以不影響,但在本機重現打包步驟時它會整包冒出來。
+artifacts/
+
 _ReSharper*/
 *.DotSettings.user
 

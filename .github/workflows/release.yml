@@ -4,8 +4,10 @@ on:
   push:
     tags: ['v*']
 
+# 預設唯讀,寫入權限只給真的要建 Release 的那個 job —— build job 會跑
+# dotnet publish 與 makeappx,不需要能改這個 repo。
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -52,6 +54,11 @@ jobs:
           [xml]$m = Get-Content $path
           $m.Package.Identity.Version = '${{ steps.ver.outputs.appx_version }}'
           $m.Save((Resolve-Path $path).Path)
+
+      # tag 可能打在沒跑過 ci.yml 的 commit 上(或 ci 之後又推了東西),
+      # 所以發版這條路自己再驗一次 —— Core 的測試三秒跑完,比事後撤回一個版本便宜。
+      - name: Test
+        run: dotnet test --nologo
 
       - name: Publish (Release, trimmed)
         run: dotnet publish src/Inkling/Inkling.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishProfile=${{ matrix.profile }}
@@ -112,6 +119,13 @@ jobs:
   release:
     needs: build
     runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      # 與 build job 同一組 secret:bundle 也要簽,否則 Release 上掛的是
+      # 「裡面每個 .msix 都簽好、外面那層沒簽」的東西,側載照樣被 Windows 擋下。
+      SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -119,18 +133,57 @@ jobs:
           path: artifacts/msix
           merge-multiple: true
 
+      - name: Resolve version from tag
+        id: ver
+        shell: pwsh
+        run: |
+          # 格式已經在 build job 驗過(這個 job needs: build),這裡只去掉 v 前綴。
+          $tag = '${{ github.ref_name }}' -replace '^v', ''
+          "appx_version=$tag.0" >> $env:GITHUB_OUTPUT
+
       - name: Bundle .msixbundle
         shell: pwsh
         run: |
           $makeappx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
             Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-          & $makeappx bundle /o /d artifacts/msix /p "artifacts/Inkling_${{ github.ref_name }}.msixbundle"
+          # /bv 不能省:makeappx 自己的說明寫著「沒指定或設成 0.0.0.0 時,bundle 版本
+          # 會用打包當下的日期時間」(<年>.<月日>.<時分>.<秒毫秒>),於是同一個 tag
+          # 每次重跑都產出不同版本,而且跟 .msix 裡的版本對不上。
+          & $makeappx bundle /o /bv ${{ steps.ver.outputs.appx_version }} `
+            /d artifacts/msix /p "artifacts/Inkling_${{ github.ref_name }}.msixbundle"
           if ($LASTEXITCODE -ne 0) { throw "makeappx bundle 失敗($LASTEXITCODE)" }
+
+      - name: Sign .msixbundle
+        # 跟 build job 的 Sign 同一個條件:沒有憑證就整步跳過,產出未簽章的 bundle
+        # (只能送 Store 代簽)。有憑證的話這一步是必要的 —— 簽章不會從裡面的 .msix
+        # 傳遞到外層 bundle。
+        if: env.SIGNING_CERT_BASE64 != ''
+        shell: pwsh
+        run: |
+          $pfx = New-TemporaryFile
+          try {
+            [IO.File]::WriteAllBytes($pfx.FullName, [Convert]::FromBase64String($env:SIGNING_CERT_BASE64))
+            $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
+              Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+            & $signtool sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
+              /f $pfx.FullName /p $env:SIGNING_CERT_PASSWORD `
+              "artifacts/Inkling_${{ github.ref_name }}.msixbundle"
+            if ($LASTEXITCODE -ne 0) { throw "signtool sign 失敗($LASTEXITCODE)" }
+          }
+          finally {
+            Remove-Item $pfx.FullName -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Create GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # gh 解析 repo 的環境變數**只有 GH_REPO**,它不會回落到 Actions 內建的
+          # GITHUB_REPOSITORY;而這個 job 沒有 checkout,gh 也就找不到 git remote 可問。
+          # 少了這一行,前面全部成功之後最後一步會死在
+          # 「failed to run git: fatal: not a git repository」——tag 已經推上去了,
+          # 重跑還得先把 tag 刪掉。
+          GH_REPO: ${{ github.repository }}
         run: |
           # 未簽章的 bundle 在這裡只是「Store 送審用 / 待簽章」的資產;
           # 要給使用者側載,必須先完成簽章(見 build job 的 Sign 步驟註解)。

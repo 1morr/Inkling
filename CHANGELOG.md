@@ -106,6 +106,16 @@
 
 ### 開發工具
 
+- **發版流程修好了一個一定會炸的地方**:`release.yml` 的 release job 沒有 checkout,
+  而 `gh` 解析 repo 的環境變數**只有 `GH_REPO`**——它不會回落到 Actions 內建的
+  `GITHUB_REPOSITORY`,也沒有 git remote 可問。也就是第一次打 tag 發版時,建置、簽章、
+  上傳全部成功之後最後一步會死在「fatal: not a git repository」,而 tag 已經推上去了。
+  現在把 `GH_REPO` 傳進去。同一輪還修了三件:`makeappx bundle` 補上 `/bv`
+  (不指定的話 bundle 版本會變成打包當下的日期時間,跟 `.msix` 裡的版本對不上)、
+  **bundle 自己也要簽**(簽章不會從裡面的 `.msix` 傳遞到外層,只簽裡面的話側載一樣被擋)、
+  發版前先跑一次 `dotnet test`(tag 可能打在沒過 CI 的 commit 上)。
+- **兩個 workflow 的 `permissions` 收緊**:預設改成 `contents: read`,
+  寫入權限只給真的要建 Release 的那個 job。
 - `tools/cmdpal-ui.ps1` **不再照視窗標題找 CmdPal 的視窗**。標題跟著 Windows 顯示語言走,
   而腳本比對的是寫死的 `Command Palette` / `Command Palette Toast`,旁邊還註著
   「在 zh-TW 機器上實測仍是英文」—— 那句話在某次 CmdPal 進程重啟之後就不成立了
