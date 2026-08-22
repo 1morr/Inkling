@@ -6,6 +6,31 @@
 
 首次公開發佈前的修正輪(內部審查,尚未發版)。
 
+### 破壞性變更:改名前的 `Notelet` 全部清掉
+
+改名(2026-08-20)時刻意留下的兩處舊名字,趁**還沒有任何公開安裝**一次清乾淨。
+這是最後一個能反悔的時刻 —— 第一個公開版本之後再動就是洗掉別人的設定。
+
+- **命令 Id 的前綴從 `Notelet.` 換成 `Inkling.`**(七個字串全部)。
+- **`Identity/@Publisher` 從 `CN=Notelet Development` 換成 `CN=Inkling Development`**,
+  PFN 因此從 `Inkling_bf0n0751x5hse` 變成 `Inkling_b83qevkfx7m2r`。
+
+**升級後會回到預設值的東西**(這一輪唯一會讓人「咦」的地方):
+
+| 東西 | 為什麼 | 怎麼救 |
+|---|---|---|
+| CmdPal 的 alias(`#` / `!` / `@`) | 鍵是命令 Id,而 Id 換了 | 到設定 → Extensions → Inkling 重設,三個 |
+| 釘選、擴展的啟用狀態、fallback 規則 | 鍵帶 PFN,而 PFN 換了 | 重新啟用即可(重新註冊後預設就是啟用) |
+| 筆記資料夾、分隔符、記下後預覽、原始文字模式 | `LocalState` 跟著 PFN 換位置,`settings.json` 變孤兒 | 舊檔案還在 `%LOCALAPPDATA%\Packages\Inkling_bf0n0751x5hse\LocalState\`,複製過去或重設一次 |
+
+⚠ **筆記檔本身完全不受影響。** 但**自訂過筆記資料夾的話,清單會看起來是空的** ——
+路徑退回了預設的 `<OneDrive>\Inkling`,而檔案一個都沒少。先去設定把路徑指回去。
+
+⚠ 換 `Publisher` 之後**第一次部署要先顯式移除舊套件**
+(`Get-AppxPackage '*Inkling*' | Remove-AppxPackage -PreserveApplicationData`)——
+`deploy.ps1` 的重複註冊防護擋不到「路徑沒變、身分變了」這一種,會兩個並存而且回報成功。
+考證見 [設計考證〈前綴換過一次,而且只有那一次〉](docs/design-notes.md#command-ids)。
+
 ### 新增
 
 - **隨手草稿**(頂層命令 `Inkling：隨手草稿`):一塊永久的便條紙,打開就是上次留下的東西,

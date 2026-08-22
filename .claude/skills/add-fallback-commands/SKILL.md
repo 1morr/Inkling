@@ -23,8 +23,10 @@ description: >-
 >
 > 現在的入口是 `QuickCapturePage` + 使用者自設的 alias,按鍵數一樣。
 >
-> **要重新考慮之前先讀那一節**,而且注意 `Notelet.QuickCapture` 這個 Id 曾經掛在 fallback 上、
-> 八成還躺在使用者的 CmdPal `settings.json` 裡,**不要拿它去給別的東西用**。
+> **要重新考慮之前先讀那一節**,而且注意改名前的 `Notelet.QuickCapture` 曾經掛在 fallback 上,
+> 那個字串八成還躺在使用者的 CmdPal `settings.json` 裡帶著舊的顯示規則 ——
+> **它現在程式裡碰不到了,也不要再拿它當任何東西的 Id**。
+> 現在的 `CommandIds.QuickCapture`(`Inkling.QuickCapture`)是全新的鍵,撿不到那些殘留。
 
 # Add Fallback Commands
 

@@ -12,20 +12,22 @@ namespace Inkling.Tests;
 /// 這一組測試在此之前不存在:<c>grep -rn "Notelet\.\|CommandIds" tests/</c> 零命中,
 /// 唯一的閘門是發版流程第 0 步那個人工 <c>git diff</c>。
 ///
-/// <b>前綴是 <c>Notelet.</c>,那是改名前的名字,故意留著。</b>
-/// 理由(以及「新命令給新 Id,不要回頭改舊的」)寫在 <see cref="CommandIds"/> 上。
-/// 這裡逐字比對,所以「順手統一成 Inkling.」會在這裡紅掉,而不是在使用者的機器上。
+/// <b>釘住的基準是 <c>Inkling.*</c></b>,那是 2026-08-22 在第一個公開版本之前**刻意**
+/// 換過去的(前綴原本是改名前的 <c>Notelet.</c>,見 <see cref="CommandIds"/>)。
+/// 那次連 alias、釘選與啟用狀態一起重設,代價付得起是因為安裝基數只有作者一台機器。
+/// **從第一個公開版本起就沒有下一次了**,所以這裡逐字比對:之後任何一個字的漂移
+/// 都會在這裡紅掉,而不是在使用者的機器上。
 /// </summary>
 public class CommandIdTests
 {
     [Theory]
-    [InlineData("Notelet", nameof(CommandIds.Provider))]
-    [InlineData("Notelet.List", nameof(CommandIds.List))]
-    [InlineData("Notelet.NewNote", nameof(CommandIds.NewNote))]
-    [InlineData("Notelet.QuickCapture", nameof(CommandIds.QuickCapture))]
-    [InlineData("Notelet.QuickCapturePage", nameof(CommandIds.QuickCapturePage))]
-    [InlineData("Notelet.DeleteAll", nameof(CommandIds.DeleteAll))]
-    [InlineData("Notelet.Scratchpad", nameof(CommandIds.Scratchpad))]
+    [InlineData("Inkling", nameof(CommandIds.Provider))]
+    [InlineData("Inkling.List", nameof(CommandIds.List))]
+    [InlineData("Inkling.NewNote", nameof(CommandIds.NewNote))]
+    [InlineData("Inkling.QuickCapture", nameof(CommandIds.QuickCapture))]
+    [InlineData("Inkling.QuickCapturePage", nameof(CommandIds.QuickCapturePage))]
+    [InlineData("Inkling.DeleteAll", nameof(CommandIds.DeleteAll))]
+    [InlineData("Inkling.Scratchpad", nameof(CommandIds.Scratchpad))]
     public void IdsAreFrozen(string expected, string member)
     {
         var actual = typeof(CommandIds)

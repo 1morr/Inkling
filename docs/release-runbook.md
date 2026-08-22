@@ -26,6 +26,12 @@ alias、全域快速鍵、釘選當場失效。
 ⚠ **除了 `tests/Inkling.Tests/CommandIdTests.cs` 逐字比對那七個常數之外沒有別的把關**,
 這個 diff 是唯一的閘門,不要跳過。
 
+> **一次性的例外,已經用掉了。** 2026-08-22(第一個公開版本之前)那七個字串的前綴從
+> `Notelet.` 換成了 `Inkling.`,`Identity/@Publisher` 也一併換掉 —— 也就是說**第一個
+> tag 之前的那一次刻意違反了這條閘門與下面第 2 步**。從 `v1.0.0` 起兩條都無條件成立,
+> 這一段留著只是為了讓「為什麼歷史上有一次違反」有答案,**不是可以再用一次的先例**。
+> 理由見 [設計考證〈前綴換過一次,而且只有那一次〉](design-notes.md#command-ids)。
+
 ### 2. `[自動]` `Identity` 的身分欄位沒變
 
 ```powershell
@@ -36,18 +42,22 @@ git diff <上一個 tag>..HEAD -- src/Inkling/Package.appxmanifest
 
 會決定使用者資料去留的身分字串**有四個**,不是兩個:
 
+**按屬性名找,不要按行號** —— 那個檔案的註解一改行號就位移,而寫死的行號不會報錯。
+
 | 字串 | 位置 | 動了會怎樣 |
 |---|---|---|
-| `Identity/@Name` | `Package.appxmanifest:21` | PFN 變 → `LocalState` 換位置 → Inkling 自己的設定全部孤兒化 |
-| `Identity/@Publisher` | `:22` | 同上(PFN 由 Publisher 的雜湊決定) |
-| `Application/@Id`(目前是 `App`) | `:50` | CmdPal 端 `ProviderSettings` / `PinnedCommands` 的鍵變 → 啟用狀態、釘選、fallback 設定全部孤兒化 |
-| `uap3:AppExtension/@Id`(目前是 `Inkling`) | `:92` | 同上 |
+| `Identity/@Name`(目前是 `Inkling`) | `Package.appxmanifest` 的 `<Identity>` | PFN 變 → `LocalState` 換位置 → Inkling 自己的設定全部孤兒化 |
+| `Identity/@Publisher`(目前是 `CN=Inkling Development`) | 同一個元素 | 同上(PFN 由 Publisher 的雜湊決定) |
+| `Application/@Id`(目前是 `App`) | `<Applications>` 底下的 `<Application>` | CmdPal 端 `ProviderSettings` / `PinnedCommands` 的鍵變 → 啟用狀態、釘選、fallback 設定全部孤兒化 |
+| `uap3:AppExtension/@Id`(目前是 `Inkling`) | `<uap3:Extension Category="windows.appExtension">` 底下 | 同上 |
 
 後兩個容易被忽略:CmdPal 用的鍵是 `<PFN>!<Application Id>!<AppExtension Id>`,實測是
-`Inkling_bf0n0751x5hse!App!Inkling`。注意**第三段不是 `CommandIds.Provider`**
-(那個值到今天還是 `"Notelet"`)。
+`Inkling_b83qevkfx7m2r!App!Inkling`。注意**第三段不是 `CommandIds.Provider`,
+即使兩個現在都是 `Inkling`** —— 那是巧合,第三段來自 manifest,改哪一邊都不會動到另一邊
+(同一段警告在 [`release-checklist.md`](release-checklist.md) §1 也有一份,兩邊要一致)。
 
 `Aliases` 因為只用純命令 Id 當鍵,四個都不受影響 —— 但也只有 alias 不受影響。
+(唯一的例外是 2026-08-22 那次連命令 Id 一起換的身分變更,見第 1 步的方框。)
 
 ### 3. `[人工]` `Publisher` 仍然是 Partner Center 指派的那一份
 

@@ -206,7 +206,7 @@ src/
                      是筆記與草稿共用的
   Inkling/           CmdPal 擴展(MSIX COM server),只負責把 Core 的結果
                      翻譯成 IListItem / IContent
-    CommandIds        頂層命令的固定 Id(還叫 Notelet.*,改名前的名字,故意留著;
+    CommandIds        頂層命令的固定 Id(前綴 Inkling.,第一個公開版本之後不能再動;
                       改了會清掉使用者的 alias / 快速鍵 / 釘選)
     Properties/       介面字串:英文(中性)+ 繁中 + 簡中,語言跟著 Windows 走
     Shortcuts         鍵位集中在這裡(挑鍵的規則寫在檔案註解裡)

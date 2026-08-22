@@ -91,9 +91,9 @@ provider,不是擴展壞掉。再 Reload 一次不一定收得回去 —— 清�
       **新增筆記**、**隨手草稿**、**刪除筆記**。裡面混進「Inkling：」代表頂層那條字串
       又被借去當頁面標題了 —— 見 `InklingCommandsProvider` 與 `QuickCapturePage` 的註解。
 - [ ] 👀 圖示正常顯示,不是空白方塊(樹裡只有 `Image: ''`,一定要開 `shot` 出來的圖看)
-- [ ] 🤖 印出來的 CommandId 是 `Notelet.QuickCapturePage`(還是改名前的字串,故意的 ——
-      見 design-notes〈命令 Id 為什麼要寫死〉),
-      而不是 `Inkling_…!App!Inkling` 後面接一串數字
+- [ ] 🤖 印出來的 CommandId 是 `Inkling.QuickCapturePage` —— 也就是我們寫死的那個字串,
+      **而不是** `Inkling_…!App!Inkling` 後面接一串數字(那是 CmdPal 拿標題算的雜湊,
+      標題一改就對不上,見 design-notes〈命令 Id 為什麼要寫死〉)
 - [ ] 🤖 **總共只有這五列**,五列以外沒有第六個 Inkling。多出來的話先分辨是哪一種:
 
       ```powershell

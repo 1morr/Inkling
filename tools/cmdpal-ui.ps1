@@ -897,14 +897,16 @@ function Write-SettingsState {
     try {
         $json = Get-Content $cmdPalSettings -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        # **鍵是命令 Id,而 Inkling 的命令 Id 全部還是 `Notelet.*`** —— 那是改名前的名字,
-        # 刻意保留的(CmdPal 的 Aliases 以純命令 Id 當鍵,改了等於把使用者設過的 alias 清掉;
-        # 見 src\Inkling\CommandIds.cs 與 docs\design-notes.md〈命令 Id 為什麼要寫死〉)。
-        # 這裡曾經寫成 'Inkling*',於是**永遠**印出一份空清單 —— 而空清單跟「真的沒設過 alias」
-        # 長得一模一樣,是最糟的一種失效:看起來有在驗,實際上什麼都沒看到。
+        # **鍵是命令 Id**(見 src\Inkling\CommandIds.cs 與
+        # docs\design-notes.md〈命令 Id 為什麼要寫死〉)。前綴 2026-08-22 從改名前的
+        # `Notelet.` 換成了 `Inkling.`,**這一行要跟著那個檔案走**。
+        # 這裡曾經跟命令 Id 對不上,於是**永遠**印出一份空清單 —— 而空清單跟「真的沒設過
+        # alias」長得一模一樣,是最糟的一種失效:看起來有在驗,實際上什麼都沒看到。
         # 所以連總數一起印,零命中時也明講一句,不要讓空白自己說話。
+        # **點號不能省**:CommandIds.Provider 是不帶點的 `Inkling`,寫成 'Inkling*' 的話
+        # 哪天 provider 層級的 Id 進了 Aliases 也會被算成一列。
         $all = @($json.Aliases.PSObject.Properties)
-        $ours = @($all | Where-Object { $_.Value.CommandId -like 'Notelet.*' })
+        $ours = @($all | Where-Object { $_.Value.CommandId -like 'Inkling.*' })
         Write-Output "    aliases($($ours.Count) 個是 Inkling 的,CmdPal 總共 $($all.Count) 個):"
         if ($ours.Count -eq 0) {
             Write-Output '      (一個都沒有 —— 快速記下的入口就是 alias,沒設過的話那條動線等於不存在)'

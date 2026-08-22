@@ -149,8 +149,10 @@ Version 的症狀)。
 1. **每個頂層命令都要有固定 `Id`**(`src/Inkling/CommandIds.cs`)。沒設的話 CmdPal 會拿
    `ProviderId + DisplayTitle + Title + Subtitle` 做 WyHash64 當身分 —— 標題變一個字,
    使用者的 alias / 快速鍵 / 釘選 / fallback 設定就全部對不上。那幾個字串是對外承諾,不能改。
-   **它們現在還叫 `Notelet.*`,那是改名前的名字,故意留著** —— CmdPal 的 `Aliases` 用純命令 Id
-   當鍵(條目裡沒有 PFN),改了等於把使用者設過的 alias 清掉,而使用者根本看不到這些字串。
+   **前綴是 `Inkling.`,而且是 2026-08-22 才從改名前的 `Notelet.` 換過來的 —— 只此一次。**
+   CmdPal 的 `Aliases` 用純命令 Id 當鍵(條目裡沒有 PFN),所以那次把使用者設過的 alias
+   全部清掉了;付得起是因為當時安裝基數是作者一台機器、一版都還沒發出去。
+   **第一個公開版本之後就沒有下一次了**,`CommandIdTests` 逐字釘著這七個字串。
    新增命令時給新 Id,不要為了整齊回頭改舊的。考證見
    [設計考證〈命令 Id 為什麼要寫死〉](docs/design-notes.md#command-ids)。
 2. **`ListItem.Details` 只能整個換掉,不能就地改屬性。** `IDetails` 在 SDK IDL 裡沒有宣告成

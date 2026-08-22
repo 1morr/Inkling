@@ -11,7 +11,7 @@
 `Package.appxmanifest` 目前帶的是本機側載用的身分:
 
 ```xml
-<Identity Name="Inkling" Publisher="CN=Notelet Development" Version="0.1.0.0" />
+<Identity Name="Inkling" Publisher="CN=Inkling Development" Version="0.1.0.0" />
 ```
 
 ⚠ **這裡沒有任何憑證。** 這個 `Publisher` 只是 manifest 裡的一個字串;本機部署走的是
@@ -20,39 +20,58 @@ repo 樹內沒有任何 `.pfx` / `.p12` / `.cer`,憑證存放區裡也沒有對�
 **所以換 `Publisher` 的代價只有 PFN 變動,沒有「憑證要重發並重新信任」這回事** ——
 這裡以前寫成「自簽身分」,會讓人高估換身分的成本。
 
-`Publisher` 還寫著 `Notelet` 不是漏改的 —— 見下面〈Name 換過一次〉。
+這個 CN 換過一次(從改名前的 `CN=Notelet Development`)—— 見下面〈身分換過兩次〉。
 
 為什麼這件事只能做一次:
 
 - `Name` + `Publisher` 決定 package family name(PFN,目前是
-  `Inkling_bf0n0751x5hse`)。**後綴那串雜湊只由 `Publisher` 決定**,`Name` 換了
-  只換前半段。
+  `Inkling_b83qevkfx7m2r`)。**後綴那串雜湊只由 `Publisher` 決定**,`Name` 換了
+  只換前半段。**那個雜湊算不出來,只能註冊一次之後量** ——
+  `(Get-AppxPackage '*Inkling*').PackageFamilyName`。
 - Windows 按 PFN 隔離每個套件的 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`。
   PFN 一變,舊的 `settings.json`(筆記資料夾、快速記下的分隔線與預覽開關)
   變成孤兒 —— 等於使用者的設定被重置。
 - CmdPal 端的設定分兩種鍵,**不要混為一談**(實測 CmdPal 的 settings.json 得到的):
   - `ProviderSettings` 與 `PinnedCommands` 用 `<PFN>!<Application Id>!<AppExtension Id>`
-    當鍵(實測是 `Inkling_bf0n0751x5hse!App!Inkling`),PFN 一變就孤兒化。
-    ⚠ **第三段不是 `CommandIds.Provider`** —— 那個常數到今天還是 `"Notelet"`,而鍵的結尾是
-    `Inkling`。它來自 `Package.appxmanifest` 的 `uap3:AppExtension Id="Inkling"`,
-    第二段則來自 `Application Id="App"`。**這兩個字串跟 `Name` / `Publisher` 一樣是
-    「只能定一次」的身分**,動了同樣會把使用者的啟用狀態、釘選與 fallback 設定洗掉,
-    而它們以前沒有被列進這一節。
-  - **`Aliases` 用的是純命令 Id**(`"CommandId": "Notelet.List"`),條目裡沒有 PFN、
+    當鍵(實測是 `Inkling_b83qevkfx7m2r!App!Inkling`),PFN 一變就孤兒化。
+    ⚠ **第三段不是 `CommandIds.Provider`,即使兩個現在是同一個字。** 鍵的結尾那個
+    `Inkling` 來自 `Package.appxmanifest` 的 `uap3:AppExtension Id`,第二段來自
+    `Application Id="App"`;`CommandIds.Provider` 現在剛好也是 `"Inkling"`,
+    **那是巧合,兩邊沒有任何關係** —— 改 `CommandIds.Provider` 不會動到這個鍵,
+    改 manifest 的 `AppExtension Id` 也不會動到 `CommandIds.Provider`。
+    (前綴改名前這兩個值長得不一樣,陷阱看得見;現在重疊了,所以要寫死在這裡。)
+    **manifest 那兩個字串跟 `Name` / `Publisher` 一樣是「只能定一次」的身分**,
+    動了同樣會把使用者的啟用狀態、釘選與 fallback 設定洗掉。
+  - **`Aliases` 用的是純命令 Id**(`"CommandId": "Inkling.List"`),條目裡沒有 PFN、
     也沒有 provider 參照 —— 所以只要 `CommandIds.cs` 的字串不動,alias 換身分後還在。
 - 目前只有作者一台機器受影響,這正是換身分的唯一時機;一旦有人公開安裝,
   再換就是把所有使用者的設定一起洗掉。
 
-### Name 換過一次(Notelet → Inkling)
+### 身分換過兩次(都在第一個公開版本之前)
 
-改名時只動了 `Identity Name`,`Publisher` 刻意不動:
+**2026-08-20 · 改名 Notelet → Inkling** —— 只動 `Identity Name`:
 
-- 動 `Publisher` 的話 PFN 的雜湊後綴也會變,而且自簽憑證要重發、重新信任。
-  它只是側載用的 CN,對外不可見,留著沒有壞處。
-- `CommandIds.cs` 那六個字串一併保留原值(還叫 `Notelet.*`),換來的是使用者
-  設過的 alias 全部活下來。那些字串使用者看不到,不值得為了整齊清掉他們的設定。
+- `Publisher` 刻意不動,所以 PFN 的雜湊後綴沒變(`Notelet_bf0n0751x5hse` →
+  `Inkling_bf0n0751x5hse`)。
+- `CommandIds.cs` 當時那六個字串(`Scratchpad` 隔天才加)一併保留原值,
+  換來的是使用者設過的 alias 全部活下來 —— 實地驗過,見
+  [設計考證〈命令 Id 為什麼要寫死〉](design-notes.md#command-ids)。
 
-真正該換 `Publisher` 的時機是下面兩條路擇一的時候,一次換完。
+**2026-08-22 · 把舊名字整個清掉** —— `Publisher` 換成 `CN=Inkling Development`,
+命令 Id 前綴換成 `Inkling.`:
+
+- 代價是 PFN 換成 `Inkling_b83qevkfx7m2r`,擴展自己的 `settings.json`、CmdPal 端的
+  啟用狀態與釘選全部孤兒化,alias 也因為 Id 變了而失效。
+- **那時安裝基數是作者一台機器**,實際損失是重設三個 alias,而留著舊名字要讓五個檔案
+  長期說謊。理由與「什麼變了才該重新考慮」寫在
+  [設計考證〈前綴換過一次,而且只有那一次〉](design-notes.md#command-ids)。
+- ⚠ 換 `Publisher` 之後**第一次部署要先顯式移除舊套件**:
+  `Get-AppxPackage '*Inkling*' | Remove-AppxPackage -PreserveApplicationData`。
+  `deploy.ps1` 的重複註冊防護擋不住這一種 —— 它只在 `InstallLocation` 不同時才移除,
+  而這裡佈局路徑沒變、變的是身分,於是移除分支被跳過,最後的驗證又會拿到兩個相同路徑
+  (陣列過濾成空 = falsy),**兩個 Inkling 並存而部署回報成功**。
+
+`Publisher` 之後只剩一次會動:上架時換成 Partner Center 指派的身分。
 
 兩條路擇一:
 
@@ -91,8 +110,9 @@ repo 樹內沒有任何 `.pfx` / `.p12` / `.cer`,憑證存放區裡也沒有對�
 文檔裡一律寫成 `%LOCALAPPDATA%\Packages\<PFN>\LocalState`,腳本片段直接內插上面那一行。
 `tools/cmdpal-ui.ps1` 本來就是那樣(開頭動態取 PFN,取不到直接中止)。
 
-**新增文檔時別再把 PFN 寫死。** 唯一還留著字面值的是 `Package.appxmanifest` 的註解
-與本節上方 —— 那兩處的重點正是那個字串本身。
+**新增文檔時別再把 PFN 寫死。** 唯一還留著字面值的是本節上方與〈身分換過兩次〉——
+那幾處的重點正是那個字串本身。**換過 `Publisher` 就要把它們重量一次**,
+`Package.appxmanifest` 的註解現在只寫「要量」而不寫值,就是為了少一處會過期的地方。
 
 ## 2. 版本策略
 

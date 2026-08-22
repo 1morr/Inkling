@@ -9,19 +9,26 @@
   IgnorableNamespaces="uap uap3 rescap">
 
   <!--
-    Publisher 是本機側載用的自簽身分。要上架 Store 時才需要換成 Partner Center 的身分。
+    Publisher 是本機側載用的身分,只是 manifest 裡的一個字串 —— **這裡沒有任何憑證**,
+    本機部署走 Add-AppxPackage -Register(開發者模式的 loose-file 註冊),那條路不需要簽章。
+    上架時換成 Partner Center 指派的身分(見 docs/release-checklist.md)。
 
-    **它刻意還寫著 Notelet(改名前的名字),不要順手改掉。** package family name 是
-    `<Name>_<Publisher 的雜湊>`,那個雜湊只由 Publisher 這個字串決定 —— Name 從 Notelet
-    換成 Inkling 之後 PFN 是 `Inkling_bf0n0751x5hse`,後綴沒變,正因為 Publisher 沒動。
-    動它的代價**只有 PFN 變動**(也就是上面那件事)—— 這裡沒有任何憑證,本機部署走的是
-    Add-AppxPackage -Register,那條路不需要簽章。這段註解以前寫成「自簽憑證要重發並重新
-    信任」,是憑空多出來的成本。這個 CN 只是個字串,對外不可見。
-    真正該換的時機是上架時一併換成 Partner Center 指派的身分(見 docs/release-checklist.md)。
+    **動它的代價是 PFN 變動,而且只有這個。** package family name 是
+    `<Name>_<Publisher 的雜湊>`,那個雜湊只由 Publisher 這個字串決定。PFN 一變,
+    %LOCALAPPDATA%\Packages\<PFN>\LocalState 換位置,擴展自己的 settings.json 變孤兒
+    (筆記資料夾會靜靜退回預設值 —— 檔案都還在,清單卻是空的);CmdPal 端
+    `<PFN>!App!Inkling` 那個鍵也跟著孤兒化,啟用狀態與釘選回到預設。**alias 不受影響**,
+    它的鍵是純命令 Id。
+
+    這個 CN 2026-08-22 從 `CN=Notelet Development`(改名前的名字)換成現在這個。
+    那次連命令 Id 的前綴一起換,理由與代價見 docs/design-notes.md〈命令 Id 為什麼要寫死〉。
+    **PFN 的雜湊後綴算不出來,要註冊一次之後用
+    `(Get-AppxPackage '*Inkling*').PackageFamilyName` 量** —— 文檔裡凡是寫著字面值的地方
+    都得跟著重量一次。
   -->
   <Identity
     Name="Inkling"
-    Publisher="CN=Notelet Development"
+    Publisher="CN=Inkling Development"
     Version="0.1.0.0" />
 
   <Properties>
@@ -59,7 +66,7 @@
            Program.cs 沒帶 -RegisterProcessAsComServer 就只印一行字然後結束,而擴展
            進程沒有主控台,所以使用者「啟動」它會完全沒有反應。少了這一行,Windows 會
            把它登記成一個一般的已安裝應用程式,於是 CmdPal 內建的應用程式搜索**也會**
-           把它列進結果 —— 四個真的命令下面多一列同名的死項目,按 Enter 什麼都不發生。
+           把它列進結果 —— 五個真的命令下面多一列同名的死項目,按 Enter 什麼都不發生。
            (那一列不是第 6 條那個「兩個 Inkling」,副標會是這裡的 Description 而不是
            我們自己的字串,圖示也是 Windows 從 Square44x44Logo 挑的,不是 provider 的。)
            微軟自己的〈Packaging a CLI Executable as MSIX〉對同樣形狀的套件開的就是這個處方。

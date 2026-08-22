@@ -1464,8 +1464,9 @@ toolkit 的 `JsonSettingsManager` 兩頭都吞例外:
 
 ### 命令 Id 為什麼要寫死
 
-`src/Inkling/CommandIds.cs` 裡那幾個字串是對外承諾,跟資料格式一樣不能改。
-**它們現在還叫 `Notelet.*`** —— 那是這個擴展改名前的名字,理由見本節最後。
+`src/Inkling/CommandIds.cs` 裡那七個字串是對外承諾,跟資料格式一樣不能改。
+**承諾從第一個公開版本起算** —— 在那之前它們動過一次(前綴從改名前的 `Notelet.` 換成
+`Inkling.`),那是這一節最後那兩段在講的事。
 
 CmdPal 把使用者對命令做的設定 —— alias、全域快速鍵、釘選、fallback 的顯示規則與排序 ——
 全部存在自己的 settings.json 裡,鍵就是命令的 `Id`。而**命令沒有設 `Id` 時 CmdPal 會現場算一個**:
@@ -1473,7 +1474,7 @@ CmdPal 把使用者對命令做的設定 —— alias、全域快速鍵、釘選
 也就是說標題變一個字,那個命令對 CmdPal 來說就變成了另一個命令,使用者設過的東西全部對不上。
 
 **現在這件事比以前更要緊**:快速記下唯一的入口就是使用者自己設的 alias,而 alias 存的鍵
-就是 `Id`。`Notelet.QuickCapturePage` 改一個字,使用者的 alias 當場失效,而且症狀是
+就是 `Id`。`Inkling.QuickCapturePage` 改一個字,使用者的 alias 當場失效,而且症狀是
 「打 `! ` 沒反應」—— 看不出跟改標題有任何關係。
 
 歷史教訓來自已經移除的 fallback,它的標題本來就跟著使用者打的字一直變:CmdPal 的
@@ -1483,9 +1484,11 @@ settings.json 裡曾經留下兩個 Inkling fallback 條目,把其中一個的�
 
 (那兩個雜湊條目可能還躺在你的 CmdPal settings.json 裡,無害 —— CmdPal 會忽略對不上的鍵。)
 
-#### 為什麼這些 Id 還叫 `Notelet.*`
+#### 前綴換過一次,而且只有那一次
 
-這個擴展從 Notelet 改名成 Inkling 時,`CommandIds.cs` 那六個字串**刻意一個都沒改**。
+**2026-08-20 改名(Notelet → Inkling)那一輪,`CommandIds.cs` 當時的那六個字串刻意一個
+都沒改**(`Scratchpad` 是隔天才加的,所以那時是六個,現在是七個)。理由與量測如下,
+**這段是史料,結論在最後兩段被推翻了**。
 
 改名前實際打開 CmdPal 的 settings.json 看過,那裡面有兩種鍵:
 
@@ -1502,7 +1505,7 @@ settings.json 裡曾經留下兩個 Inkling fallback 條目,把其中一個的�
 `ProviderSettings` 與 `PinnedCommands`。所以換套件身分時,只要這些字串不動,
 使用者設過的 alias 就跟著新名字走;動了它們,alias 當場全部失效。
 
-代價只有「新來的人看到 `Notelet.List` 會困惑」,而那用一段註解就解決了。
+當時算的代價只有「新來的人看到 `Notelet.List` 會困惑」,而那用一段註解就解決了。
 使用者永遠看不到這些字串 —— 它們不是介面文字,是設定檔的鍵。
 
 **改完之後實地驗過,不是只從設定檔推論的。** 換完套件身分(PFN 從
@@ -1512,12 +1515,39 @@ settings.json 裡曾經留下兩個 Inkling fallback 條目,把其中一個的�
 也照樣掛著 `#` `!` `@` 的徽章。`ProviderSettings` 的鍵帶 PFN,那一項確實跟著失效
 (擴展被當成新的,預設啟用,所以看不出差別);`Aliases` 不帶,所以活下來了。
 
+#### 然後在發版前把它推翻了(2026-08-22)
+
+**上面那個決定只撐到第一個公開版本之前。** 前綴換成 `Inkling.`,`Publisher` 也從
+`CN=Notelet Development` 換成 `CN=Inkling Development`,舊名字整個從 repo 消失。
+
+翻案的理由不是「看起來一致」,是**那個保證保的東西當時等於零**:安裝基數是作者一台機器,
+一版都還沒發出去。實際盤點過 CmdPal 的 settings.json,會被清掉的只有三個 alias
+(`#` / `!` / `@`)、一個**早就指向舊 Notelet 套件、本來就是死的**釘選,以及擴展的啟用狀態
+(重新註冊後預設就是啟用)。快速鍵一個都沒設。也就是說整筆代價是「重設三個 alias」。
+
+對面那一邊則是**每一個之後讀到這個 repo 的人**都要在 `CommandIds.cs`、`CLAUDE.md`、
+這一節、發版清單與 `cmdpal-ui.ps1` 的過濾式裡各被解釋一次,而且那個過濾式**已經
+因為前綴對不上而靜靜壞過一次**(見 `CHANGELOG.md` 那條 `Inkling*` 的修正)。
+一個只保護一個人、卻讓五個檔案長期說謊的承諾,在**唯一還能反悔的時刻**應該反悔。
+
+**什麼變了才該重新考慮:沒有。** 這一格用掉了。第一個公開版本一上架,
+`CommandIds.cs` 那七個字串與四個 manifest 身分字串就是永久承諾 ——
+那時被清掉的是別人的設定,而他們沒有同意過。`CommandIdTests` 逐字釘住那七個字串,
+發版 runbook 第 0 部分還會再對一次 `git diff`。
+
+> **順帶一個新的絆腳石:`CommandIds.Provider` 現在是 `"Inkling"`,而
+> `Package.appxmanifest` 的 `uap3:AppExtension Id` 也是 `"Inkling"` —— 兩個字串一模一樣,
+> 但毫無關係。** CmdPal 的 `ProviderSettings` / `PinnedCommands` 鍵是
+> `<PFN>!<Application Id>!<AppExtension Id>`,第三段來自 manifest,**改
+> `CommandIds.Provider` 不會動到那個鍵,反之亦然**。改名前這兩個值長得不一樣
+> (`Notelet` vs `Inkling`),陷阱是看得見的;現在它們重疊了,所以這句話要寫死在文檔裡。
+
 <a id="app-list-entry"></a>
 
 ### 套件刻意不出現在開始功能表
 
 `Package.appxmanifest` 的 `uap:VisualElements` 上有一個 `AppListEntry="none"`,
-**不要拿掉**。少了它,CmdPal 的結果裡會多出第五列「Inkling / Capture thoughts in
+**不要拿掉**。少了它,CmdPal 的結果裡會多出第六列「Inkling / Capture thoughts in
 seconds, right in Command Palette」,按 Enter 完全沒有反應。
 
 成因跟擴展沒有關係:這個套件對 Windows 來說是一個正常的已安裝應用程式,於是進了
@@ -1659,7 +1689,7 @@ Visual Studio 模板只給兩張:`scale-200`(88px)與 `targetsize-24_altform-unp
   而且 Segoe 在 16/20px 有專業 hinting,手畫的比不上 —— 走字形。
 
 代價講明白:**刪除那一個變弱了。** 垃圾桶(`0xE74D`)比「筆畫＋叉」一望即知,
-而刪除是四個裡最需要一眼認得的。這是為了家族一致刻意付的,不是疏忽 ——
+而刪除是這一組裡最需要一眼認得的。這是為了家族一致刻意付的,不是疏忽 ——
 覺得誤刪風險比較重要的話,把 `Icons.TopLevelDelete` 改回 `Glyph(0xE74D)` 就好。
 
 **一個命令要兩張 PNG。** 字形是以文字繪製的,前景色自動跟主題走;PNG 不會。
