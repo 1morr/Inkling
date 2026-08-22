@@ -3,13 +3,22 @@
 這份清單是「從本機側載專案」走到「公開散佈」的完整待辦。順序有意義:
 **身分一定要在第一個公開版本之前定案**,之後永久凍結。
 
-## 1. 定案套件身分(Name / Publisher)—— 只能定一次
+> 這一份是**一次性**的:身分定案與通路開通,很多事一輩子只做一次。
+> **之後每次發新版本走 [`release-runbook.md`](release-runbook.md)。**
 
-`Package.appxmanifest` 目前是本機側載用的自簽身分:
+## 1. 定案套件身分 —— 只能定一次
+
+`Package.appxmanifest` 目前帶的是本機側載用的身分:
 
 ```xml
 <Identity Name="Inkling" Publisher="CN=Notelet Development" Version="0.1.0.0" />
 ```
+
+⚠ **這裡沒有任何憑證。** 這個 `Publisher` 只是 manifest 裡的一個字串;本機部署走的是
+`Add-AppxPackage -Register`(開發者模式的 loose-file 註冊),那條路不需要簽章。
+repo 樹內沒有任何 `.pfx` / `.p12` / `.cer`,憑證存放區裡也沒有對應的憑證。
+**所以換 `Publisher` 的代價只有 PFN 變動,沒有「憑證要重發並重新信任」這回事** ——
+這裡以前寫成「自簽身分」,會讓人高估換身分的成本。
 
 `Publisher` 還寫著 `Notelet` 不是漏改的 —— 見下面〈Name 換過一次〉。
 
@@ -22,7 +31,13 @@
   PFN 一變,舊的 `settings.json`(筆記資料夾、快速記下的分隔線與預覽開關)
   變成孤兒 —— 等於使用者的設定被重置。
 - CmdPal 端的設定分兩種鍵,**不要混為一談**(實測 CmdPal 的 settings.json 得到的):
-  - `ProviderSettings` 與 `PinnedCommands` 用 `<PFN>!App!<ProviderId>` 當鍵,PFN 一變就孤兒化。
+  - `ProviderSettings` 與 `PinnedCommands` 用 `<PFN>!<Application Id>!<AppExtension Id>`
+    當鍵(實測是 `Inkling_bf0n0751x5hse!App!Inkling`),PFN 一變就孤兒化。
+    ⚠ **第三段不是 `CommandIds.Provider`** —— 那個常數到今天還是 `"Notelet"`,而鍵的結尾是
+    `Inkling`。它來自 `Package.appxmanifest` 的 `uap3:AppExtension Id="Inkling"`,
+    第二段則來自 `Application Id="App"`。**這兩個字串跟 `Name` / `Publisher` 一樣是
+    「只能定一次」的身分**,動了同樣會把使用者的啟用狀態、釘選與 fallback 設定洗掉,
+    而它們以前沒有被列進這一節。
   - **`Aliases` 用的是純命令 Id**(`"CommandId": "Notelet.List"`),條目裡沒有 PFN、
     也沒有 provider 參照 —— 所以只要 `CommandIds.cs` 的字串不動,alias 換身分後還在。
 - 目前只有作者一台機器受影響,這正是換身分的唯一時機;一旦有人公開安裝,
@@ -102,7 +117,10 @@
    - **Partner Center 的「What's new in this version」** —— 這一欄要自己寫英文,
      從當次的 CHANGELOG 段落譯過去(第 5 步送審時)。
 2. 跑過 `docs/manual-test-checklist.md`(至少發版相關的段落)。
-3. 打 tag:`git tag v0.2.0 && git push origin v0.2.0`。
+3. 打 tag:`git tag v1.1.0 && git push origin v1.1.0`。
+   ⚠ **第一段不能是 0** —— Store 不收 `0.x.y` 的套件,而 `release.yml` 的 regex 目前
+   放行它(見 [`known-issues.md` K-15](known-issues.md#k-15))。第一個公開版本從
+   `v1.0.0` 起。
 4. release.yml 自動:跑測試 → 建 x64 + ARM64(trimmed publish)→ 注入版本 → 組 msix →
    (有設憑證 secret 才)簽 msix → 組 msixbundle(帶 `/bv`,版本跟著 tag)→
    (有設憑證 secret 才)**再簽 bundle** → 建 GitHub Release 附資產。
@@ -112,8 +130,12 @@
 
 ## 4. WinGet 上架
 
-- 前提:**已簽章**的 msix((b) 路線的 CI 產出,或 Store 簽好拿回來的)。
+- 前提:**已簽章**的 msix —— 只有 (b) 路線的 CI 產出算數。
   winget-pkgs 不收未簽章的 MSIX。
+  ⚠ **不要指望「Store 簽好拿回來」** —— Partner Center 沒有文檔化的「把 Store 重簽後的
+  套件下載回來」流程。只走 Store 的話,實務上就是跳過 winget-pkgs 的 PR:winget 使用者
+  照樣可以 `winget install --source msstore`,而 gallery 也接受 `msstore` 型別的
+  `installSources`。
 - `PackageIdentifier` 建議 `<author>.Inkling`,版本與 tag 對齊。
 - `License` / `LicenseUrl` 填 MIT 與 repo 的 LICENSE 連結(已備妥)。
 
@@ -132,7 +154,7 @@ MSIX 專屬的欄位別漏(用 `winget-create` 產 manifest 的話它會問,手�
 `SignatureSha256` 從 msixbundle 裡取(bundle 是 zip):
 
 ```powershell
-$bundle = 'artifacts\Inkling_v0.2.0.msixbundle'
+$bundle = 'artifacts\Inkling_v1.1.0.msixbundle'
 $tmp = Join-Path $env:TEMP 'inkling-sig'
 Expand-Archive $bundle $tmp -Force
 (Get-FileHash "$tmp\AppxSignature.p7x" -Algorithm SHA256).Hash

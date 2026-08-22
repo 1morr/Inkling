@@ -14,7 +14,9 @@
     **它刻意還寫著 Notelet(改名前的名字),不要順手改掉。** package family name 是
     `<Name>_<Publisher 的雜湊>`,那個雜湊只由 Publisher 這個字串決定 —— Name 從 Notelet
     換成 Inkling 之後 PFN 是 `Inkling_bf0n0751x5hse`,後綴沒變,正因為 Publisher 沒動。
-    動它的代價是自簽憑證要重發並重新信任,而它只是個側載用的 CN,對外不可見。
+    動它的代價**只有 PFN 變動**(也就是上面那件事)—— 這裡沒有任何憑證,本機部署走的是
+    Add-AppxPackage -Register,那條路不需要簽章。這段註解以前寫成「自簽憑證要重發並重新
+    信任」,是憑空多出來的成本。這個 CN 只是個字串,對外不可見。
     真正該換的時機是上架時一併換成 Partner Center 指派的身分(見 docs/release-checklist.md)。
   -->
   <Identity
