@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Inkling.Core;
 using Inkling.Properties;
@@ -84,10 +86,14 @@ internal sealed partial class SettingsManager
         Settings.Add(_capturePreview);
         Settings.Add(_showSource);
 
+        // **一定要排在 LoadSettings 前面。** 檔案壞掉的話這一步先把它搬走,
+        // 後面的載入與存檔才回得到可用狀態,見 QuarantineCorruptSettings。
+        QuarantineCorruptSettings();
+
         LoadSettings();
         DiagnosticLog.Write(
-            $"SettingsManager: 載入 {FilePath} 分隔符='{CaptureSeparator}' "
-                + $"記下後預覽={ShowCapturePreview} 原始文字={ShowSource}");
+            $"SettingsManager: loaded {FilePath} separator='{CaptureSeparator}' "
+                + $"capturePreview={ShowCapturePreview} showSource={ShowSource}");
     }
 
     /// <inheritdoc />
@@ -137,6 +143,14 @@ internal sealed partial class SettingsManager
     public event EventHandler? Applied;
 
     /// <summary>
+    /// 上一次啟動時 <c>settings.json</c> 壞掉,被搬到這個路徑;null = 沒發生過。
+    ///
+    /// 設定頁會把它講出來 —— 沒有這一句的話,使用者只會看到「我的筆記全部不見了」
+    /// (資料夾退回預設值),而完全沒有線索。見 <see cref="QuarantineCorruptSettings"/>。
+    /// </summary>
+    public string? QuarantinedFile { get; private set; }
+
+    /// <summary>
     /// 設定頁的表單照這幾個定義畫 —— 標籤與說明只有這一份。
     /// </summary>
     public TextSetting NotesDirectorySetting => _notesDirectory;
@@ -167,7 +181,7 @@ internal sealed partial class SettingsManager
         // 部分儲存只會讓「到底哪些生效了」變得難猜。
         if (!Path.IsPathFullyQualified(directory))
         {
-            DiagnosticLog.Failure($"Apply: 拒絕非完整路徑 '{directory}',整筆未存");
+            DiagnosticLog.Failure("Apply: rejected a path that is not fully qualified, nothing was saved", directory);
             return ApplyResult.RejectedRelativePath;
         }
 
@@ -184,7 +198,7 @@ internal sealed partial class SettingsManager
 
         var saved = Save("Apply");
         DiagnosticLog.Write(
-            $"Apply: 資料夾='{directory}' 分隔符='{separator}' 記下後預覽={showCapturePreview}");
+            $"Apply: directory='{directory}' separator='{separator}' capturePreview={showCapturePreview}");
 
         // 資料夾變了就得換掉整組 repository,那是 provider 的事 —— 它自己比對舊值。
         Applied?.Invoke(this, EventArgs.Empty);
@@ -223,22 +237,130 @@ internal sealed partial class SettingsManager
     /// 只往 CmdPal 的 log 丟一行字。設定存不起來的時候使用者看到的是「按了 Save 什麼都沒發生」,
     /// 查不出原因 —— 實際被這件事咬過一次,所以這裡自己記一筆。
     ///
+    /// <para><b>而且要驗證。</b></para>
+    ///
+    /// 光靠「沒有丟例外」判斷不了成功:<c>SaveSettings</c> 內部會先 <c>JsonNode.Parse</c>
+    /// 讀舊內容再合併,舊內容不是合法 JSON 時它走另一條分支 —— **完全不寫檔,也不丟例外**。
+    /// 於是這個方法回 true、設定頁走成功路徑、檔案一個位元組都沒變,而
+    /// <see cref="ApplyResult.SaveFailed"/> 那條路永遠到不了。
+    /// (啟動時的 <see cref="QuarantineCorruptSettings"/> 擋掉了大部分,但檔案也可能是
+    /// 在執行期間被外部改壞的。)所以寫完讀回來對一次。
+    /// </summary>
     /// <returns>有沒有真的寫進磁碟。<b>回傳值一定要往上傳</b> —— 只記進 diagnostic.log
     /// 的話,對使用者等於沒發生:那個 log 預設是關的,而設定頁照樣說「設定已儲存」。</returns>
-    /// </summary>
     private bool Save(string reason)
     {
         try
         {
             SaveSettings();
-            DiagnosticLog.Write($"SaveSettings({reason}): 已寫入 {FilePath}");
-            return true;
         }
         catch (Exception ex)
         {
             // 設定存不起來不該讓整個擴展掛掉,但也不能無聲無息。
-            DiagnosticLog.Failure($"SaveSettings({reason}) 失敗:{ex}");
+            DiagnosticLog.Failure($"SaveSettings({reason}) failed ({ex.GetType().Name})", ex.ToString());
             return false;
+        }
+
+        if (!Persisted())
+        {
+            DiagnosticLog.Failure(
+                $"SaveSettings({reason}): the file on disk does not hold what we just wrote",
+                FilePath);
+            return false;
+        }
+
+        DiagnosticLog.Write($"SaveSettings({reason}): wrote {FilePath}");
+        return true;
+    }
+
+    /// <summary>
+    /// 磁碟上那份真的是我們剛寫的嗎。
+    ///
+    /// 只對筆記資料夾那一項 —— 它是這四項裡唯一「錯了會讓使用者以為筆記全部不見」的,
+    /// 而任何一種寫入失敗都會讓它對不上。逐項比對沒有更多資訊,只是多幾行。
+    /// </summary>
+    private bool Persisted()
+    {
+        try
+        {
+            var saved = JsonNode.Parse(File.ReadAllText(FilePath));
+
+            return string.Equals(
+                saved?[Namespaced(nameof(NotesDirectory))]?.ToString(),
+                _notesDirectory.Value,
+                StringComparison.Ordinal);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// <c>settings.json</c> 不是合法 JSON 的話,把它搬成
+    /// <c>settings.json.corrupt-&lt;時間戳&gt;</c>。
+    ///
+    /// <para><b>不搬走的話這個擴展的設定會永久性、而且無聲地卡住。</b></para>
+    ///
+    /// 讀:toolkit 的 <c>LoadSettings</c> 把例外吞掉,四項設定全部退回預設 ——
+    /// **筆記資料夾變回 <c>%OneDrive%\Inkling</c>**,使用者的清單換成別的內容。
+    /// 寫:<c>SaveSettings</c> 也要先解析舊內容,失敗就整個不寫(見 <see cref="Save"/>)。
+    /// 兩邊加起來就是「設定頁怎麼改都沒有用,重啟又還原」,而使用者在 app 裡修不好它 ——
+    /// 唯一的解是手動去刪那個檔案,而他不會知道要去做。
+    ///
+    /// 觸發不需要使用者手改:toolkit 走的是 <c>File.WriteAllText</c>,**不是** atomic write
+    /// (我們自己寫筆記時走 <c>AtomicFile</c>,設定檔沒有這個保護),寫到一半斷電或當機
+    /// 就會留下半個檔案。
+    ///
+    /// 搬走而不是刪掉:那裡面是使用者設過的東西,壞的可能只有一個字元,手工救得回來。
+    /// 路徑記在 <see cref="QuarantinedFile"/> 上,設定頁會把它講出來。
+    /// </summary>
+    private void QuarantineCorruptSettings()
+    {
+        string content;
+
+        try
+        {
+            if (!File.Exists(FilePath))
+            {
+                return;
+            }
+
+            content = File.ReadAllText(FilePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // 讀不到就別動它 —— 可能只是同步軟體暫時鎖住,搬走反而製造問題。
+            return;
+        }
+
+        try
+        {
+            JsonNode.Parse(content);
+            return;
+        }
+        catch (JsonException)
+        {
+            // 往下走,搬走它。
+        }
+
+        var quarantine = FormattableString.Invariant(
+            $"{FilePath}.corrupt-{DateTimeOffset.Now:yyyyMMdd-HHmmss}");
+
+        try
+        {
+            File.Move(FilePath, quarantine, overwrite: true);
+            QuarantinedFile = quarantine;
+
+            // 這一條要進共用通道:它是「使用者的設定莫名其妙全部還原」唯一的線索,
+            // 而 diagnostic.log 預設是關的。摘要不帶路徑(那是使用者名字),細節走本機那份。
+            DiagnosticLog.Failure("settings.json was not valid JSON; moved it aside and started from defaults", quarantine);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            DiagnosticLog.Failure(
+                $"settings.json is corrupt and could not be moved aside ({ex.GetType().Name})",
+                ex.ToString());
         }
     }
 
@@ -275,7 +397,7 @@ internal sealed partial class SettingsManager
 
             _showSource.Value = value;
             Save("ShowSource");
-            DiagnosticLog.Write($"ShowSource: 切換成 {value}");
+            DiagnosticLog.Write($"ShowSource: toggled to {value}");
 
             ShowSourceChanged?.Invoke(this, EventArgs.Empty);
         }

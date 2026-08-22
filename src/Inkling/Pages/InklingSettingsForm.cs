@@ -189,12 +189,17 @@ internal sealed partial class InklingSettingsForm : FormContent
     ///
     /// 分隔符那一格也包在 <c>ColumnSet</c> 裡,但目的相反:限寬。它只放得下兩三個字元,
     /// 一個佔滿整頁的輸入框會讓人以為該填一長串,設定視窗開大的時候特別難看。
-    /// 分隔線把三個設定項切開,間距用 <c>default</c>(8px)。CmdPal 沒有自帶 hostConfig,
-    /// 走的就是 Adaptive Cards 的預設階梯(none 0 / small 3 / default 8 / medium 20 /
-    /// large 30),而 <c>large</c>、<c>medium</c> 撐出來的空白在這張只有三項的卡片上都太散 ——
-    /// 每個欄位下面本來就有一塊說明文字,那本身已經是視覺上的呼吸空間。
-    /// 線本身不能拿掉:少了線的話上一項的說明會直接黏著下一項的標籤,
-    /// 看不出哪句話屬於哪個欄位,而間距一收更是如此。
+    ///
+    /// <b>三個設定項之間靠間距切開,不是線。</b> 這裡以前宣告了 <c>"separator": true</c>
+    /// 配 <c>spacing: default</c>(8px),而**那條線從來沒有被畫出來** ——
+    /// 2026-08-22 實機截圖逐列掃過,淺色主題下也一樣沒有(所以不是「深色背景上看不見」)。
+    /// CmdPal 沒有給擴展任何 hostConfig 的入口,線的粗細與顏色我們碰不到,查不出為什麼
+    /// 沒渲染也改不動它。留著一個不生效的宣告,下一個人只會以為線是別的地方弄丟的。
+    ///
+    /// 拿掉線之後間距要自己撐:走 Adaptive Cards 的預設階梯
+    /// (none 0 / small 3 / default 8 / medium 20 / large 30),用 <c>medium</c>。
+    /// <c>default</c> 是配合線才夠的 —— 少了線,上一項的說明會直接黏著下一項的標籤,
+    /// 看不出哪句話屬於哪個欄位。
     ///
     /// 「記下後先看一眼」那個 <c>Input.Toggle</c> 不必包 <c>ColumnSet</c>:核取方塊的寬度
     /// 本來就只有方塊加標題那麼寬,撐不開版面。它的欄位名寫在 <c>title</c> 而不是
@@ -213,6 +218,37 @@ internal sealed partial class InklingSettingsForm : FormContent
     /// 見 docs/design-notes.md〈編輯表單〉),使用者手上單行框按 Enter 不會送出,Tab 到「儲存」
     /// 是唯一的鍵盤路徑。只留一顆的安排兩個版本下都對,所以維持。
     /// </summary>
+    /// <summary>
+    /// 設定檔壞掉被搬走時,卡片最上面那塊警告(沒發生就是空字串,含後面那個逗號)。
+    ///
+    /// <b>這是卡片頂上唯一允許出現的一塊。</b> 上面那段說明寫著「不要在卡片頂上再開一塊」,
+    /// 講的是**常駐**的說明文字 —— 那種東西會讓某個欄位變成唯一上下都有字的。
+    /// 這一塊不一樣:它不是說明而是錯誤,絕大多數時候根本不存在,而且非放最上面不可
+    /// —— 使用者會來這一頁,正是因為「筆記全部不見了」(資料夾被退回預設值),
+    /// 那句解釋要在他看到資料夾欄位**之前**就讀到。
+    ///
+    /// <c>attention</c> 是 Adaptive Cards 內建的警示色,不必自己碰顏色。
+    /// </summary>
+    private static string CorruptSettingsWarning(SettingsManager settings)
+    {
+        if (settings.QuarantinedFile is not { } quarantined)
+        {
+            return string.Empty;
+        }
+
+        var text = Strings.Format(Resources.SettingsCorruptWarning, Path.GetFileName(quarantined));
+
+        return $$"""
+            {
+                "type": "TextBlock",
+                "text": {{CardText.Json(text)}},
+                "wrap": true,
+                "color": "attention",
+                "weight": "bolder"
+            },
+            """;
+    }
+
     private static string BuildTemplate(SettingsManager settings)
     {
         var directory = settings.NotesDirectorySetting;
@@ -225,7 +261,7 @@ internal sealed partial class InklingSettingsForm : FormContent
             "type": "AdaptiveCard",
             "version": "1.6",
             "body": [
-                {
+                {{CorruptSettingsWarning(settings)}}{
                     "type": "ColumnSet",
                     "columns": [
                         {
@@ -269,8 +305,7 @@ internal sealed partial class InklingSettingsForm : FormContent
                 },
                 {
                     "type": "ColumnSet",
-                    "separator": true,
-                    "spacing": "default",
+                    "spacing": "medium",
                     "columns": [
                         {
                             "type": "Column",
@@ -302,8 +337,7 @@ internal sealed partial class InklingSettingsForm : FormContent
                     "value": "{{(preview.Value ? ToggleOn : ToggleOff)}}",
                     "valueOn": "{{ToggleOn}}",
                     "valueOff": "{{ToggleOff}}",
-                    "separator": true,
-                    "spacing": "default"
+                    "spacing": "medium"
                 },
                 {
                     "type": "TextBlock",

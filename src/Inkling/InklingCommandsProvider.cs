@@ -37,7 +37,7 @@ public sealed partial class InklingCommandsProvider : CommandProvider
         // 是為了同時證明附屬組件真的載到了 —— 語言對、字串卻是英文,代表
         // zh-Hant\Inkling.resources.dll 沒進套件(trimming 或佈局出了問題)。
         DiagnosticLog.Write(
-            $"UI 語言:{CultureInfo.CurrentUICulture.Name} 抽樣='{Resources.SettingsPageName}'");
+            $"UI language: {CultureInfo.CurrentUICulture.Name}, sample='{Resources.SettingsPageName}'");
 
         _settingsPage = new InklingSettingsPage(_settingsManager);
 
@@ -64,6 +64,19 @@ public sealed partial class InklingCommandsProvider : CommandProvider
     {
         base.InitializeWithHost(host);
         ExtensionHost.Initialize(host);
+
+        // **設定檔被隔離掉的那一句要等到這裡才發得出去。** 它發生在
+        // SettingsManager 的建構子裡,而那時候 ExtensionHost 還沒接到 host ——
+        // DiagnosticLog.Failure 的共用通道那一半會靜靜地什麼都不做(實測確認過:
+        // 只有本機的 diagnostic.log 收得到,而那個預設是關的)。
+        // 而這正是最需要留在永遠開著那份 log 裡的一條:使用者看到的現象是
+        // 「筆記全部不見了」(資料夾退回預設值),沒有這一行就完全沒有線索。
+        if (_settingsManager.QuarantinedFile is { } quarantined)
+        {
+            DiagnosticLog.Failure(
+                "settings.json was not valid JSON; it was moved aside and defaults are in use",
+                quarantined);
+        }
     }
 
     // CmdPal 一啟動就會呼叫這個方法,絕對不能碰磁碟 —— 只回傳事先建好的靜態命令項。
@@ -76,7 +89,7 @@ public sealed partial class InklingCommandsProvider : CommandProvider
     private ProviderState BuildState()
     {
         var options = _settingsManager.ToOptions();
-        DiagnosticLog.Write($"BuildState: 資料夾='{options.NotesDirectory}'");
+        DiagnosticLog.Write($"BuildState: directory='{options.NotesDirectory}'");
 
         // Repository 整個擴展共用一個。它內部有快取與資料夾監看,
         // 每頁各建一個等於每頁都重掃一次磁碟,還會多掛好幾個 FileSystemWatcher。
@@ -192,7 +205,7 @@ public sealed partial class InklingCommandsProvider : CommandProvider
         {
             if (string.Equals(_state.NotesDirectory, directory, StringComparison.OrdinalIgnoreCase))
             {
-                DiagnosticLog.Write("SettingsApplied: 資料夾沒變,不重建");
+                DiagnosticLog.Write("SettingsApplied: directory unchanged, not rebuilding");
                 return;
             }
 
