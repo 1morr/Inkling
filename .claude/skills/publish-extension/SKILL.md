@@ -9,11 +9,18 @@ description: >-
 
 > **這份是 CmdPal 官方擴展模板附的 skill,正文原封不動搬進來。**
 >
-> **本專案目前是側載自簽,沒有上架。** 真的要走的話先注意:
+> **本專案走的是 Microsoft Store 代簽,身分已經定案(2026-08-23),還沒送出第一次審核。**
+> 實際要填的值、走到哪一步了,以
+> [`docs/release-checklist.md`](../../../docs/release-checklist.md) §1 為準;每次發版照
+> [`docs/release-runbook.md`](../../../docs/release-runbook.md) 跑。下面幾條是正文跟本專案
+> 對不上的地方:
 >
 > 1. **改 `Identity` 的 `Name` 或 `Publisher` 會弄丟使用者的設定。** 套件家族名跟著變,
 >    等於換一個空的 `LocalState` —— 舊的 `settings.json` 還在磁碟上但再也沒人去讀。
->    上架換成 Partner Center 的身分就一定會發生這件事。`docs/development.md`〈設定檔〉。
+>    **這件事已經發生過了**:2026-08-23 換成 Partner Center 指派的身分那一次
+>    (`CPPt.InklingNotes`),付得起是因為當時安裝基數是作者一台機器。
+>    **第一個公開版本之後就不能再改** —— 那時動它等於清掉每一個使用者的設定與釘選。
+>    `docs/development.md`〈設定檔〉。
 > 2. **WinGet 那條路正文叫你切成 unpackaged EXE + Inno Setup —— 對本專案是錯的,別走。**
 >    實際在架的 CmdPal 擴展(`lin-ycv.EverythingCmdPal`、`8LWXpg.ProcessKillerforCommandPalette`)
 >    用的是 `InstallerType: msix`:x64/arm64 指向 GitHub Release 上同一個簽章過的
