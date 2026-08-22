@@ -84,7 +84,7 @@ public class ListPageCacheTests
 
         var before = page.GetItems().Length;
 
-        repository.Delete("id-1");
+        repository.Delete(repository.GetAll()[0]);
 
         Assert.Equal(before - 1, page.GetItems().Length);
     }

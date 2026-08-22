@@ -33,7 +33,12 @@ internal sealed partial class NotePreviewPage : ContentPage
 {
     private readonly INoteRepository _repository;
     private readonly ISourceModeStore _sourceMode;
-    private readonly string _noteId;
+    /// <summary>
+    /// 這一則的檔案路徑。**身分認路徑不認 id** —— 同一個 id 可能對到兩個檔案
+    /// (雲端硬碟的衝突副本),見 <see cref="Note.Id"/>。留路徑而不是留整個 Note,
+    /// 是因為 <c>_note</c> 每次重新取內容都會被換掉,而定位用的鍵必須固定。
+    /// </summary>
+    private readonly string _filePath;
     private readonly CopyNoteBodyCommand _copyBody;
 
     /// <summary>
@@ -48,7 +53,7 @@ internal sealed partial class NotePreviewPage : ContentPage
     {
         _repository = repository;
         _sourceMode = sourceMode;
-        _noteId = note.Id;
+        _filePath = note.FilePath;
         _note = note;
 
         Icon = Icons.Preview;
@@ -95,7 +100,7 @@ internal sealed partial class NotePreviewPage : ContentPage
         _toggleSource.Sync();
 
         // 「重查 → 更新 → 渲染」與記下頁共用同一份,理由見 NotePreviewContent。
-        var content = NotePreviewContent.Reload(_repository, _noteId, ref _note, _copyBody, showSource);
+        var content = NotePreviewContent.Reload(_repository, _filePath, ref _note, _copyBody, showSource);
 
         Title = _note.Title;
         return [content];

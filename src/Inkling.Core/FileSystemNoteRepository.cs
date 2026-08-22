@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text;
 
 namespace Inkling.Core;
 
@@ -24,6 +25,12 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// 改完同一個檔案再存回來的時間。
     /// </summary>
     private const int SelfWriteEchoWindowMs = 500;
+
+    /// <summary>
+    /// 讀筆記用的解碼器:無效位元組**丟例外**,不要默默換成 U+FFFD。
+    /// 為什麼非這樣不可,見 <see cref="TryReadAllText"/>。
+    /// </summary>
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     private readonly string _directory;
     private readonly TimeProvider _timeProvider;
@@ -147,8 +154,29 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         }
     }
 
-    public Note? GetById(string id) =>
+    /// <inheritdoc />
+    public Note? GetByPath(string filePath) =>
+        GetAll().FirstOrDefault(n => PathsEqual(n.FilePath, filePath));
+
+    /// <summary>
+    /// 只給 <see cref="GenerateUniqueId"/> 用的碰撞偵測。
+    ///
+    /// **刻意是 private。** 「用 id 查一則筆記」是個陷阱:同一個 id 可能對到兩個檔案
+    /// (雲端硬碟的衝突副本),而這個方法只會回第一筆。留在介面上遲早會有人拿它去解析
+    /// 編輯 / 刪除的目標,那正是修掉的那個 bug。要重新取內容走 <see cref="GetByPath"/>。
+    /// </summary>
+    private Note? GetById(string id) =>
         GetAll().FirstOrDefault(n => string.Equals(n.Id, id, StringComparison.Ordinal));
+
+    /// <summary>
+    /// Windows 的路徑比對:大小寫不敏感。兩邊都先正規化,免得 <c>C:\a\b.md</c> 與
+    /// <c>C:\a\.\b.md</c> 被當成兩個檔案。
+    /// </summary>
+    private static bool PathsEqual(string left, string right) =>
+        string.Equals(
+            Path.GetFullPath(left),
+            Path.GetFullPath(right),
+            StringComparison.OrdinalIgnoreCase);
 
     public Note Create(string title, string body)
     {
@@ -182,9 +210,9 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     }
 
     /// <summary>
-    /// id 的後綴只有 16-bit,同一秒內兩次 Create 各有 1/65536 的碰撞率;撞了兩則筆記
-    /// 共用一個 id,GetById 只回第一筆,Update / Delete 會作用在錯的那則上。
-    /// 撞了就重抽 —— 這也順便擋住「別台機器同一秒同步下來同名 id」的情境。
+    /// id 的後綴只有 16-bit,同一秒內兩次 Create 各有 1/65536 的碰撞率。撞了不會再弄壞
+    /// 編輯與刪除(那兩條認的是路徑),但清單上那兩列會被標成「衝突副本」——
+    /// 而它們根本不是。撞了就重抽,順便也擋住「別台機器同一秒同步下來同名 id」的情境。
     /// </summary>
     private string GenerateUniqueId(DateTimeOffset now)
     {
@@ -200,22 +228,43 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         return id;
     }
 
-    public Note Update(string id, string title, string body)
+    public Note Update(Note note, string title, string body)
     {
+        ArgumentNullException.ThrowIfNull(note);
         ArgumentNullException.ThrowIfNull(title);
         ArgumentNullException.ThrowIfNull(body);
 
-        var existing = GetById(id)
-            ?? throw NoteNotFoundException.ForId(id);
+        // 重新查一次而不是直接用傳進來的快照:呼叫端手上那份可能是幾分鐘前的,
+        // 而 created / tags / 不認得的 front matter 欄位要照磁碟上的最新內容保留。
+        var existing = GetByPath(note.FilePath)
+            ?? throw NoteNotFoundException.ForPath(note.FilePath);
 
-        // 改標題不重新命名檔案 —— 身分是 id,而在同步資料夾裡 rename 會製造衝突檔。
+        var now = _timeProvider.GetLocalNow();
+
+        // **外來檔案第一次在 Inkling 裡編輯,就給它一個真正的 id。**
+        // 在此之前它的 id 是我們拿路徑算出來的(見 DeriveId)—— 那個東西跟著檔名跑,
+        // 改個名就變了,不是身分。寫進檔案的必須是真的能當身分用的那種。
+        //
+        // **但只在它本來就沒有 id 的時候。** front matter 裡已經有別人的 id
+        // (Zettelkasten 的 202401051200、Hugo 的 slug……)就原樣留著:覆蓋它等於毀掉
+        // 使用者的 metadata,而「不認得的東西不要動」比「讓它變成我們的」重要得多。
+        // 那種檔案因此永遠算外來的 —— 保守的方向,批次刪除會放過它。
+        var adopting = NoteFileName.IsDerivedId(existing.Id);
+
+        // 改標題不重新命名檔案 —— 檔名只是給人看的,而在同步資料夾裡 rename 會製造衝突檔。
         var updated = existing with
         {
+            Id = adopting ? GenerateUniqueId(now) : existing.Id,
+            IsExternal = adopting ? false : existing.IsExternal,
             Title = title.Trim(),
 
             // 與 Create 同一個理由:回傳的物件要跟磁碟上的那一份對得起來。
             Body = Newlines.ToLf(body),
-            Updated = _timeProvider.GetLocalNow(),
+            Updated = now,
+
+            // 原本讀不懂的 updated: 那一行到此為止 —— 我們正在改動這則筆記,
+            // 「最後改動時間」本來就該換成現在。created 相反,原樣留著。
+            UpdatedRaw = null,
         };
 
         NoteSelfWrite(updated.FilePath);
@@ -225,10 +274,12 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         return updated;
     }
 
-    public void Delete(string id)
+    public void Delete(Note note)
     {
-        var existing = GetById(id)
-            ?? throw NoteNotFoundException.ForId(id);
+        ArgumentNullException.ThrowIfNull(note);
+
+        var existing = GetByPath(note.FilePath)
+            ?? throw NoteNotFoundException.ForPath(note.FilePath);
 
         NoteSelfWrite(existing.FilePath);
         _fileDeleter.Delete(existing.FilePath);
@@ -350,11 +401,55 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             // 回傳已掃到的部分,總比讓例外穿出頁面的 GetItems、整頁變成擴展錯誤好。
         }
 
+        MarkDuplicateIds(notes);
+
         // **Updated 只到秒。** 快速記下連打兩則、或別台機器一次同步下來一批,
         // 時間戳就是相等的 —— 而 List<T>.Sort 是不穩定排序,相等元素的先後由實作決定,
         // 同一個資料夾在不同機器上可能排出不同順序。用 id 當第二鍵讓順序完全確定
         // (id 本身也帶著時間與亂數後綴,所以次序仍然合理)。
-        return [.. notes.OrderByDescending(n => n.Updated).ThenBy(n => n.Id, StringComparer.Ordinal)];
+        //
+        // 衝突副本的兩份 id 相同,所以第二鍵也分不出先後 —— 路徑當第三鍵補上,
+        // 那一組的順序才不會每次掃描都跳。
+        return
+        [
+            .. notes
+                .OrderByDescending(n => n.Updated)
+                .ThenBy(n => n.Id, StringComparer.Ordinal)
+                .ThenBy(n => n.FilePath, StringComparer.OrdinalIgnoreCase),
+        ];
+    }
+
+    /// <summary>
+    /// 同一個 id 出現在多個檔案上就標記起來(見 <see cref="Note.HasDuplicateId"/>)。
+    ///
+    /// 幾乎只有雲端硬碟的衝突副本會走到這裡。編輯與刪除認的是路徑,所以兩份各自獨立,
+    /// 不標記也不會弄壞資料 —— 標記是為了讓清單頁講得出來,不然畫面上就是兩列一模一樣。
+    /// </summary>
+    private static void MarkDuplicateIds(List<Note> notes)
+    {
+        if (notes.Count < 2)
+        {
+            return;
+        }
+
+        var duplicates = notes
+            .GroupBy(n => n.Id, StringComparer.Ordinal)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (duplicates.Count == 0)
+        {
+            return;
+        }
+
+        for (var i = 0; i < notes.Count; i++)
+        {
+            if (duplicates.Contains(notes[i].Id))
+            {
+                notes[i] = notes[i] with { HasDuplicateId = true };
+            }
+        }
     }
 
     private Note? TryReadNote(string path)
@@ -379,17 +474,21 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             Body = parsed.Body,
             Created = created,
             Updated = updated,
+            CreatedRaw = parsed.CreatedRaw,
+            UpdatedRaw = parsed.UpdatedRaw,
             Tags = parsed.Tags,
             ExtraFrontMatter = parsed.ExtraFrontMatter,
             FilePath = path,
 
-            // front matter 裡沒有 id,就代表這個檔案不是 Inkling 寫的 —— 上面那個 id 是我們推的。
-            IsExternal = parsed.Id is null,
+            // **判準是 id 的形狀,不是「有沒有 id」。** 理由與踩過的坑見 Note.IsExternal ——
+            // 一句話:`id:` 在 Obsidian / Zettelkasten / Hugo 裡到處都是。
+            IsExternal = !NoteFileName.IsGeneratedId(parsed.Id),
         };
     }
 
     /// <summary>
     /// 讀檔並在短暫的 IO 衝突時重試 —— OneDrive 與其他編輯器都可能正好在寫同一個檔。
+    /// 讀不出來(含編碼不是 UTF-8)回 null,由呼叫端計進 <see cref="SkippedFileCount"/>。
     /// </summary>
     private static string? TryReadAllText(string path)
     {
@@ -397,7 +496,21 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         {
             try
             {
-                return File.ReadAllText(path);
+                // **一定要用會丟例外的那個 UTF8Encoding。** File.ReadAllText 的預設解碼器
+                // 把無效位元組默默換成 U+FFFD,於是一個 Big5 / GBK / Latin-1 的 .md 會被讀成
+                // 一串 �,而使用者一旦在 Inkling 裡編輯它,那些 � 就被寫回檔案 ——
+                // 原始位元組永久消失,而且沒有備份、沒有提示、資源回收筒裡什麼都沒有。
+                // 寧可整個檔案讀不出來:清單最後那一列「有 N 個檔案讀不出來」會講,
+                // 而那句話的口徑本來就是「檔案還在資料夾裡」。
+                //
+                // 有 BOM 的檔案不受影響:StreamReader 仍然會先照 BOM 判編碼
+                // (UTF-8 / UTF-16 LE / BE 都認得),這個編碼只是「沒有 BOM 時的假設」。
+                return File.ReadAllText(path, StrictUtf8);
+            }
+            catch (DecoderFallbackException)
+            {
+                // 編碼不對是確定性的,重試沒有意義。
+                return null;
             }
             catch (IOException)
             {
@@ -434,7 +547,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             hash = (hash ^ ch) * prime;
         }
 
-        return "file-" + hash.ToString("x8", CultureInfo.InvariantCulture);
+        return NoteFileName.DeriveIdFrom(hash.ToString("x8", CultureInfo.InvariantCulture));
     }
 
     private static string DeriveTitle(string body, string path)
@@ -442,7 +555,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         var first = NoteBody.FirstContentLine(body);
 
         return first is not null
-            ? (first.Length > NoteBody.MaxLineLength ? first[..NoteBody.MaxLineLength] : first)
+            ? NoteBody.Truncate(first)
             : Path.GetFileNameWithoutExtension(path);
     }
 

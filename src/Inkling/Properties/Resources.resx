@@ -90,9 +90,6 @@
   <data name="CommandDone" xml:space="preserve">
     <value>Done</value>
   </data>
-  <data name="CommandGoBack" xml:space="preserve">
-    <value>Go back</value>
-  </data>
   <data name="CommandCapture" xml:space="preserve">
     <value>Capture</value>
     <comment>快速記下那一列的動作,也當作那一區的標題。</comment>
@@ -180,7 +177,7 @@
     <value>{0} file(s) could not be read</value>
   </data>
   <data name="ListPageSkippedFilesSubtitle" xml:space="preserve">
-    <value>Still in the folder — another program may have them open</value>
+    <value>Still in the folder — another program has them open, or they are not UTF-8</value>
   </data>
   <data name="ToggleSourceShowRaw" xml:space="preserve">
     <value>Show raw text</value>
@@ -225,9 +222,6 @@
   <data name="QuickCaptureEmptyTitle" xml:space="preserve">
     <value>Type to capture</value>
   </data>
-  <data name="QuickCaptureSectionSimilar" xml:space="preserve">
-    <value>Already captured</value>
-  </data>
   <data name="QuickCaptureItemTitle" xml:space="preserve">
     <value>Capture: {0}</value>
     <comment>{0} 是切出來的標題。</comment>
@@ -270,19 +264,6 @@
   </data>
   <data name="DeletePageEmptyTitle" xml:space="preserve">
     <value>No notes to delete</value>
-  </data>
-  <data name="DeleteSectionAction" xml:space="preserve">
-    <value>Actions</value>
-  </data>
-  <data name="DeleteSectionExternal" xml:space="preserve">
-    <value>Not created by Inkling</value>
-  </data>
-  <data name="DeleteSectionMine" xml:space="preserve">
-    <value>Inkling notes</value>
-  </data>
-  <data name="DeleteSectionAll" xml:space="preserve">
-    <value>Notes</value>
-    <comment>沒有外來檔案時就不分兩區,用這個中性的標題。</comment>
   </data>
   <data name="DeleteMoreNotes" xml:space="preserve">
     <value>{0} more not listed</value>
@@ -420,7 +401,7 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
     <value>Details, links, to-dos…</value>
   </data>
   <data name="FormCaretHint" xml:space="preserve">
-    <value>The cursor starts at the beginning of the body. Press Ctrl+End to jump to the end.</value>
+    <value>The cursor starts at the beginning of the body. Press Ctrl+End to jump to the end. Saving keeps this page open — press Esc to go back.</value>
     <comment>游標位置擴展指定不了,所以改成把鍵位講出來 —— 見 NoteFormContent.CaretHint。</comment>
   </data>
   <data name="FormSave" xml:space="preserve">
@@ -525,5 +506,24 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="SettingPreviewDescription" xml:space="preserve">
     <value>Stay on the note after capturing; press Enter once more to dismiss Command Palette.</value>
     <comment>只寫「按下去會發生什麼」;取捨的理由屬於 README,不是設定頁。</comment>
+  </data>
+  <data name="CommandRetry" xml:space="preserve">
+    <value>Try again</value>
+    <comment>記下並預覽頁存檔失敗時,底部工具列那一顆。GoBack 不動,所以改成就地重試 —— 見 CapturedNotePage.Capture。</comment>
+  </data>
+  <data name="EditKeepEditingTitle" xml:space="preserve">
+    <value>Keep editing</value>
+    <comment>編輯表單底部工具列的第一顆,存在的理由是把 Enter 從「跳去外部編輯器」擋開 —— 見 NoteEditPage。</comment>
+  </data>
+  <data name="EditKeepEditingSubtitle" xml:space="preserve">
+    <value>Does nothing — the form stays open</value>
+  </data>
+  <data name="ListPageConflictTag" xml:space="preserve">
+    <value>Conflict copy</value>
+    <comment>同一個 id 出現在兩個檔案上,幾乎一定是雲端硬碟的衝突副本 —— 見 Note.HasDuplicateId。</comment>
+  </data>
+  <data name="SettingsCorruptWarning" xml:space="preserve">
+    <value>Your settings file was not valid JSON. Inkling started from the defaults and moved the old file aside as “{0}” — check the notes folder below before saving.</value>
+    <comment>{0} 是被搬走的那個檔名。這是設定卡片上唯一常駐以外的區塊,理由見 InklingSettingsForm.CorruptSettingsWarning。</comment>
   </data>
 </root>

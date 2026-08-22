@@ -27,6 +27,13 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
     /// <summary>要記下的內容。由快速記下頁在使用者每次輸入時整個換掉。</summary>
     public QuickCaptureDraft? Draft { get; set; }
 
+    /// <summary>
+    /// 存檔成功後的回呼。快速記下頁用它清掉搜尋框 —— 少了這一步,下一次回到那一頁
+    /// 會帶著上一次的字,反射性的 Enter 就多存一則重複筆記。理由見
+    /// <c>QuickCapturePage.ClearQuery</c>。
+    /// </summary>
+    public Action? OnCaptured { get; set; }
+
     public override CommandResult Invoke()
     {
         // 讀一次就固定下來:使用者按 Enter 與 CmdPal 更新查詢是兩次不同的跨進程呼叫。
@@ -38,6 +45,9 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
         try
         {
             var note = _repository.Create(draft.Title, draft.Body);
+
+            // 存好了才清搜尋框 —— 失敗那條路刻意保留使用者打的字(見下面的 catch)。
+            OnCaptured?.Invoke();
 
             // 記完就離開快速記下頁,否則搜尋框還留著剛打的字,想記下一則得先自己清掉。
             // Toast 帶著後續動作一起送:ToastArgs.Result 就是 CmdPal 顯示完提示要做的事 ——
@@ -56,7 +66,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 用 DiagnosticLog 而不是 Debug.WriteLine:後者掛著 [Conditional("DEBUG")],
             // Release 會整個編掉,而日常安裝的就是 Release —— 也就是說最需要留下痕跡的
             // 那條路,在正式版反而什麼都查不到。
-            DiagnosticLog.Failure($"QuickCapture 失敗:{ex}");
+            DiagnosticLog.Failure($"QuickCapture failed ({ex.GetType().Name})", ex.ToString());
 
             // **這條路一個 toast 都不能發,也不能 Dismiss。** 搜尋框裡那句話是使用者
             // 剛打的、還沒存下來的東西:toast 視窗一搶焦點主視窗就自我隱藏(第 8 條那個

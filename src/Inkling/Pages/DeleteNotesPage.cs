@@ -101,7 +101,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 
         if (notes.Count == 0)
         {
-            DiagnosticLog.Write("DeleteNotesPage.BuildItems: 沒有筆記,交給 EmptyContent");
+            DiagnosticLog.Write("DeleteNotesPage.BuildItems: no notes, falling back to EmptyContent");
             return [];
         }
 
@@ -123,12 +123,14 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         // 兩邊各自維持 GetAll 的排序(最後更新的在前)。
         var ordered = notes.Where(n => n.IsExternal).Concat(notes.Where(n => !n.IsExternal));
 
-        // 沒有外來檔案時就不必分兩區,用一個中性的標題。
-        var section = external > 0 ? Resources.DeleteSectionMine : Resources.DeleteSectionAll;
-
+        // **這裡沒有分節標頭,而且做不到。** CmdPal 的清單是扁平的,ListItem.Section
+        // 只有在那一列**沒有命令**時才會被當成標頭文字用(ListItemViewModel.EvaluateType)——
+        // 有命令的列上設它,畫面上什麼都不會發生,也不會有任何錯誤。這一頁曾經在五個地方
+        // 設過 Section,從來沒有一個顯示出來。外來與自己的分別現在只靠排序(外來排前面)
+        // 與圖示(Icons.External)。考證見 docs/design-notes.md〈分節標頭〉。
         foreach (var note in ordered.Take(_options.MaxResults))
         {
-            items.Add(CreateNoteItem(note, section, showSource));
+            items.Add(CreateNoteItem(note, showSource));
         }
 
         // 列不完的時候一定要講,而且要講清楚「沒列出來不等於不會刪」 ——
@@ -140,11 +142,10 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
                 Title = Strings.Format(Resources.DeleteMoreNotes, notes.Count - _options.MaxResults),
                 Subtitle = Resources.DeleteMoreNotesSubtitle,
                 Icon = Icons.External,
-                Section = section,
             });
         }
 
-        DiagnosticLog.Write($"DeleteNotesPage.BuildItems: 共 {notes.Count} 則,其中外來 {external} 則");
+        DiagnosticLog.Write($"DeleteNotesPage.BuildItems: {notes.Count} notes, {external} external");
         return [.. items];
     }
 
@@ -154,12 +155,11 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// 預覽降到選單第二項:這一頁 <c>ShowDetails</c> 是開的,右邊的詳細窗格本來就在顯示
     /// 標題與內文,預覽頁多出來的只有 Markdown 渲染 —— 不值得佔著前面那兩個鍵位。
     /// </summary>
-    private ListItem CreateNoteItem(Note note, string section, bool showSource) => new(CreateConfirmedDelete(note))
+    private ListItem CreateNoteItem(Note note, bool showSource) => new(CreateConfirmedDelete(note))
     {
         Title = note.Title,
         Subtitle = Path.GetRelativePath(_options.NotesDirectory, note.FilePath),
         Icon = note.IsExternal ? Icons.External : Icons.Note,
-        Section = note.IsExternal ? Resources.DeleteSectionExternal : section,
         Details = NoteDetails.For(note, showSource),
         MoreCommands = [
             // 第一個會被 CmdPal 當成次要命令放上底部工具列(Ctrl+Enter)。
@@ -265,9 +265,12 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
                 Description = description,
                 PrimaryCommand = new ConfirmedDeleteAllNotesCommand(_repository, DeleteScope.Everything),
 
-                // 這裡維持 critical:上游拿它做的事是把預設按鈕設成「取消」,要清空整個
-                // 資料夾就該多花那一下。**0.11 安裝版還沒有那條路**,所以現在按下去跟單則
-                // 刪除長得一模一樣 —— 那一頁本身列出會刪掉哪些檔案,防線在那裡,不在這個旗標。
+                // 這裡維持 critical:上游拿它做的事是把確認框的預設按鈕設成「取消」,
+                // 要清空整個資料夾就該多花那一下。**這個旗標在 0.11.11762.0 安裝版上是有效的**
+                // —— 2026-08-22 實機驗過:設 true 的三個確認框焦點落在「取消」,
+                // 沒設的兩個落在「刪除」。(這裡以前寫著「安裝版還沒有那條路」,依據是
+                // byte-scan 掃不到 set_DefaultButton,而那個推論方法對 NativeAOT 影像
+                // 只能證實不能證否,見 CLAUDE.md〈查證 CmdPal 的行為〉。)
                 IsPrimaryCommandCritical = true,
             }),
         };
@@ -277,7 +280,6 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
             Title = Strings.Format(Resources.DeleteAllItemTitle, total),
             Subtitle = Strings.Format(Resources.DeleteAllItemSubtitle, _options.NotesDirectory),
             Icon = Icons.Delete,
-            Section = Resources.DeleteSectionAction,
             Details = BuildDetails(Strings.Format(Resources.DeleteAllScope, total)
                 + (external > 0
                     ? Strings.Format(Resources.DeleteAllScopeExternalSuffix, external)
@@ -305,7 +307,6 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
             Title = Strings.Format(Resources.DeleteMineItemTitle, mine),
             Subtitle = Strings.Format(Resources.DeleteMineItemSubtitle, external),
             Icon = Icons.Note,
-            Section = Resources.DeleteSectionAction,
             Details = BuildDetails(Strings.Format(Resources.DeleteMineScope, mine + external, mine, external)),
         };
     }

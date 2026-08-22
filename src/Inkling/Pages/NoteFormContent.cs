@@ -89,7 +89,14 @@ internal sealed partial class NoteFormContent : FormContent
         """;
 
     private readonly INoteRepository _repository;
-    private readonly string? _noteId;
+
+    /// <summary>
+    /// 要編輯的那一則(null = 新增)。**留整個物件而不是只留 id** ——
+    /// <c>Update</c> 靠它的路徑定位檔案,而 id 在磁碟上不保證唯一(見 <see cref="Note.Id"/>)。
+    /// 存的是建構當下那份快照,repository 會自己重新查一次最新內容。
+    /// </summary>
+    private readonly Note? _note;
+
     private readonly Action? _onSaved;
 
     /// <param name="note">null 代表新增;有值代表編輯既有筆記。</param>
@@ -97,7 +104,7 @@ internal sealed partial class NoteFormContent : FormContent
     public NoteFormContent(INoteRepository repository, Note? note, Action? onSaved = null)
     {
         _repository = repository;
-        _noteId = note?.Id;
+        _note = note;
         _onSaved = onSaved;
 
         var editing = note is not null;
@@ -110,8 +117,21 @@ internal sealed partial class NoteFormContent : FormContent
         }.ToJsonString();
     }
 
-    /// <summary>存檔成功後要往哪走。新增回首頁,編輯回上一頁(也就是預覽)。</summary>
-    private CommandResult AfterSave => _noteId is null ? CommandResult.GoHome() : CommandResult.GoBack();
+    /// <summary>
+    /// 存檔成功後要往哪走。新增回首頁;**編輯留在原地**。
+    ///
+    /// 這裡以前是 <c>CommandResult.GoBack()</c>,而那個回傳值在 0.11.11762.0 安裝版上
+    /// **完全不動** —— 2026-08-22 實機驗過:編輯存完畫面停在編輯頁,等五秒也一樣;
+    /// 同一個 <c>SubmitForm</c> 的新增路徑回 <c>GoHome()</c> 則正常回到主頁,所以不是
+    /// 我們的程式沒走到這一行。跟 <c>GoToPage</c> 是同一類的空殼(見 CLAUDE.md 硬規則 8)。
+    ///
+    /// 既然做不到,就明著寫 <c>KeepOpen()</c>,不要留一個看起來會導頁、實際上不會的回傳值 ——
+    /// 下一個人讀到 <c>GoBack()</c> 只會以為畫面沒回上一頁是別的地方壞了。
+    /// **不改成 <c>GoHome()</c>**:那會把使用者丟回主搜尋框,比停在原地更遠(他剛從清單裡
+    /// 找到這一則)。留在原地 + 底部 InfoBar 的「已儲存:標題」是可用的結果,
+    /// 而 <c>Esc</c> 本來就回得去 —— 卡片底部那行提示把這件事講出來。
+    /// </summary>
+    private CommandResult AfterSave => _note is null ? CommandResult.GoHome() : CommandResult.KeepOpen();
 
     public override CommandResult SubmitForm(string inputs)
     {
@@ -134,7 +154,7 @@ internal sealed partial class NoteFormContent : FormContent
 
         try
         {
-            if (_noteId is null)
+            if (_note is not { } editing)
             {
                 // 預填的空行不該變成筆記內容。編輯時不做這件事 —— 那些空行是使用者自己的排版。
                 _repository.Create(title, body.Trim());
@@ -142,11 +162,11 @@ internal sealed partial class NoteFormContent : FormContent
             }
             else
             {
-                _repository.Update(_noteId, title, body);
+                _repository.Update(editing, title, body);
                 new ToastStatusMessage(Strings.Format(Resources.NoteSaved, title)).Show();
             }
 
-            // 要在回上一頁之前通知,否則上一頁會顯示存檔前的內容。
+            // 上一頁不會因為導覽回來就重新取內容,所以一定要通知(見 NotePreviewContent)。
             _onSaved?.Invoke();
 
             return AfterSave;
@@ -156,7 +176,7 @@ internal sealed partial class NoteFormContent : FormContent
             // 存檔失敗絕對不能無聲無息 —— 使用者會以為東西存起來了然後把視窗關掉。
             // 走 DiagnosticLog 而不是 Debug.WriteLine:後者在 Release 被整個編掉,
             // 而日常安裝的就是 Release,那樣等於這條路完全查不到。
-            DiagnosticLog.Failure($"NoteFormContent 存檔失敗:{ex}");
+            DiagnosticLog.Failure($"NoteFormContent save failed ({ex.GetType().Name})", ex.ToString());
             new ToastStatusMessage(Strings.Format(Resources.SaveFailed, ex.Message)).Show();
             return CommandResult.KeepOpen();
         }

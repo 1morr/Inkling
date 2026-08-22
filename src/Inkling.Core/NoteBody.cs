@@ -15,6 +15,31 @@ internal static class NoteBody
     internal const int MaxLineLength = 120;
 
     /// <summary>
+    /// 摘要與推導標題共用的截斷。
+    ///
+    /// **不能裸切。** 上限算的是 UTF-16 字元數,而第 <see cref="MaxLineLength"/> 個位置
+    /// 正好落在代理對中間時(emoji、擴充區漢字 —— 人名用字與異體字大量落在那裡),
+    /// 尾端會留下一個落單的 high surrogate,畫面上就是一個 �。
+    /// 檔名那條路早就有這個保護(<see cref="NoteFileName.Slug"/>,而且有測試釘著),
+    /// 摘要這條漏了 —— 同一個 bug 的兩份實作,只修過一份。
+    /// </summary>
+    internal static string Truncate(string line)
+    {
+        if (line.Length <= MaxLineLength)
+        {
+            return line;
+        }
+
+        var cut = MaxLineLength;
+        if (char.IsHighSurrogate(line[cut - 1]))
+        {
+            cut--;
+        }
+
+        return line[..cut];
+    }
+
+    /// <summary>
     /// 逐行回傳內文裡的有效文字:去掉一行**外圍**的 Markdown 裝飾
     /// (#、&gt;、清單記號、成對的強調記號),跳過空行、程式碼圍欄行(``` 與 ~~~)、
     /// 水平線與表格分隔列。

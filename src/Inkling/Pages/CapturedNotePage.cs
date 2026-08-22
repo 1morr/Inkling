@@ -43,11 +43,13 @@ internal sealed partial class CapturedNotePage : ContentPage
     private readonly QuickCaptureDraft _draft;
 
     /// <summary>
-    /// Enter 那一顆。存檔成功是「完成 → 收起 CmdPal」,失敗則改成回上一頁。
+    /// Enter 那一顆:「完成 → 收起 CmdPal」。存檔成功之後才補上那句「已記下:標題」。
     ///
     /// 換的是 <see cref="AnonymousCommand.Result"/> 而不是整個命令物件:那個屬性是
     /// <c>Invoke</c> 當下才讀的,所以在 <see cref="GetContent"/> 裡改一定來得及,
     /// 也不必指望任何跨進程的變更通知。
+    ///
+    /// 存檔**失敗**時這一顆整個不出現 —— 那時候底部工具列換成「再試一次」,見 <see cref="Capture"/>。
     /// </summary>
     private readonly AnonymousCommand _done;
 
@@ -65,6 +67,8 @@ internal sealed partial class CapturedNotePage : ContentPage
     /// </summary>
     private readonly SourceModeToggle _toggleSource;
 
+    private readonly Action? _onCaptured;
+
     private Note? _note;
     private string? _error;
 
@@ -75,11 +79,19 @@ internal sealed partial class CapturedNotePage : ContentPage
     /// </summary>
     private int _captured;
 
-    public CapturedNotePage(INoteRepository repository, QuickCaptureDraft draft, ISourceModeStore sourceMode)
+    /// <param name="onCaptured">
+    /// 存檔成功後的回呼。快速記下頁用它清掉搜尋框 —— 理由見 <c>QuickCapturePage.ClearQuery</c>。
+    /// </param>
+    public CapturedNotePage(
+        INoteRepository repository,
+        QuickCaptureDraft draft,
+        ISourceModeStore sourceMode,
+        Action? onCaptured = null)
     {
         _repository = repository;
         _sourceMode = sourceMode;
         _draft = draft;
+        _onCaptured = onCaptured;
         _toggleSource = new SourceModeToggle(sourceMode, Refresh);
 
         Icon = Icons.Capture;
@@ -89,7 +101,7 @@ internal sealed partial class CapturedNotePage : ContentPage
         Name = Resources.CapturedPageName;
 
         // 跟預覽頁共用同一份組裝(收起面板,不是 GoHome —— 理由寫在 NoteCommands.Done)。
-        // 存檔失敗時這一顆會就地被改成「返回」,所以留著實例,見 Capture()。
+        // 存檔成功時要就地換掉它的 Result(補上那句「已記下」),所以留著實例,見 Capture()。
         _done = NoteCommands.Done();
 
         _copyBody = new CopyNoteBodyCommand(draft.Body);
@@ -118,7 +130,7 @@ internal sealed partial class CapturedNotePage : ContentPage
         // 重新查而不是用存檔當下的快照:使用者可能剛從這一頁按 Ctrl+E 編輯完回來。
         var note = captured;
         var content = NotePreviewContent.Reload(
-            _repository, note.Id, ref note, _copyBody, _sourceMode.ShowSource);
+            _repository, note.FilePath, ref note, _copyBody, _sourceMode.ShowSource);
 
         _note = note;
         Title = note.Title;
@@ -133,12 +145,10 @@ internal sealed partial class CapturedNotePage : ContentPage
     ///
     /// <para><b>但失敗時旗標要放掉,否則「重試」是假的。</b></para>
     ///
-    /// 失敗那條路把 Enter 改成「回上一步」,設計意圖是「剛打的那句話還在搜尋框裡,
-    /// 退回去就能再試一次」。可是退回去之後查詢字沒變、repository 的 Version 也沒變
-    /// (根本沒寫成功),快速記下頁的項目快取因此原封不動地回傳**同一個頁面實例** ——
-    /// 旗標還立著,再按一次 Enter 只是把同一則錯誤訊息再畫一遍,連寫檔都沒有嘗試。
+    /// 失敗那條路把 Enter 換成「再試一次」,而重試就是讓 CmdPal 再要一次內容 ——
+    /// 旗標還立著的話,那只會把同一則錯誤訊息再畫一遍,連寫檔都沒有嘗試。
     /// 實機驗過:連按三次 Enter,診斷日誌裡只有一筆 Capture 失敗。
-    /// 失敗時放掉旗標之後,那條唯一的重試路徑才真的會重試。
+    /// 失敗時放掉旗標之後,重試才真的會重試。
     /// </summary>
     private void Capture()
     {
@@ -158,6 +168,9 @@ internal sealed partial class CapturedNotePage : ContentPage
             _note = note;
             _copyBody.Text = note.Body;
 
+            // 存好了才清搜尋框(失敗那條路刻意留著使用者打的字)。
+            _onCaptured?.Invoke();
+
             // 「完成」帶著記下的確認一起收工 —— 跟關掉「記下後先看一眼」那條路
             // (QuickCaptureCommand)講同一句話,用的也是同一個字串。
             //
@@ -174,9 +187,6 @@ internal sealed partial class CapturedNotePage : ContentPage
                 Result = CommandResult.Dismiss(),
             });
 
-            // 前一次嘗試失敗過的話,這一顆的字還停在「回上一步」。改回來 ——
-            // 底部按鈕寫著「回上一步」卻收掉整個面板,比什麼都不寫更糟。
-            _done.Name = Resources.CommandDone;
             _error = null;
 
             // 這裡才補齊命令列。CmdPal 讀 Commands 的時機比 GetContent 早
@@ -185,7 +195,7 @@ internal sealed partial class CapturedNotePage : ContentPage
             // IContentPage 走的是無條件訂閱那條路(IDetails 才是斷的,見 NoteListPage)。
             Commands = BuildCommands(note);
 
-            DiagnosticLog.Write($"CapturedNotePage.Capture: 已存 id={note.Id} 標題='{note.Title}'");
+            DiagnosticLog.Write($"CapturedNotePage.Capture: saved id={note.Id} title='{note.Title}'");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -196,11 +206,30 @@ internal sealed partial class CapturedNotePage : ContentPage
             // 放掉旗標,下一次進來才會真的再寫一次檔(理由見方法註解)。
             Volatile.Write(ref _captured, 0);
 
-            // Enter 改成回快速記下頁:剛打的那句話還在搜尋框裡,可以直接重試。
-            _done.Name = Resources.CommandGoBack;
-            _done.Result = CommandResult.GoBack();
+            // **Enter 改成「再試一次」,而且是在這一頁上重試。**
+            //
+            // 這裡以前是「回上一步」配 CommandResult.GoBack(),想的是「退回快速記下頁,
+            // 那句話還在搜尋框裡,再按一次 Enter」。問題是 **GoBack 在 0.11.11762.0
+            // 安裝版上完全不動**(跟 GoToPage 一樣是空殼,見 CLAUDE.md 硬規則 8)——
+            // 那顆按鈕按下去什麼都不會發生,也就是說那條「唯一的重試路徑」從來沒通過。
+            //
+            // 現在不靠導頁:旗標已經放掉,Refresh() 讓 CmdPal 重新 GetContent(),
+            // Capture() 就會再寫一次檔。原文照樣留在畫面上,複製也還在。
+            Commands = [
+                new CommandContextItem(new AnonymousCommand(Refresh)
+                {
+                    Name = Resources.CommandRetry,
+                    Icon = Icons.Capture,
+                    Result = CommandResult.KeepOpen(),
+                })
+                {
+                    Title = Resources.CommandRetry,
+                    Icon = Icons.Capture,
+                },
+                NoteCommands.CopyBody(_copyBody),
+            ];
 
-            DiagnosticLog.Failure($"CapturedNotePage.Capture 失敗:{ex}");
+            DiagnosticLog.Failure($"CapturedNotePage.Capture failed ({ex.GetType().Name})", ex.ToString());
         }
     }
 

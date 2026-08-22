@@ -19,7 +19,8 @@ internal sealed class FakeNoteRepository : INoteRepository
 
     public IReadOnlyList<Note> GetAll() => _notes;
 
-    public Note? GetById(string id) => _notes.FirstOrDefault(n => n.Id == id);
+    public Note? GetByPath(string filePath) =>
+        _notes.FirstOrDefault(n => string.Equals(n.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
 
     public Note Create(string title, string body)
     {
@@ -28,12 +29,12 @@ internal sealed class FakeNoteRepository : INoteRepository
         return note;
     }
 
-    public Note Update(string id, string title, string body)
+    public Note Update(Note note, string title, string body)
     {
-        var index = _notes.FindIndex(n => n.Id == id);
+        var index = _notes.FindIndex(n => n.FilePath == note.FilePath);
         if (index < 0)
         {
-            throw NoteNotFoundException.ForId(id);
+            throw NoteNotFoundException.ForPath(note.FilePath);
         }
 
         _notes[index] = _notes[index] with { Title = title, Body = body };
@@ -41,11 +42,11 @@ internal sealed class FakeNoteRepository : INoteRepository
         return _notes[index];
     }
 
-    public void Delete(string id)
+    public void Delete(Note note)
     {
-        if (_notes.RemoveAll(n => n.Id == id) == 0)
+        if (_notes.RemoveAll(n => n.FilePath == note.FilePath) == 0)
         {
-            throw NoteNotFoundException.ForId(id);
+            throw NoteNotFoundException.ForPath(note.FilePath);
         }
 
         Bump();
@@ -53,7 +54,7 @@ internal sealed class FakeNoteRepository : INoteRepository
 
     public int DeleteMany(IEnumerable<Note> notes)
     {
-        var removed = notes.Count(n => _notes.RemoveAll(x => x.Id == n.Id) > 0);
+        var removed = notes.Count(n => _notes.RemoveAll(x => x.FilePath == n.FilePath) > 0);
         if (removed > 0)
         {
             Bump();

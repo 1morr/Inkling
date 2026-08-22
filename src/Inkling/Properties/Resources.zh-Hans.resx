@@ -88,9 +88,6 @@
   <data name="CommandDone" xml:space="preserve">
     <value>完成</value>
   </data>
-  <data name="CommandGoBack" xml:space="preserve">
-    <value>返回上一步</value>
-  </data>
   <data name="CommandCapture" xml:space="preserve">
     <value>记下</value>
   </data>
@@ -167,7 +164,7 @@
     <value>有 {0} 个文件读不出来</value>
   </data>
   <data name="ListPageSkippedFilesSubtitle" xml:space="preserve">
-    <value>文件还在文件夹里 —— 可能被别的程序开着</value>
+    <value>文件还在文件夹里 —— 可能被别的程序开着,或者编码不是 UTF-8</value>
   </data>
   <data name="ToggleSourceShowRaw" xml:space="preserve">
     <value>显示原始文本</value>
@@ -204,9 +201,6 @@
   </data>
   <data name="QuickCaptureEmptyTitle" xml:space="preserve">
     <value>打字就记下</value>
-  </data>
-  <data name="QuickCaptureSectionSimilar" xml:space="preserve">
-    <value>已经记过的</value>
   </data>
   <data name="QuickCaptureItemTitle" xml:space="preserve">
     <value>记下：{0}</value>
@@ -245,18 +239,6 @@
   </data>
   <data name="DeletePageEmptyTitle" xml:space="preserve">
     <value>没有笔记可以删除</value>
-  </data>
-  <data name="DeleteSectionAction" xml:space="preserve">
-    <value>动作</value>
-  </data>
-  <data name="DeleteSectionExternal" xml:space="preserve">
-    <value>不是 Inkling 创建的</value>
-  </data>
-  <data name="DeleteSectionMine" xml:space="preserve">
-    <value>Inkling 笔记</value>
-  </data>
-  <data name="DeleteSectionAll" xml:space="preserve">
-    <value>笔记</value>
   </data>
   <data name="DeleteMoreNotes" xml:space="preserve">
     <value>还有 {0} 则没列出</value>
@@ -372,7 +354,7 @@
     <value>细节、链接、待办…</value>
   </data>
   <data name="FormCaretHint" xml:space="preserve">
-    <value>光标落在正文开头。按 Ctrl+End 跳到最后接着写。</value>
+    <value>光标落在正文开头。按 Ctrl+End 跳到最后接着写。保存之后这一页会留着,按 Esc 回上一页。</value>
   </data>
   <data name="FormSave" xml:space="preserve">
     <value>保存</value>
@@ -457,5 +439,20 @@
   </data>
   <data name="SettingPreviewDescription" xml:space="preserve">
     <value>记下之后停在笔记上,再按一次 Enter 才收起 Command Palette。</value>
+  </data>
+  <data name="CommandRetry" xml:space="preserve">
+    <value>再试一次</value>
+  </data>
+  <data name="EditKeepEditingTitle" xml:space="preserve">
+    <value>继续编辑</value>
+  </data>
+  <data name="EditKeepEditingSubtitle" xml:space="preserve">
+    <value>什么都不做,表单留在原地</value>
+  </data>
+  <data name="ListPageConflictTag" xml:space="preserve">
+    <value>冲突副本</value>
+  </data>
+  <data name="SettingsCorruptWarning" xml:space="preserve">
+    <value>设置文件不是合法的 JSON。Inkling 已经改用默认值,并把原本那份搬成「{0}」—— 按保存之前先确认下面的笔记文件夹。</value>
   </data>
 </root>

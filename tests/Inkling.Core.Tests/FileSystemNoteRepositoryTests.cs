@@ -232,7 +232,7 @@ public class FileSystemNoteRepositoryTests
         repository.Invalidate();
 
         clock.Now = Noon.AddHours(3);
-        var updated = repository.Update(original.Id, "新標題", "新內文");
+        var updated = repository.Update(original, "新標題", "新內文");
 
         Assert.Equal(original.Id, updated.Id);
         Assert.Equal(original.Created, updated.Created);
@@ -254,7 +254,7 @@ public class FileSystemNoteRepositoryTests
         using var repository = CreateRepository(temp, out _);
 
         var original = repository.Create("原標題", string.Empty);
-        var updated = repository.Update(original.Id, "完全不一樣的標題", string.Empty);
+        var updated = repository.Update(original, "完全不一樣的標題", string.Empty);
 
         Assert.Equal(original.FilePath, updated.FilePath);
         Assert.True(File.Exists(original.FilePath));
@@ -262,12 +262,17 @@ public class FileSystemNoteRepositoryTests
     }
 
     [Fact]
-    public void Update_UnknownId_Throws()
+    public void Update_MissingFile_Throws()
     {
+        // 使用者按下儲存的那一刻,檔案剛好被別的程式移走 / 別台機器先刪掉了。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
-        Assert.Throws<NoteNotFoundException>(() => repository.Update("不存在", "t", "b"));
+        var note = repository.Create("會被移走的", string.Empty);
+        File.Delete(note.FilePath);
+        repository.Invalidate();
+
+        Assert.Throws<NoteNotFoundException>(() => repository.Update(note, "t", "b"));
     }
 
     [Fact]
@@ -279,20 +284,24 @@ public class FileSystemNoteRepositoryTests
         var note = repository.Create("要刪掉的", "內文");
         var other = repository.Create("留下來的", string.Empty);
 
-        repository.Delete(note.Id);
+        repository.Delete(note);
 
         Assert.False(File.Exists(note.FilePath));
-        Assert.Null(repository.GetById(note.Id));
+        Assert.Null(repository.GetByPath(note.FilePath));
         Assert.Equal([other.Id], repository.GetAll().Select(n => n.Id));
     }
 
     [Fact]
-    public void Delete_UnknownId_Throws()
+    public void Delete_MissingFile_Throws()
     {
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
-        Assert.Throws<NoteNotFoundException>(() => repository.Delete("不存在"));
+        var note = repository.Create("會被移走的", string.Empty);
+        File.Delete(note.FilePath);
+        repository.Invalidate();
+
+        Assert.Throws<NoteNotFoundException>(() => repository.Delete(note));
     }
 
     [Fact]
@@ -306,7 +315,7 @@ public class FileSystemNoteRepositoryTests
         var note = repository.Create("要刪掉的", string.Empty);
         var before = repository.Version;
 
-        repository.Delete(note.Id);
+        repository.Delete(note);
 
         Assert.NotEqual(before, repository.Version);
     }
@@ -323,7 +332,7 @@ public class FileSystemNoteRepositoryTests
             temp.Options, new FixedTimeProvider(DateTimeOffset.UtcNow), deleter);
 
         var note = repository.Create("要刪掉的", string.Empty);
-        repository.Delete(note.Id);
+        repository.Delete(note);
 
         Assert.Equal([note.FilePath], deleter.Deleted);
 
@@ -530,7 +539,7 @@ public class FileSystemNoteRepositoryTests
         var external = Assert.Single(repository.GetAll());
         Assert.True(external.IsExternal);
 
-        repository.Update(external.Id, "改過標題", "改過內文");
+        repository.Update(external, "改過標題", "改過內文");
 
         Assert.False(Assert.Single(repository.GetAll()).IsExternal);
     }
@@ -698,7 +707,7 @@ public class FileSystemNoteRepositoryTests
         Assert.True(created > 0, "Create 沒有立刻觸發 Changed");
 
         var beforeUpdate = created;
-        repository.Update(note.Id, "新標題", string.Empty);
+        repository.Update(note, "新標題", string.Empty);
         Assert.True(created > beforeUpdate, "Update 沒有立刻觸發 Changed");
     }
 
@@ -800,7 +809,7 @@ public class FileSystemNoteRepositoryTests
         var afterCreate = repository.Version;
         Assert.NotEqual(initial, afterCreate);
 
-        repository.Update(note.Id, "新標題", string.Empty);
+        repository.Update(note, "新標題", string.Empty);
         var afterUpdate = repository.Version;
         Assert.NotEqual(afterCreate, afterUpdate);
 
@@ -942,7 +951,7 @@ public class FileSystemNoteRepositoryTests
         using var repository = CreateRepository(temp, out _);
 
         var note = repository.Create("標題", "內文");
-        repository.Update(note.Id, "新標題", "新內文");
+        repository.Update(note, "新標題", "新內文");
 
         Assert.Empty(Directory.GetFiles(temp.Path, "*.tmp"));
     }

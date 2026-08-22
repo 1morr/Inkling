@@ -67,6 +67,12 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private ListItem? _taggedItem;
 
     /// <summary>
+    /// 那一列在「已複製」蓋上去之前本來掛著的標籤(見 <see cref="BaseTags"/>)。
+    /// 收標籤時要回到這一份,不是清成空的 —— 否則複製一次就把衝突標記弄丟了。
+    /// </summary>
+    private ITag[] _taggedBase = [];
+
+    /// <summary>
     /// 空白狀態那一列。留著參照是為了依查詢就地換文案(見 UpdateEmptyContent)——
     /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
     /// 走這條一定收得到(<c>IDetails</c> 就不行,見 RefreshDetails)。
@@ -164,7 +170,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         ClearTag();
 
         _shown = [.. shown];
-        DiagnosticLog.Write($"BuildItems: query='{query}' 命中 {matches.Count} 則,列出 {shown.Count} 則");
+        DiagnosticLog.Write($"BuildItems: query='{query}' matched {matches.Count}, listed {shown.Count}");
 
         // 被截掉就明講,不要讓使用者以為筆記不見了。
         if (matches.Count > _options.MaxResults)
@@ -223,7 +229,22 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         Icon = Icons.Note,
         Details = BuildDetails(note),
         MoreCommands = BuildCommands(note),
+
+        // 同一個 id 出現在兩個檔案上 = 雲端硬碟的衝突副本(見 Note.HasDuplicateId)。
+        // 兩列的標題與內文可能一模一樣,不標的話使用者根本不會發現多了一份。
+        // 走 Tags 而不是改副標:副標是摘要,那是使用者要讀的內容;而 Tags 這條路
+        // 跨進程是通的(見 FlashTag)。
+        Tags = BaseTags(note),
     };
+
+    /// <summary>
+    /// 一列平常掛著的標籤。目前只有「衝突副本」一種。
+    ///
+    /// 抽出來是因為 <see cref="FlashTag"/> 會暫時再掛一個「已複製」上去,
+    /// 收回來的時候要回到這一份而不是空陣列 —— 否則複製一次,衝突標記就消失了。
+    /// </summary>
+    private static ITag[] BaseTags(Note note) =>
+        note.HasDuplicateId ? [new Tag(Resources.ListPageConflictTag)] : [];
 
     /// <summary>
     /// 一則筆記的 <c>Ctrl+K</c> 選單。編輯 / 複製 / 開啟那幾項跟預覽頁、記下頁共用
@@ -240,7 +261,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         _toggleSource.CreateItem(Resources.ToggleSourceSubtitle),
         // 複製完**留在清單頁**,所以不發 toast(toast 會搶焦點,主視窗一失焦就自我隱藏)。
         // 回饋改成在那一列打一個標籤,見 FlashTag。
-        NoteCommands.CopyBody(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.Id, message))),
+        NoteCommands.CopyBody(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.FilePath, message))),
         NoteCommands.OpenInEditor(note),
         NoteCommands.OpenFileLocation(note),
 
@@ -353,7 +374,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             item.Details = BuildDetails(note);
         }
 
-        DiagnosticLog.Write($"RefreshDetails: 換掉 {shown.Length} 則的 Details");
+        DiagnosticLog.Write($"RefreshDetails: replaced Details on {shown.Length} items");
     }
 
     /// <summary>
@@ -373,35 +394,45 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 計時器回呼跑在執行緒集區上,所以只碰 <see cref="_taggedItem"/> 這一個參考
     /// (用 <see cref="Interlocked"/> 換走),不去走 <see cref="_shown"/> 那個會整個被換掉的陣列。
     /// </summary>
-    private void FlashTag(string noteId, string text)
+    /// <param name="filePath">
+    /// 要掛在哪一列。**認路徑不認 id** —— 同一個 id 可能對到兩個檔案(衝突副本),
+    /// 用 id 找會把標籤掛到上面那一列去,而使用者複製的是下面那一列。
+    /// </param>
+    private void FlashTag(string filePath, string text)
     {
         ClearTag();
 
         foreach (var (note, item) in _shown)
         {
-            if (!string.Equals(note.Id, noteId, StringComparison.Ordinal))
+            if (!string.Equals(note.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            item.Tags = [new Tag(text)];
+            // 疊在那一列本來就有的標籤上面,不是換掉 —— 衝突標記得留著。
+            _taggedBase = BaseTags(note);
+            item.Tags = [.. _taggedBase, new Tag(text)];
             _taggedItem = item;
             _tagTimer.Change(TagDuration, Timeout.InfiniteTimeSpan);
 
-            DiagnosticLog.Write($"FlashTag: '{text}' 掛在 {noteId} 上");
+            DiagnosticLog.Write($"FlashTag: '{text}' attached to {note.Id}");
             return;
         }
     }
 
-    /// <summary>把標籤收掉。時間到、換一列複製、或整份清單重建時都會走到。</summary>
+    /// <summary>
+    /// 把「已複製」收掉,回到那一列平常的標籤。時間到、換一列複製、或整份清單重建時都會走到。
+    /// </summary>
     private void ClearTag()
     {
         var item = Interlocked.Exchange(ref _taggedItem, null);
 
         if (item is not null)
         {
-            item.Tags = [];
+            item.Tags = _taggedBase;
         }
+
+        _taggedBase = [];
     }
 
     private void OnRepositoryChanged(object? sender, EventArgs e)

@@ -18,7 +18,7 @@ namespace Inkling.Pages;
 internal static class NotePreviewContent
 {
     /// <summary>
-    /// 重新從 repository 取 <paramref name="noteId"/> 的最新內容,同步複製命令的文字,
+    /// 重新從 repository 取 <paramref name="filePath"/> 的最新內容,同步複製命令的文字,
     /// 回傳這一頁要顯示的內容。頁面的 <c>Title</c> 由呼叫端自己設(那是頁面屬性,收不進來)。
     /// </summary>
     /// <param name="note">
@@ -31,13 +31,14 @@ internal static class NotePreviewContent
     /// </param>
     public static IContent Reload(
         INoteRepository repository,
-        string noteId,
+        string filePath,
         ref Note note,
         CopyNoteBodyCommand copyBody,
         bool showSource)
     {
         // 重新查一次而不是直接用快照:使用者可能剛編輯完,或別台機器的改動剛同步下來。
-        note = repository.GetById(noteId) ?? note;
+        // 認路徑不認 id —— 同一個 id 可能對到兩個檔案(雲端硬碟的衝突副本),見 Note.Id。
+        note = repository.GetByPath(filePath) ?? note;
 
         copyBody.Text = note.Body;
 

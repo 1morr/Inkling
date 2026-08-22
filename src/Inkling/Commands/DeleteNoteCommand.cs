@@ -29,8 +29,8 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
     {
         try
         {
-            _repository.Delete(_note.Id);
-            DiagnosticLog.Write($"DeleteNote: 已刪除 '{_note.Title}'({_note.Id})");
+            _repository.Delete(_note);
+            DiagnosticLog.Write($"DeleteNote: deleted '{_note.Title}' ({_note.Id})");
 
             // 留在原來那一頁:刪完通常還想接著整理下一則。repository 的 Changed 會讓
             // 清單自己更新,不必離開再重進。
@@ -46,7 +46,7 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
         {
             // 檔案被別的程式鎖住、資料夾權限不對、或是別台機器已經先刪掉了 ——
             // 都不該讓擴展掛掉,但更不能假裝刪掉了。
-            DiagnosticLog.Failure($"DeleteNote 失敗:{ex}");
+            DiagnosticLog.Failure($"DeleteNote failed ({ex.GetType().Name})", ex.ToString());
 
             // 失敗路形狀的準則(跟 QuickCaptureCommand、ConfirmedDeleteAllNotesCommand 對照著看):
             // **畫面上還壓著使用者沒存下的輸入時**(存檔類),一個 toast 都不能發 ——

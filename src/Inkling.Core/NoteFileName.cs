@@ -16,6 +16,26 @@ public static class NoteFileName
     public const string Extension = ".md";
 
     /// <summary>
+    /// 沒有 front matter id 的外來檔案,身分是從路徑推導出來的,前綴是這個。
+    /// 產生的地方是 <c>FileSystemNoteRepository.DeriveId</c>,判斷的地方是
+    /// <see cref="IsDerivedId"/> —— 兩邊共用這一個常數,不要各寫各的字面值。
+    /// </summary>
+    private const string DerivedIdPrefix = "file-";
+
+    /// <summary>
+    /// 這個 id 是不是我們替「沒有 id 的外來檔案」現算的(而不是檔案裡真的有的)。
+    ///
+    /// 差別很實際:現算的 id 跟著**路徑**走,檔案改個名就變了,所以它不是身分,
+    /// 只是一個當下用得上的鍵。真的要變成一則 Inkling 筆記(第一次被編輯時)得換成
+    /// <see cref="CreateId"/> 產的那種。
+    /// </summary>
+    public static bool IsDerivedId(string? id) =>
+        id is not null && id.StartsWith(DerivedIdPrefix, StringComparison.Ordinal);
+
+    /// <summary>給沒有 id 的外來檔案用的身分前綴。</summary>
+    public static string DeriveIdFrom(string hash) => DerivedIdPrefix + hash;
+
+    /// <summary>
     /// 產生筆記身分,格式 <c>yyyyMMdd-HHmmss-xxxx</c>。
     /// 後綴是隨機的:同一秒內連續記兩則想法並非罕見,光靠時間戳會撞。
     /// </summary>
@@ -23,6 +43,53 @@ public static class NoteFileName
     {
         var suffix = Random.Shared.Next(0x10000).ToString("x4", CultureInfo.InvariantCulture);
         return $"{timestamp.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}-{suffix}";
+    }
+
+    /// <summary>
+    /// 這個 id 是不是 <see cref="CreateId"/> 產出來的形狀(<c>yyyyMMdd-HHmmss-xxxx</c>,
+    /// 後綴是小寫十六進位)。
+    ///
+    /// 用途只有一個:判斷一個檔案是不是 Inkling 建立的(<see cref="Note.IsExternal"/>)。
+    /// **只看形狀,不驗日期真偽** —— 目的是把別的工具寫的 id 擋在外面,不是驗證我們自己
+    /// 產的東西。日期部分真的不合法(<c>20241332</c>)也無所謂:那不是任何一個生態的慣例,
+    /// 而誤判的方向是「當成外來檔案」,那一邊是安全的。
+    /// </summary>
+    public static bool IsGeneratedId(string? id)
+    {
+        // 8 位日期 + '-' + 6 位時間 + '-' + 4 位十六進位。
+        const int expectedLength = 8 + 1 + 6 + 1 + 4;
+
+        if (id is null || id.Length != expectedLength || id[8] != '-' || id[15] != '-')
+        {
+            return false;
+        }
+
+        for (var i = 0; i < 8; i++)
+        {
+            if (!char.IsAsciiDigit(id[i]))
+            {
+                return false;
+            }
+        }
+
+        for (var i = 9; i < 15; i++)
+        {
+            if (!char.IsAsciiDigit(id[i]))
+            {
+                return false;
+            }
+        }
+
+        for (var i = 16; i < expectedLength; i++)
+        {
+            // ToString("x4") 產的是小寫。大寫不收 —— 那就不是我們寫的。
+            if (!char.IsAsciiDigit(id[i]) && id[i] is not (>= 'a' and <= 'f'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

@@ -110,6 +110,30 @@ public class PageCommandOrderTests
         Assert.Equal(Describe(Shortcuts.OpenExternal), Describe(external.RequestedShortcut));
     }
 
+    [Fact]
+    public void EditPage_EnterDoesNotLeaveThePage()
+    {
+        // **這一頁的 Enter 特別危險:卡片上壓著使用者還沒儲存的修改。**
+        // 焦點在單行的標題欄時按 Enter 是很自然的「送出」手勢,而這裡曾經只掛一個
+        // 「在預設編輯器開啟」—— 於是 Enter 就是它:跳去外部編輯器、面板被 Dismiss 收掉,
+        // 打過的字全部消失(實機驗過)。
+        //
+        // 釘住的是「Commands[0] 是無害的那一顆」。誰都可以在後面加東西,
+        // 但第一個位置一動,Enter 的意思就變了,而那不會有任何編譯或執行期訊號。
+        var (repository, _) = Fixture();
+        var note = repository.Add("標題", "內文");
+
+        var page = new NoteEditPage(repository, note);
+
+        Assert.Equal(Resources.EditKeepEditingTitle, TitleOf(page.Commands[0]));
+
+        // 而且它真的什麼都不做:回傳 KeepOpen,面板留著。
+        var command = Assert.IsType<CommandContextItem>(page.Commands[0]).Command;
+        var result = Assert.IsAssignableFrom<IInvokableCommand>(command).Invoke(null!);
+
+        Assert.Equal(CommandResultKind.KeepOpen, result.Kind);
+    }
+
     private static (FakeNoteRepository Repository, FakeSettings Settings) Fixture() =>
         (new FakeNoteRepository(), new FakeSettings());
 

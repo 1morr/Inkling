@@ -29,7 +29,28 @@ internal sealed partial class NoteEditPage : ContentPage
         Title = Strings.Format(Resources.EditPageTitle, note.Title);
         Name = Resources.CommandEdit;
 
+        // **Commands[0] 坐 Enter,Commands[1] 坐 Ctrl+Enter**(見 NoteCommands),
+        // 而這一頁的 Enter 特別危險:焦點在單行的標題欄時按 Enter 是很自然的「送出」手勢,
+        // 而卡片上壓著使用者還沒儲存的修改。
+        //
+        // 這裡曾經只掛一個「在預設編輯器開啟」——於是 Enter 就是它:跳去外部編輯器、
+        // 面板被 Dismiss 收掉,打過的字全部消失(實機驗過)。當時的結論寫著
+        // 「Enter 本身收不回來」,**那句話是錯的**:同一個 repo 裡 ScratchpadPage 就把無害的
+        // 「捨棄變更」放在 Commands[0]、把跳外部推到 Commands[1],NewNotePage 與
+        // InklingSettingsPage 更是根本不設 Commands。Commands[0] 一直都是可控的。
+        //
+        // 所以現在第一顆是一顆什麼都不做的「繼續編輯」:誤按 Enter 的代價變成零。
+        // 它**不能**是「儲存」—— 底部工具列走的是無參數的 ICommand.Invoke(),
+        // 拿不到使用者剛打的字(同一件事 ScratchpadPage 已經記過),放上去只會是假按鈕。
+        // 真正的儲存只有卡片裡那顆 Action.Submit 一條路。
         Commands = [
+            new CommandContextItem(KeepEditing())
+            {
+                Title = Resources.EditKeepEditingTitle,
+                Subtitle = Resources.EditKeepEditingSubtitle,
+                Icon = Icons.Edit,
+            },
+
             // 走 OpenNoteFileCommand 而不是 toolkit 的 OpenUrlCommand,三件事:
             //
             // 1. **dismiss 是必要的,不是偏好。** 這一頁跟隨手草稿一樣,畫面上有一份
@@ -49,20 +70,32 @@ internal sealed partial class NoteEditPage : ContentPage
                 Subtitle = Resources.EditOpenExternalSubtitle,
                 Icon = Icons.OpenExternal,
 
-                // 這一頁只有一個命令,所以它同時是底部工具列的主命令 —— **Enter 就是它**
-                // (那兩顆按鈕坐的是誰只看順序,見 NoteCommands)。焦點在單行的標題欄時
-                // 按 Enter 是很自然的「送出」手勢,結果卻是跳去外部編輯器並收掉面板,
-                // 卡片上未儲存的修改跟著消失(實機驗過)。Enter 本身收不回來,
-                // 至少把 Ctrl+O 補上:跨頁同一個鍵做同一件事,而且副標講明了代價。
+                // 排第二 = Ctrl+Enter,跟另外三頁的「再進一步編輯」同一個鍵位。
+                // Ctrl+O 照樣綁著:跨頁同一個鍵做同一件事。
                 RequestedShortcut = Shortcuts.OpenExternal,
             },
         ];
     }
 
+    /// <summary>
+    /// 底部工具列第一顆:什麼都不做,面板留著。
+    ///
+    /// 存在的唯一理由是把 <c>Enter</c> 從「跳去外部編輯器並收掉面板」那條路上擋開
+    /// (見建構子)。名字要讀得像「按了不會發生事」——「繼續編輯」正是使用者按下去之後
+    /// 看到的結果。
+    /// </summary>
+    private static AnonymousCommand KeepEditing() => new(() => { })
+    {
+        Name = Resources.EditKeepEditingTitle,
+        Icon = Icons.Edit,
+        Result = CommandResult.KeepOpen(),
+    };
+
     public override IContent[] GetContent()
     {
         // 每次進頁面都重新查一次,拿到的才是最新內容(可能剛從別台機器同步下來)。
-        var current = _repository.GetById(_note.Id) ?? _note;
+        // 認路徑不認 id —— 同一個 id 可能對到兩個檔案,見 Note.Id。
+        var current = _repository.GetByPath(_note.FilePath) ?? _note;
 
         return [new NoteFormContent(_repository, current, _onSaved)];
     }

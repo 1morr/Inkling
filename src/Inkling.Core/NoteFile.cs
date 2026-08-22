@@ -18,6 +18,15 @@ public sealed record ParsedNoteFile
 
     public DateTimeOffset? Updated { get; init; }
 
+    /// <summary>
+    /// <c>created:</c> 那一行的原始文字,只有在 <see cref="Created"/> 解析不出來時才有值。
+    /// 為什麼要留,見 <see cref="Note.CreatedRaw"/>。
+    /// </summary>
+    public string? CreatedRaw { get; init; }
+
+    /// <inheritdoc cref="CreatedRaw" />
+    public string? UpdatedRaw { get; init; }
+
     public IReadOnlyList<string> Tags { get; init; } = [];
 
     public IReadOnlyList<string> ExtraFrontMatter { get; init; } = [];
@@ -175,6 +184,13 @@ public static class NoteFile
         string? blockKey = null;
         var blockLines = new List<string>();
 
+        // 日期解析不出來時要原樣寫回去,而區塊純量的「原樣」是好幾行(含 `created: >` 那一行)。
+        var blockRaw = new List<string>();
+
+        // 解析不出日期的那一行原文。null = 解析成功(或這個檔案根本沒有那個欄位)。
+        string? createdRaw = null;
+        string? updatedRaw = null;
+
         foreach (var line in block)
         {
             var isContinuation = line.Length > 0
@@ -185,6 +201,7 @@ public static class NoteFile
                 if (blockKey is not null)
                 {
                     blockLines.Add(line.Trim());
+                    blockRaw.Add(line);
                     continue;
                 }
 
@@ -233,6 +250,7 @@ public static class NoteFile
             if (IsBlockScalarIndicator(value) && currentKey is "id" or "title" or "created" or "updated")
             {
                 blockKey = currentKey;
+                blockRaw.Add(line);
                 continue;
             }
 
@@ -246,9 +264,15 @@ public static class NoteFile
                     break;
                 case "created":
                     created = ParseDate(value);
+
+                    // 讀不懂就把整行原樣記下來,Serialize 會寫回同一行。這一行**不能**
+                    // 丟進 extra:那樣寫出去會變成兩個 created:,而且我們自己的 Parse
+                    // 下一輪又會把它讀成 null,每編輯一次就多一份殘骸。
+                    createdRaw = created is null ? line : null;
                     break;
                 case "updated":
                     updated = ParseDate(value);
+                    updatedRaw = updated is null ? line : null;
                     break;
                 case "tags":
                     // `tags: >` 沒有意義,但真遇到時不能把它當 inline 清單 ——
@@ -270,6 +294,8 @@ public static class NoteFile
             Title = string.IsNullOrWhiteSpace(title) ? null : title,
             Created = created,
             Updated = updated,
+            CreatedRaw = createdRaw,
+            UpdatedRaw = updatedRaw,
             Tags = tags,
             ExtraFrontMatter = extra,
             Body = body,
@@ -297,14 +323,17 @@ public static class NoteFile
                     break;
                 case "created":
                     created = ParseDate(value);
+                    createdRaw = created is null ? string.Join('\n', blockRaw) : null;
                     break;
                 case "updated":
                     updated = ParseDate(value);
+                    updatedRaw = updated is null ? string.Join('\n', blockRaw) : null;
                     break;
             }
 
             blockKey = null;
             blockLines.Clear();
+            blockRaw.Clear();
         }
     }
 
@@ -421,13 +450,38 @@ public static class NoteFile
         }
     }
 
+    /// <summary>
+    /// 只認 ISO 8601 的起手式(<c>yyyy-MM-dd</c> 開頭)。認不出來回 null,
+    /// 呼叫端會把原始那一行留下來原樣寫回(見 <see cref="ParsedNoteFile.CreatedRaw"/>)。
+    ///
+    /// <b>為什麼不直接 TryParse。</b> InvariantCulture 會把 <c>05/01/2024</c> 讀成
+    /// **5 月 1 日**,而那串字在多數非美式工具裡是 1 月 5 日 —— 讀錯沒有任何徵兆,
+    /// 而下一次在 Inkling 裡編輯就把猜錯的日期**永久**寫回檔案。與其猜,不如認不出來就
+    /// 別動它。我們自己寫出去的一律是 <see cref="DateFormat"/> 那個形狀,擋不到自己。
+    /// </summary>
     private static DateTimeOffset? ParseDate(string value)
     {
         var unquoted = Unquote(value);
-        return DateTimeOffset.TryParse(unquoted, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
-            ? parsed
-            : null;
+
+        return LooksIso8601(unquoted)
+            && DateTimeOffset.TryParse(unquoted, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+                ? parsed
+                : null;
     }
+
+    /// <summary>開頭是不是 <c>yyyy-MM-dd</c>。後面接什麼交給 TryParse 判。</summary>
+    private static bool LooksIso8601(string value) =>
+        value.Length >= 10
+        && char.IsAsciiDigit(value[0])
+        && char.IsAsciiDigit(value[1])
+        && char.IsAsciiDigit(value[2])
+        && char.IsAsciiDigit(value[3])
+        && value[4] == '-'
+        && char.IsAsciiDigit(value[5])
+        && char.IsAsciiDigit(value[6])
+        && value[7] == '-'
+        && char.IsAsciiDigit(value[8])
+        && char.IsAsciiDigit(value[9]);
 
     /// <summary>
     /// 去掉最外層的引號。
@@ -519,8 +573,12 @@ public static class NoteFile
         builder.Append(Delimiter).Append('\n');
         builder.Append("id: ").Append(Quote(note.Id)).Append('\n');
         builder.Append("title: ").Append(Quote(note.Title)).Append('\n');
-        builder.Append("created: ").Append(note.Created.ToString(DateFormat, CultureInfo.InvariantCulture)).Append('\n');
-        builder.Append("updated: ").Append(note.Updated.ToString(DateFormat, CultureInfo.InvariantCulture)).Append('\n');
+        // 讀進來時解析不出日期的話,原始那一行原封不動寫回去 —— 我們沒讀懂的東西
+        // 不該被我們的猜測取代(見 Note.CreatedRaw)。解析得出來的走固定格式。
+        builder.Append(note.CreatedRaw
+            ?? "created: " + note.Created.ToString(DateFormat, CultureInfo.InvariantCulture)).Append('\n');
+        builder.Append(note.UpdatedRaw
+            ?? "updated: " + note.Updated.ToString(DateFormat, CultureInfo.InvariantCulture)).Append('\n');
 
         // 空的 tags 不寫。這幾行是使用者在手機的 OneDrive / Google Drive App 裡
         // 打開筆記時最先看到的東西(那些 App 不渲染 Markdown,front matter 就是純文字

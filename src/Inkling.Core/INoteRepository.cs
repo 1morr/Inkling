@@ -36,21 +36,36 @@ public interface INoteRepository
     /// <summary>取得全部筆記,依最後更新時間遞減排序。</summary>
     IReadOnlyList<Note> GetAll();
 
-    Note? GetById(string id);
+    /// <summary>
+    /// 用**檔案路徑**重新取一則筆記的最新內容,找不到就回 null。
+    ///
+    /// 這是「我手上有一份快照,給我磁碟上現在的樣子」唯一的入口。
+    /// <b>刻意不是用 id 查</b> —— id 在磁碟上不保證唯一(雲端硬碟的衝突副本是整檔複製),
+    /// 用 id 查會拿到「同一個 id 的第一筆」,而那不一定是使用者選中的那一份。
+    /// 理由與踩過的坑寫在 <see cref="Note.Id"/> 上。
+    /// </summary>
+    Note? GetByPath(string filePath);
 
     /// <summary>新增一則筆記並立刻寫檔。</summary>
     Note Create(string title, string body);
 
-    /// <summary>就地更新既有筆記。id、created 與不認得的 front matter 欄位都會保留。</summary>
-    Note Update(string id, string title, string body);
+    /// <summary>
+    /// 就地更新既有筆記。id、created 與不認得的 front matter 欄位都會保留。
+    ///
+    /// 吃的是 <see cref="Note"/> 而不是 id:目標檔案由 <see cref="Note.FilePath"/> 決定
+    /// (見 <see cref="GetByPath"/>)。內容仍會重新從磁碟讀一次,所以傳一份舊快照進來也安全。
+    /// 檔案已經不在了就丟 <see cref="NoteNotFoundException"/>。
+    /// </summary>
+    Note Update(Note note, string title, string body);
 
     /// <summary>
-    /// 刪除一則筆記。找不到 id 時丟 <see cref="NoteNotFoundException"/>。
+    /// 刪除一則筆記。檔案已經不在了就丟 <see cref="NoteNotFoundException"/>。
     ///
+    /// 跟 <see cref="Update"/> 同一個理由吃 <see cref="Note"/> 而不是 id。
     /// 檔案怎麼消失的由 <see cref="IFileDeleter"/> 決定 —— 正式跑起來是送進資源回收筒,
     /// 測試裡則是直接刪掉。這一層只管快取要失效。
     /// </summary>
-    void Delete(string id);
+    void Delete(Note note);
 
     /// <summary>
     /// 刪掉指定的那些筆記,回傳實際刪掉幾則。

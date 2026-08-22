@@ -165,7 +165,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
 
         if (draft is null)
         {
-            DiagnosticLog.Write($"QuickCapturePage.BuildItems: query='{query}' 還構不成筆記");
+            DiagnosticLog.Write($"QuickCapturePage.BuildItems: query='{query}' is not a note yet");
             return [];
         }
 
@@ -192,8 +192,8 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         // 會主動導致外洩的路徑,而內文正是使用者剛打完、最私密的那一段字。
         // 標題與搜尋字串照樣記(少了它們就對不上是哪一則),範本那邊因此附了去識別化的提醒。
         DiagnosticLog.Write(
-            $"QuickCapturePage.BuildItems: 標題='{draft.Title}' 內文 {draft.Body.Length} 字,"
-                + $"相似 {items.Count - beforeSimilar} 則");
+            $"QuickCapturePage.BuildItems: title='{draft.Title}' body {draft.Body.Length} chars, "
+                + $"{items.Count - beforeSimilar} similar");
 
         return [.. items];
     }
@@ -220,16 +220,43 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private ListItem CreateCaptureItem(QuickCaptureDraft draft, bool preview, string subtitle, IconInfo icon)
     {
         ICommand command = preview
-            ? new CapturedNotePage(_repository, draft, _sourceMode)
-            : new QuickCaptureCommand(_repository) { Draft = draft };
+            ? new CapturedNotePage(_repository, draft, _sourceMode, ClearQuery)
+            : new QuickCaptureCommand(_repository) { Draft = draft, OnCaptured = ClearQuery };
 
         return new ListItem(command)
         {
             Title = Strings.Format(Resources.QuickCaptureItemTitle, draft.Title),
             Subtitle = subtitle,
             Icon = icon,
-            Section = Resources.CommandCapture,
         };
+    }
+
+    /// <summary>
+    /// 存檔成功之後把搜尋框清掉。
+    ///
+    /// **這一頁是 <c>ProviderState</c> 持有的長壽實例**,而 CmdPal 不會因為使用者離開再回來
+    /// 就重設它的搜尋框。所以「記下 → 完成(面板關掉)」之後,下一次用**非 alias 的路徑**
+    /// 回到這一頁(例如清單頁搜一個搜不到的字,再對「找不到符合的筆記」那一列按 Enter),
+    /// 搜尋框裡還是上一次那句話 —— 第一列就是「記下:<上一句>」而且是選中的,
+    /// 反射性地按一次 Enter 就多存一則一模一樣的筆記。實機重現過。
+    ///
+    /// 平常看不到是因為 alias 觸發時 CmdPal 會送 <c>ClearSearchMessage</c>
+    /// (見 CLAUDE.md 硬規則 3),<c>Esc</c> 退出頁面也會清掉 —— 只有「被完成關掉面板」
+    /// 這條路會把字留下來,而那正是最常走的路。
+    ///
+    /// <c>_query</c> 也要跟著清:那是我們自己的鏡像,CmdPal 不會為了這個賦值回頭叫
+    /// <c>UpdateSearchText</c>。
+    /// </summary>
+    private void ClearQuery()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _query = string.Empty;
+        SearchText = string.Empty;
+        RaiseItemsChanged();
     }
 
     /// <summary>
@@ -287,7 +314,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         }
         catch (Exception ex)
         {
-            DiagnosticLog.Write($"TryGetClipboardText 失敗:{ex.Message}");
+            DiagnosticLog.Write($"TryGetClipboardText failed: {ex.Message}");
             return null;
         }
     }
@@ -297,7 +324,6 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         Title = note.Title,
         Subtitle = note.Summary,
         Icon = Icons.Note,
-        Section = Resources.QuickCaptureSectionSimilar,
     };
 
     private void OnRepositoryChanged(object? sender, EventArgs e)
@@ -318,7 +344,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         _emptyContent.Subtitle = HintFor(separator);
 
         RaiseItemsChanged();
-        DiagnosticLog.Write($"QuickCapturePage.OnCaptureSeparatorChanged: 分隔符='{separator}'");
+        DiagnosticLog.Write($"QuickCapturePage.OnCaptureSeparatorChanged: separator='{separator}'");
     }
 
     /// <summary>
@@ -329,7 +355,7 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     {
         RaiseItemsChanged();
         DiagnosticLog.Write(
-            $"QuickCapturePage.OnCapturePreviewChanged: 記下後預覽={_previewStore.ShowCapturePreview}");
+            $"QuickCapturePage.OnCapturePreviewChanged: preview={_previewStore.ShowCapturePreview}");
     }
 
     public void Dispose()
