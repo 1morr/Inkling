@@ -409,6 +409,86 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|type:ab
 驗法是**把快速記下頁開著**,另外改設定,再回到那個還開著的頁面看 placeholder 換了沒 ——
 中間**不要 Reload**。腳本開一次 `show` 留著,改設定用另一個 PowerShell,然後再 `tree`。
 
+## 2026-08-23 全量驗證踩到的(每一條都是實測)
+
+### 序列開頭要送**六個** `esc`,不是兩三個
+
+可靠的開頭是這一串,後面接 `tree:3` 確認 placeholder 是主搜尋框那一句再往下打:
+
+```
+show|wait:600|esc|wait:700|esc|wait:700|esc|wait:700|esc|wait:700|esc|wait:700|esc|wait:700|show|wait:1500
+```
+
+理由:編輯表單 → 清單頁 → 主頁最多要退三層,再加一次把面板關掉。少送的話
+`show` 會**回到上一頁**,於是 `type:# ` 或 `type:! ` 被當成文字打進那一頁的搜尋框 ——
+實測因此存出過標題叫「! 選單測試二」的筆記,而序列本身不會報錯。
+
+**而且上面〈怎麼用〉那條「面板被焦點轉移隱藏時 `show` 開回主頁」實測不成立。**
+用 `SetForegroundWindow(GetShellWindow())` 搶走焦點讓面板隱藏之後,`show` 仍然回到
+上一頁,連搜尋框裡的字都還在。別依賴那條,依賴上面那串 `esc`。
+
+### ⚠ 自動化會改到**使用者的** CmdPal 設定
+
+序列尾端那個沒驗過焦點的 `key:Enter`,在主頁上會落在「釘選至首頁」上。
+實測誤把 `Inkling.NewNote` 與 `Inkling.QuickCapturePage` 釘進了首頁(寫進 CmdPal 的
+`settings.json`,不是我們的)。兩條規矩:
+
+- **序列裡不要放沒驗過焦點的 `key:Enter`。** 要按就先 `tree` 確認 `[FOCUS]` 落在哪。
+- **收尾除了還原 Inkling 自己的 `settings.json`,也要檢查 CmdPal 的
+  `PinnedCommands` 與 `Aliases`。**
+
+取消釘選的路徑:選中那一列 → `Ctrl+K` → 往下四格是「從首頁取消釘選」→ Enter。
+
+### 頂層那五列的順序會浮動,用**副標**定位
+
+CmdPal 依使用頻率重排,所以「打 `Inkling` 之後按 N 次 `Down`」不可靠。
+**CmdPal 會搜尋副標**,而副標是唯一的,拿它當定位手把:
+
+| 要選哪一列 | 打什麼 |
+|---|---|
+| `Inkling`(清單頁,設定掛在它的 `Ctrl+Enter` 上) | `瀏覽與搜尋筆記` |
+| `Inkling：快速記下` | `打字直接存成筆記` |
+| `Inkling：新增筆記` | `開表單寫比較長的內容` |
+| `Inkling：隨手草稿` | `打開就接著上次寫` |
+| `Inkling：刪除筆記` | `挑幾則刪掉` |
+
+### `tree` 讀不到的三種東西,一律改用 `shot`
+
+- **`CheckBox` 的勾選狀態**。樹裡只有 `CheckBox: ''`,勾沒勾看不出來
+  (順帶一提它的 `Name` 還常常抓到隔壁元素的字,例如 `CheckBox: '瀏覽…'` ——
+  那是 Adaptive Cards 渲染器沒設 automation name,見 `docs/known-issues.md` 末尾)。
+- **InfoBar 與 InfoBadge**。`tree:12` 也讀不到,截圖才看得見。
+- **確認框以外的彈出層**已經在上面講過。
+
+### 一次性訊息的**取樣時機**
+
+三種訊息都是幾秒就收掉,等太久會誤判成「沒有訊息」。實測到的窗口:
+
+| 訊息 | 怎麼抓 | 實測 |
+|---|---|---|
+| `CommandResult.ShowToast`(快速記下存檔成功) | `key:Enter\|wait:500\|toast` | `wait:2200` 已經抓不到 |
+| toast(刪除失敗) | `key:Enter\|wait:1000\|toast` | `wait:300` **還沒出現**,要等確認框收掉 |
+| InfoBar / InfoBadge | `key:Ctrl+O\|wait:800\|shot:…` | `wait:1800` 抓不到 |
+
+### 驗外部程式之前先把殘留視窗**殺乾淨**
+
+`CloseMainWindow()` 是非同步的,VS Code 關到一半時再開同一個檔案,
+`MainWindowTitle` 抓不到 —— 看起來就像「`Ctrl+O` 沒作用」。
+**差點因此誤報一個缺陷。** 正確做法是 `Kill()` 之後 `Start-Sleep -Seconds 2` 再驗。
+
+### `orca computer list-windows --app explorer` 列不到資料夾視窗
+
+上面〈面板以外〉那段說「先 `list-windows` 拿 pid」,但 `--app explorer` 只回桌面殼
+那個 1×1 的進程。`Ctrl+L` 開出來的資料夾視窗是**另一個** `explorer.exe`,
+不在那份清單裡。可靠做法:
+
+```powershell
+$pid = (Get-Process explorer | Where-Object { $_.MainWindowTitle -ne '' }).Id
+orca computer list-windows --app pid:$pid --json
+```
+
+選取狀態一樣看狀態列那一行(`已選取 1 個項目 280 個位元組`),再拿位元組數跟檔案大小對。
+
 ## 驗不到的東西
 
 別在這些上面浪費時間,它們只能靠眼睛看 `shot` 出來的圖,或者根本驗不到:
