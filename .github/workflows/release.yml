@@ -64,12 +64,17 @@ jobs:
           } else {
             $env:REF_NAME -replace '^v', ''
           }
-          if ($tag -notmatch '^\d+\.\d+\.\d+$') {
-            throw "版本必須是 <major>.<minor>.<patch>,實際是 '$tag'"
+          # **第一段不能是 0。** Microsoft Learn〈App package requirements for MSIX app〉
+          # 寫明版本各段是 0..65535,而第一段例外:it cannot be 0。舊的 regex 放行 0.2.0,
+          # makeappx 也照打 —— 失敗會發生在最貴的時機:CI 全綠、資產都在、上傳
+          # Partner Center 才被退,而 tag 已經推上去、那個版本號在 Store 端也被佔掉了。
+          # 第一個公開版本從 v1.0.0 起。
+          if ($tag -notmatch '^[1-9]\d*\.\d+\.\d+$') {
+            throw "版本必須是 <major>.<minor>.<patch>,而且 major 不能是 0(Store 的規定)。實際是 '$tag'"
           }
           # MSIX 版本是四段,而且第四段必須是 0(Store 的規定)。
           "appx_version=$tag.0" >> $env:GITHUB_OUTPUT
-          # 資產檔名用得到:tag 那條路是 v0.2.0,dispatch 那條路是 v0.0.0。
+          # 資產檔名用得到:tag 那條路是 v1.0.0,dispatch 那條路是輸入的版本。
           "tag_name=v$tag" >> $env:GITHUB_OUTPUT
 
       - name: Inject version into Package.appxmanifest
@@ -240,12 +245,35 @@ jobs:
           # 重跑還得先把 tag 刪掉。
           GH_REPO: ${{ github.repository }}
         run: |
-          # 未簽章的 bundle 在這裡只是「Store 送審用 / 待簽章」的資產;
-          # 要給使用者側載,必須先完成簽章(見 build job 的 Sign 步驟註解)。
           # PowerShell 不會對原生指令展開萬用字元,資產路徑要自己展開再傳。
           $assets = Get-ChildItem artifacts/msix/*.msix | ForEach-Object FullName
           $bundle = (Resolve-Path "artifacts/Inkling_${{ steps.ver.outputs.tag_name }}.msixbundle").Path
+
+          $extra = @()
+          if ($env:HAS_SIGNING_CERT -ne 'true') {
+            # **未簽章的資產不能長得像「下載下來就能裝」。**
+            # 使用者雙擊會拿到 0x800B0109,而 --generate-notes 的正文是從 commit message
+            # 產的,不會提這件事 —— 唯一寫著這件事的地方是 README 的安裝章節與一行 YAML
+            # 註解,沒有人會看到。對一個首次公開發佈,那是最差的第一印象。
+            #
+            # 所以改成 prerelease,而且用顯式的 --notes 講清楚這些資產是什麼。
+            # 有憑證時走原本那條:正式 release + --generate-notes。
+            $notes = @(
+              '> [!WARNING]'
+              '> The packages attached to this release are **not code-signed**.'
+              '> Double-clicking them will fail with `0x800B0109` (untrusted certificate).'
+              '> They exist for Microsoft Store submission, which re-signs the package.'
+              ''
+              'Install Inkling from the Microsoft Store or the Command Palette extension'
+              'gallery instead. See the README for details.'
+            ) -join "`n"
+            $extra = @('--prerelease', '--notes', $notes)
+          }
+          else {
+            $extra = @('--generate-notes')
+          }
+
           gh release create '${{ steps.ver.outputs.tag_name }}' `
             --title '${{ steps.ver.outputs.tag_name }}' `
-            --generate-notes `
+            @extra `
             @assets $bundle
