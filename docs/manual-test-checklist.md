@@ -1,7 +1,9 @@
 # 手動驗證清單
 
 > **預期結果對照:CmdPal 0.11.11762.0 + Inkling 目前的 `master`。
-> 最後全量驗證:尚未 —— 這份清單從來沒有被完整跑過一遍。**
+> 最後驗證:2026-08-23,`abdcb43`(Release 部署 + Reload,進程時間對過)——
+> §1 到 §10 的 🤖 項幾乎全數跑過,**§11 換語言沒跑**,👀 項只抽驗了一部分。
+> 所以這仍然不算「完整跑過一遍」,但已經是覆蓋最廣的一次。**
 >
 > 對照基準以前寫的是某一個 commit,而那個號碼落後 HEAD 三十幾個 commit
 > (中間有隨手草稿、`Ctrl+N`、`Ctrl+U` 上預覽頁、`Enter` 語意改動)——
@@ -129,10 +131,16 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
 
 先設好入口:設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 填 `!`。
 
+⚠ **本節假設「記下後先看一眼」是關的,而它預設是開的**(`SettingsManager` 裡
+`_capturePreview` 的建構參數就是 `true`)。不先關掉的話 Enter 走的是 2c 那條預覽路,
+下面「Enter → toast → 面板收起來」整組都對不上。**驗完記得勾回來。**
+
 - [ ] 🤖 主搜尋框打 `!` 空白 —— 搜尋框被清空,**直接進到快速記下頁**
       (indirect alias 存的鍵是「alias + 空白」,所以是打完空白那一刻觸發)
-- [ ] 👀 快速記下頁的圖示是**燈泡**,跟頂層「快速記下」那一列同一個 ——
-      **不是**「新增筆記」的加號(兩者刻意分開,見 `Icons.cs`)。
+- [ ] 👀 快速記下頁的圖示是**燈泡**,**跟頂層「快速記下」那一列刻意不一樣** ——
+      頂層那五列走自訂 PNG(`Icons.TopLevelCapture`,墨滴字標家族),頁面裡才是燈泡
+      (`Icons.Capture` = `Glyph(0xEA80)`)。燈泡也**不是**「新增筆記」的加號
+      (兩者刻意分開,見 `Icons.cs` 上 `Capture` 的註解)。
       樹裡只有 `Image: ''`,一定要開 `shot` 用眼睛看
 - [ ] 🤖 頁面剛進去、還沒打字時,顯示的是「打字就記下」的提示,**沒有**「記下：」那一列
 - [ ] 🤖 打 `測試想法一`,第一列出現 **記下：測試想法一**,副標是「存成新筆記」
@@ -141,7 +149,9 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
       [設計考證〈分節標頭:`Section` 不是分組鍵〉](design-notes.md#section-not-grouping))
 - [ ] 🤖 按 Enter,跳出「已記下：測試想法一」的 toast,**而且不會留在快速記下頁**
       (toast 視窗會搶焦點,CmdPal 主視窗一失焦就把自己藏起來,所以看起來是整個收掉。
-      要改成「存完停在筆記上」見 2c)
+      要改成「存完停在筆記上」見 2c)。
+      ⚠ **取樣時機有講究**:toast 大約 2.5 秒就收掉,腳本要寫成
+      `key:Enter|wait:500|toast`。實測 `wait:2200` 已經抓不到,會誤判成「沒有 toast」
 - [ ] 🤖 `%OneDrive%\Inkling` 底下出現 `<日期>-<時間>-測試想法一.md`
 - [ ] 🤖 打開該檔案,front matter 的 `id` / `title` / `created` / `updated` 都在,內文是空的
       (Core 測試已涵蓋 —— `NoteFileTests.RoundTrip_PreservesAllKnownFields`;
@@ -262,8 +272,9 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
       ⚠ 先用 `Get-PSDrive -PSProvider FileSystem` 確認那個代號真的空著 —— 挑到有對應的
       網路磁碟的話,Inkling 會正確地把資料夾建出來,這一條就驗不到):
       Enter 之後那一頁的標題是 **存檔失敗**、下面接原因(英文例外訊息,預期的),
-      `---` 之後還留著剛打的標題與內文;按 Enter 是**回上一步**
-      (回快速記下頁,搜尋框裡的字還在),不是收起 Command Palette
+      `---` 之後還留著剛打的標題與內文;底部工具列的主命令是 **再試一次**(就地重試),
+      **不是**「回上一步」—— `CommandResult.GoBack()` 在 0.11.11762.0 上不動,那顆已經換掉了
+      (硬規則 8)
 
 設定**關閉**之後(從 CmdPal 設定 → Extensions → Inkling 取消勾選存檔):
 
@@ -503,8 +514,12 @@ var x = 1;
 - [ ] 🤖 檔案內容確實更新,`updated` 時間戳有變,`id` 與 `created` **沒有**變
       (Core 測試已涵蓋 —— `NoteFileTests.RoundTrip_PreservesAllKnownFields`;端到端確認)
 - [ ] 🤖 **檔名沒有跟著標題改變**
-- [ ] 🤖 把標題清空後儲存 → 底部出現 InfoBadge **「標題不能空白」**,
-      **表單留在原地、打過的內文還在**,什麼都沒存
+- [ ] 🤖 把標題清空後儲存 → **標題欄變成紅框、欄位底下出現紅字「標題不能空白」**,
+      **表單留在原地、打過的內文還在**,什麼都沒存。
+      那是 Adaptive Cards 的**行內驗證**(`NoteFormContent.cs` 把它設成 input 的
+      `errorMessage`),**不是底部的 InfoBadge** —— 卡片端就把送出擋下來了,
+      所以程式碼裡那個 `ToastStatusMessage(FormTitleRequired)` 實務上走不到,
+      它是第二道保險
 - [ ] 🤖 編輯表單上按 `Ctrl+K` → 選單裡**只有「繼續編輯」與「改用預設編輯器開啟」
       (`Ctrl+O`)兩項**。多出「刪除」之類的列就是回歸 —— 在表單上刪掉正在編的東西沒有道理
 - [ ] 🤖 **`Enter` 不會離開這一頁。** Tab 一次到單行的標題欄,按 `Enter` ——
@@ -540,8 +555,10 @@ var x = 1;
 - [ ] 👀 **內文框一看就是五行高**,不是一行(這是預填空行撐出來的 —— 卡片沒有「幾行高」
       這種屬性)
 - [ ] 👀 按 Tab 進到內文框時整段預填內容被全選,打第一個字就直接覆蓋掉
-- [ ] 🤖 填標題與多行內文並儲存 → 底部出現 **「已新增：<標題>」的 InfoBadge**
-      (不是 toast,面板不消失),回到首頁
+- [ ] 🤖 填標題與多行內文並儲存 → **回到首頁**,檔案建立成功。
+      ⚠ **那個「已新增：<標題>」的 InfoBadge 目前看不到** —— `GoHome()` 會把它一起拆掉,
+      見 [`known-issues.md` K-18](known-issues.md)。修好之前這一條只驗「回到首頁 + 檔案建立」;
+      修好之後把徽章那半條加回來
 - [ ] 🤖 檔案內容正確,內文的換行有保留
 - [ ] 🤖 **預填的空行沒有被存進檔案**:用滑鼠點進內文框中間(不要 Tab)、在第三行打幾個字
       再儲存,打開檔案應該只有那幾個字,前後不帶空行
@@ -750,7 +767,7 @@ $dir = "$env:TEMP\inkling-verify"   # 換成目前設定指向的測試資料夾
 - [ ] 🤖 連存五次(每次重新打開 → `Tab`→`Enter`,中間不打字)→ 檔案內容不變,
       **不會愈長愈多空行**
 - [ ] 🤖 存檔失敗時(把 `scratchpad.md` 設成唯讀再存)**面板留在原地**,底部出現
-      「儲存失敗:…」的 InfoBadge —— 這條路不能跟著成功那條一起 Dismiss
+      「存檔失敗:… —— 請到設定檢查筆記資料夾」的 InfoBar + InfoBadge(文案是「**存檔**失敗」) —— 這條路不能跟著成功那條一起 Dismiss
 
 跳到外部編輯器:
 
@@ -1044,10 +1061,12 @@ Get-Content "$ls\diagnostic.log" -Encoding utf8 |
 
 | 日期 | 組態 | 範圍 | 結果 |
 |---|---|---|---|
-| 2026-08-22 | Release(`deploy.ps1 -Configuration Release -Reload`),CmdPal 0.11.11762.0,Windows 顯示語言 zh-TW,`49919ae` 起、`90bbeb1` 之後的修正輪 | 🤖 項為主,涵蓋 §1–§10;**§11 換語言沒跑**,👀 項只抽驗四項(頂層圖示、預覽頁渲染、`Ctrl+K` 的紅色刪除列、設定卡片版面) | 3 項失敗 + 4 條清單本身寫錯,**同一天全部修掉並在真機上複驗**。因為不是全量,文件頭「最後全量驗證:尚未」維持不動 |
+| 2026-08-23 | Release(`deploy.ps1 -Configuration Release -Reload`),CmdPal 0.11.11762.0,Windows 顯示語言 zh-TW,`abdcb43`(程式碼與 `d4cfa58` 相同,之後只有文檔改動) | §1–§10 的 🤖 項幾乎全跑,含刪除與資料完整性那幾節;**§11 換語言沒跑**,👀 項抽驗 | **1 個真缺陷**(K-18)、**5 條清單本身寫錯**(已修)、**7 條驗證方法要補**(已寫回 skill)。其餘全部通過 |
 
 那一輪最有價值的產出不是通過與否,是**推翻了一條已經寫進文檔的結論**:
 `IsPrimaryCommandCritical` 在 0.11.11762.0 上**是有作用的**(帶那個旗標的確認框,
 焦點落在「取消」)。誤判來自 byte-scan —— `Microsoft.CmdPal.UI.exe` 是 NativeAOT 影像、
 metadata 被裁過,所以**命中是證據,沒命中不是**。三種確認框的實測對照表與這條方法論陷阱
 留在 `CLAUDE.md`〈查證 CmdPal 的行為〉的〈已知落差〉裡,那裡才是它該待的地方。
+2026-08-23 那一輪在真機上**再次證實**了它:清單頁 `Ctrl+D`(旗標 false)焦點在「刪除」,
+刪除頁的「刪除全部」與「只刪 Inkling 建立的」(旗標 true)焦點都在「取消」。
