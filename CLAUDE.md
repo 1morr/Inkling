@@ -494,7 +494,9 @@ byte-scan 不是只拿來否定,拿來確認一樣有用。
 `Microsoft.CmdPal.UI.exe`,`CriticalContextMenuViewModelTemplate` /
 `ContextItemTitleTextBlockCriticalStyle` 在 `resources.pri`(UTF-16)。
 **這是擴展碰得到的唯一一處紅色** —— 底部工具列的按鈕寫死 `SubtleButtonStyle`,
-確認框的按鈕連屬性都沒有(那個 `IsPrimaryCommandCritical` 是另一回事,而且沒作用),
+確認框的按鈕也沒有顏色的開口:`IsPrimaryCommandCritical` 管的是**預設按鈕落在哪**
+(有作用,見上面〈已知落差〉那條被推翻的記錄),把主要按鈕標紅的樣式在上游是
+註解掉的 TODO,
 見 [設計考證〈刪除的紅色只有一個地方碰得到〉](docs/design-notes.md#critical-red)。
 
 兩份設定檔:
