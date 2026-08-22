@@ -1,7 +1,7 @@
 {
   "$schema": "../../../.github/schemas/extension.schema.json",
   "id": "1morr.inkling",
-  "title": "Inkling",
+  "title": "Inkling Notes",
   "shortDescription": "Capture thoughts as Markdown notes without leaving Command Palette. Type, press Enter, and the idea is already on disk.",
   "description": "Inkling turns Command Palette into the fastest note-taking surface on Windows. Assign an alias, summon the palette, type the alias to jump straight into the capture page, type your thought, press Enter — the idea is saved as a plain Markdown file before the window even closes.\n\nEverything lives in a folder you choose, as ordinary .md files with stable IDs in their front matter. Change a note's title and the file keeps its identity; bring your own existing Markdown files and they simply show up in the list. There is no database, no lock-in, and nothing between your notes and your favorite editor, sync tool, or backup.\n\n- Quick capture: your alias opens a dedicated page, and everything you type there becomes the note — title and body split on a separator you choose, previewed live before you commit.\n- Notes list: search, preview, edit, copy the body, open in your editor, reveal the file, or delete (straight to the Recycle Bin, not the void).\n- Plain Markdown: unknown front matter fields are preserved untouched, so Inkling plays well with Obsidian, VS Code, or anything else that reads .md.\n- Fully keyboard-driven: every action has a shortcut, designed around the palette's always-focused search box.",
   "author": {
@@ -14,8 +14,8 @@
   "categories": ["productivity"],
   "installSources": [
     {
-      "type": "winget",
-      "id": "REPLACE-WITH-WINGET-PACKAGE-ID"
+      "type": "msstore",
+      "id": "9NDGWN4JTXHH"
     }
   ]
 }

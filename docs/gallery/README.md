@@ -1,9 +1,16 @@
 # Gallery 投稿素材(草稿)
 
 這個資料夾是投稿 [microsoft/CmdPal-Extensions](https://github.com/microsoft/CmdPal-Extensions)
-gallery 的準備材料。**現在還不能送** —— `installSources` 需要一個真實的安裝來源
-(Microsoft Store 的 product ID,或 WinGet 的 package identifier),兩者都還不存在,
-目前放的是明顯的佔位值 `REPLACE-WITH-WINGET-PACKAGE-ID`。
+gallery 的準備材料。**要等 Store 上架之後才能送。**
+
+`installSources` 已經填上真的 Store product ID(`9NDGWN4JTXHH`,2026-08-23 在 Partner Center
+保留名稱時拿到的),但**那個 listing 要通過認證才會活** ——
+<https://apps.microsoft.com/detail/9NDGWN4JTXHH> 在那之前是 404,而 gallery 的 CI 與人工審核
+都會去點它。順序是:Store 送審 → 通過並上架 → 才開這個 PR。
+
+⚠ **`title` 是 `Inkling Notes`,跟 Store 上的名字一致** —— `Inkling` 被商標擋下了
+(見 [`release-checklist.md` §1](../release-checklist.md))。CmdPal 面板裡的命令標題仍然是
+「Inkling」,那是 `.resx`,跟這裡無關。
 
 ## 檔案
 
@@ -32,8 +39,9 @@ gallery 的準備材料。**現在還不能送** —— `installSources` 需要�
 ## 投稿流程
 
 1. **先把擴展上架**:Store 或 WinGet 至少要有一個 —— gallery 的 `installSources`
-   只接受這兩種。走 Store 的話套件身分(Publisher)要換成開發者帳號核發的,
-   見 release checklist(套件身分是承諾,換了會清掉使用者的本機設定與 alias)。
+   只接受這兩種。**套件身分已經換成 Partner Center 指派的了**(2026-08-23,見
+   [`release-checklist.md` §1](../release-checklist.md));剩下的是把 msixbundle 送審、
+   等它通過。**通過之前不要開 PR** —— listing 還是 404。
 2. Fork `microsoft/CmdPal-Extensions`。
 3. 建 `extensions/1morr/inkling/`,放入 `extension.json` 與 `icon.png`(可加 `screenshots/`)。
 4. 開 PR。第一次送 microsoft 的 repo 要簽 **Microsoft CLA**(CLA bot 會在 PR 裡提示,

@@ -27,8 +27,9 @@ alias、全域快速鍵、釘選當場失效。
 這個 diff 是唯一的閘門,不要跳過。
 
 > **一次性的例外,已經用掉了。** 2026-08-22(第一個公開版本之前)那七個字串的前綴從
-> `Notelet.` 換成了 `Inkling.`,`Identity/@Publisher` 也一併換掉 —— 也就是說**第一個
-> tag 之前的那一次刻意違反了這條閘門與下面第 2 步**。從 `v1.0.0` 起兩條都無條件成立,
+> `Notelet.` 換成了 `Inkling.`,而 `Identity` 的身分欄位在 08-22 與 08-23 各動一次
+> (後者換成 Partner Center 指派的那一組,身分就此定案)—— 也就是說**第一個
+> tag 之前刻意違反過這條閘門與下面第 2 步**。從 `v1.0.0` 起兩條都無條件成立,
 > 這一段留著只是為了讓「為什麼歷史上有一次違反」有答案,**不是可以再用一次的先例**。
 > 理由見 [設計考證〈前綴換過一次,而且只有那一次〉](design-notes.md#command-ids)。
 
@@ -46,13 +47,13 @@ git diff <上一個 tag>..HEAD -- src/Inkling/Package.appxmanifest
 
 | 字串 | 位置 | 動了會怎樣 |
 |---|---|---|
-| `Identity/@Name`(目前是 `Inkling`) | `Package.appxmanifest` 的 `<Identity>` | PFN 變 → `LocalState` 換位置 → Inkling 自己的設定全部孤兒化 |
-| `Identity/@Publisher`(目前是 `CN=Inkling Development`) | 同一個元素 | 同上(PFN 由 Publisher 的雜湊決定) |
+| `Identity/@Name`(目前是 `CPPt.InklingNotes`) | `Package.appxmanifest` 的 `<Identity>` | PFN 變 → `LocalState` 換位置 → Inkling 自己的設定全部孤兒化 |
+| `Identity/@Publisher`(目前是 Partner Center 指派的 `CN=<GUID>`) | 同一個元素 | 同上(PFN 由 Publisher 的雜湊決定) |
 | `Application/@Id`(目前是 `App`) | `<Applications>` 底下的 `<Application>` | CmdPal 端 `ProviderSettings` / `PinnedCommands` 的鍵變 → 啟用狀態、釘選、fallback 設定全部孤兒化 |
 | `uap3:AppExtension/@Id`(目前是 `Inkling`) | `<uap3:Extension Category="windows.appExtension">` 底下 | 同上 |
 
 後兩個容易被忽略:CmdPal 用的鍵是 `<PFN>!<Application Id>!<AppExtension Id>`,實測是
-`Inkling_b83qevkfx7m2r!App!Inkling`。注意**第三段不是 `CommandIds.Provider`,
+`CPPt.InklingNotes_fsn608qftpbpp!App!Inkling`。注意**第三段不是 `CommandIds.Provider`,
 即使兩個現在都是 `Inkling`** —— 那是巧合,第三段來自 manifest,改哪一邊都不會動到另一邊
 (同一段警告在 [`release-checklist.md`](release-checklist.md) §1 也有一份,兩邊要一致)。
 

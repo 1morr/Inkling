@@ -53,9 +53,12 @@ the screenshots here were taken on an English system.
 
 ## Install
 
-**Not published yet.** There is no GitHub Release, no WinGet package, and no Microsoft Store
-listing so far — the package identity and code signing are still being settled
-(see [docs/release-checklist.md](docs/release-checklist.md), Traditional Chinese).
+**Not published yet.** There is no GitHub Release, no WinGet package, and no live Microsoft
+Store listing so far. The package identity is settled and the Store submission is the next
+step (see [docs/release-checklist.md](docs/release-checklist.md), Traditional Chinese).
+
+On the Store the app is called **Inkling Notes** — plain "Inkling" is someone else's
+trademark. Inside Command Palette the commands are still just `Inkling`.
 
 **Signing decides the order**, because Windows will not sideload an unsigned MSIX. The plan
 is Store first: it signs the package for you, which is what makes the other channels possible.

@@ -6,14 +6,19 @@
 
 首次公開發佈前的修正輪(內部審查,尚未發版)。
 
-### 破壞性變更:改名前的 `Notelet` 全部清掉
+### 破壞性變更:身分定案,改名前的 `Notelet` 全部清掉
 
-改名(2026-08-20)時刻意留下的兩處舊名字,趁**還沒有任何公開安裝**一次清乾淨。
-這是最後一個能反悔的時刻 —— 第一個公開版本之後再動就是洗掉別人的設定。
+趁**還沒有任何公開安裝**把身分一次定死。這是最後一個能反悔的時刻 ——
+第一個公開版本之後再動就是洗掉別人的設定。
 
 - **命令 Id 的前綴從 `Notelet.` 換成 `Inkling.`**(七個字串全部)。
-- **`Identity/@Publisher` 從 `CN=Notelet Development` 換成 `CN=Inkling Development`**,
-  PFN 因此從 `Inkling_bf0n0751x5hse` 變成 `Inkling_b83qevkfx7m2r`。
+- **套件身分換成 Microsoft Store 指派的那一組**:`Identity/@Name` = `CPPt.InklingNotes`、
+  `@Publisher` = `CN=<GUID>`、`PublisherDisplayName` = `CPPt`。PFN 因此從
+  `Inkling_bf0n0751x5hse` 變成 `CPPt.InklingNotes_fsn608qftpbpp`。
+- **Store 上的名字是「Inkling Notes」** —— `Inkling` 撞到 Inkling Systems(inkling.com)
+  的商標,Partner Center 不給保留。**Command Palette 裡的命令標題沒有跟著改**,
+  仍然是「Inkling」「Inkling：快速記下」…… 那些字走 `.resx`,跟上架名無關。
+- `Application/@Id`(`App`)與 `uap3:AppExtension/@Id`(`Inkling`)**一個字都沒動**。
 
 **升級後會回到預設值的東西**(這一輪唯一會讓人「咦」的地方):
 

@@ -1518,7 +1518,9 @@ settings.json 裡曾經留下兩個 Inkling fallback 條目,把其中一個的�
 #### 然後在發版前把它推翻了(2026-08-22)
 
 **上面那個決定只撐到第一個公開版本之前。** 前綴換成 `Inkling.`,`Publisher` 也從
-`CN=Notelet Development` 換成 `CN=Inkling Development`,舊名字整個從 repo 消失。
+`CN=Notelet Development` 換掉,舊名字整個從 repo 消失。(隔天上架時 `Publisher` 又換成
+Partner Center 指派的 `CN=<GUID>` —— 中間那個值沒發出去過,見
+[`release-checklist.md` §1](release-checklist.md)。)
 
 翻案的理由不是「看起來一致」,是**那個保證保的東西當時等於零**:安裝基數是作者一台機器,
 一版都還沒發出去。實際盤點過 CmdPal 的 settings.json,會被清掉的只有三個 alias
