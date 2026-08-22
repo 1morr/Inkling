@@ -179,9 +179,16 @@ catch {
 }
 
 # 明確確認註冊真的指到我們要的佈局,別再讓靜默的 no-op 混過去。
-$registered = (Get-AppxPackage -Name $packageNamePattern).InstallLocation
-if ($registered -ne $targetLocation) {
-    throw "註冊沒有生效。實際指向:`n  $registered`n預期:`n  $targetLocation"
+#
+# **先數再比。** 這裡以前是 `(Get-AppxPackage ...).InstallLocation -ne $targetLocation`,
+# 而 `Get-AppxPackage` 回多個時那個屬性存取會展開成陣列 —— PowerShell 的
+# `$array -ne $x` 是**過濾**不是比較,兩個元素都等於 $x 就過濾成空陣列,而空陣列是 falsy。
+# 也就是說「兩個套件同時註冊在同一個佈局」正好是這道驗證唯一漏掉的情況,
+# 而那正是它要擋的東西(上面那道 `Count -gt 1` 要下一次部署才擋得到)。
+$registered = @(Get-AppxPackage -Name $packageNamePattern)
+if ($registered.Count -ne 1 -or $registered[0].InstallLocation -ne $targetLocation) {
+    $actual = if ($registered.Count) { $registered.InstallLocation -join "`n  " } else { '(一個都沒有)' }
+    throw "註冊沒有生效。實際註冊了 $($registered.Count) 個:`n  $actual`n預期剛好一個:`n  $targetLocation"
 }
 
 # --- 驗證 ------------------------------------------------------------------
