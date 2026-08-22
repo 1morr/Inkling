@@ -61,7 +61,7 @@ internal sealed partial class InklingSettingsPage : ContentPage
     /// </remarks>
     public override IContent[] GetContent()
     {
-        DiagnosticLog.Write("SettingsPage.GetContent: 重新產生表單");
+        DiagnosticLog.Write("SettingsPage.GetContent: rebuilding the form");
 
         // 每次都給新的表單物件:值是建構時就烤進卡片的,重用等於永遠顯示第一次的值。
         return [new InklingSettingsForm(_settings)];
@@ -76,7 +76,7 @@ internal sealed partial class InklingSettingsPage : ContentPage
     /// </summary>
     public void Refresh()
     {
-        DiagnosticLog.Write("SettingsPage.Refresh: 發出 ItemsChanged");
+        DiagnosticLog.Write("SettingsPage.Refresh: raising ItemsChanged");
         RaiseItemsChanged();
     }
 }

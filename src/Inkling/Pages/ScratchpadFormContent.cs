@@ -91,7 +91,7 @@ internal sealed partial class ScratchpadFormContent : FormContent
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // 存檔失敗絕對不能無聲無息 —— 使用者會以為存起來了然後把視窗關掉。
-            DiagnosticLog.Failure($"ScratchpadFormContent 存檔失敗:{ex}");
+            DiagnosticLog.Failure($"ScratchpadFormContent save failed ({ex.GetType().Name})", ex.ToString());
             new ToastStatusMessage(Strings.Format(Resources.SaveFailed, ex.Message)).Show();
             return CommandResult.KeepOpen();
         }

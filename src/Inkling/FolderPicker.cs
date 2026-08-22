@@ -73,7 +73,7 @@ internal static partial class FolderPicker
     {
         if (Interlocked.CompareExchange(ref _open, 1, 0) != 0)
         {
-            DiagnosticLog.Write("FolderPicker: 已經有一個對話框開著,忽略這次");
+            DiagnosticLog.Write("FolderPicker: a dialog is already open, ignoring this request");
             return false;
         }
 
@@ -91,7 +91,7 @@ internal static partial class FolderPicker
             catch (Exception ex)
             {
                 // 選資料夾失敗不該把整個擴展帶走,但也不能無聲無息。
-                DiagnosticLog.Failure($"FolderPicker 失敗:{ex}");
+                DiagnosticLog.Failure($"FolderPicker failed ({ex.GetType().Name})", ex.ToString());
                 failed?.Invoke();
             }
             finally
@@ -117,7 +117,7 @@ internal static partial class FolderPicker
 
         if (hr < 0 || native == IntPtr.Zero)
         {
-            DiagnosticLog.Failure($"FolderPicker: CoCreateInstance 失敗 0x{hr:X}");
+            DiagnosticLog.Failure($"FolderPicker: CoCreateInstance failed 0x{hr:X}");
             failed?.Invoke();
             return null;
         }
@@ -155,13 +155,13 @@ internal static partial class FolderPicker
 
             if (shown == ErrorCancelled)
             {
-                DiagnosticLog.Write("FolderPicker: 使用者取消");
+                DiagnosticLog.Write("FolderPicker: cancelled by the user");
                 return null;
             }
 
             if (shown < 0)
             {
-                DiagnosticLog.Failure($"FolderPicker: Show 失敗 0x{shown:X}");
+                DiagnosticLog.Failure($"FolderPicker: Show failed 0x{shown:X}");
                 failed?.Invoke();
                 return null;
             }
@@ -253,7 +253,7 @@ internal static partial class FolderPicker
                 Thread.Sleep(50);
             }
 
-            DiagnosticLog.Write("FolderPicker: 沒找到對話框的視窗,放棄拉到前景");
+            DiagnosticLog.Write("FolderPicker: no dialog window found, giving up on foregrounding");
         })
         {
             IsBackground = true,
@@ -309,7 +309,7 @@ internal static partial class FolderPicker
         _ = BringWindowToTop(window);
         SwitchToThisWindow(window, true);
 
-        DiagnosticLog.Write("FolderPicker: SetForegroundWindow 沒成功,改用 BringWindowToTop / SwitchToThisWindow");
+        DiagnosticLog.Write("FolderPicker: SetForegroundWindow did not take, falling back to BringWindowToTop / SwitchToThisWindow");
     }
 
     [LibraryImport("ole32.dll")]

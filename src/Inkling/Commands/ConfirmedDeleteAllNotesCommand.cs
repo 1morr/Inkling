@@ -55,7 +55,7 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
             }
 
             var deleted = _repository.DeleteMany(targets);
-            DiagnosticLog.Write($"DeleteAllNotes: scope={_scope} 刪掉 {deleted}/{targets.Count} 則");
+            DiagnosticLog.Write($"DeleteAllNotes: scope={_scope}, deleted {deleted}/{targets.Count}");
 
             // **成功時一個 toast 都不發。** 這裡曾經回一個「已把 N 則移到資源回收筒」的
             // toast 配 KeepOpen,註釋還寫著「使用者當場看到清單真的空了」—— 但 toast 是
@@ -75,7 +75,7 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            DiagnosticLog.Failure($"DeleteAllNotes 失敗:{ex}");
+            DiagnosticLog.Failure($"DeleteAllNotes failed ({ex.GetType().Name})", ex.ToString());
 
             return CommandResult.ShowToast(Strings.Format(Resources.DeleteFailed, ex.Message));
         }
