@@ -309,10 +309,12 @@ docs/                design-notes.md(設計考證)、development.md(這一份)�
 - **改預設值**(例如把「記下後先看一眼」從關改成開):只對**檔案裡還沒有那個鍵**的人生效。
   `SettingsManager.Apply` 一次把全部設定項寫回去,按過一次儲存,鍵就都在檔案裡了。
 
-**真的會弄丟設定的只有兩件事**:改 `Identity` 的 `Name` 或 `Publisher`(換成 **subject 不同**
-的簽名憑證就會,例如上架時換成 Partner Center 或 CA 指派的身分;套件家族名是從 Publisher
-**字串**算的,同 subject 換發/更新憑證不影響),以及不帶 `-PreserveApplicationData` 的
-`Remove-AppxPackage`。想重置回預設,把 `settings.json` 刪掉再 Reload 即可。
+**真的會弄丟設定的只有兩件事**:改 `Identity` 的 `Name` 或 `Publisher`,以及不帶
+`-PreserveApplicationData` 的 `Remove-AppxPackage`。前者**已經用掉了** ——
+2026-08-23 換成 Partner Center 指派的身分那一次(見
+[`release-checklist.md` §1](release-checklist.md)),身分就此凍結,不會再有下一次。
+(套件家族名是從 `Publisher` **字串**算的,所以同 subject 換發或更新憑證不影響。)
+想重置回預設,把 `settings.json` 刪掉再 Reload 即可。
 
 筆記本身完全不受影響:那是設定裡指到的一般資料夾,跟套件的生命週期無關。
 
@@ -389,8 +391,8 @@ New-Item -ItemType File "$ls\diagnostic.on"
 Get-Content "$ls\diagnostic.log" -Encoding utf8 -Wait   # 邊操作邊看
 ```
 
-(`-Name` 用萬用字元不是偷懶:Store 上架時會把 `Identity` 的 `Name` 改成
-「<發行者>.<名稱>」,精確比對從第一個 Store 版本起就一律落空。)
+(`-Name` 用萬用字元不是偷懶:Store 指派的 `Identity/@Name` 是「<發行者>.<名稱>」,
+**現在已經是 `CPPt.InklingNotes`** —— 寫死 `Inkling` 的精確比對一律落空。)
 
 沒有 `diagnostic.on` 時 `DiagnosticLog.Write` 的每次呼叫只是一個布林判斷。
 用完把 `.on` 檔刪掉即可 —— 檔案本身有 **2 MB 上限**(超過搬成 `.log.1` 重新開始),

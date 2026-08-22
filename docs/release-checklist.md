@@ -81,11 +81,14 @@ winget-pkgs 才需要買憑證**(見下面 (b))。
 - **那時安裝基數是作者一台機器**,實際損失是重設三個 alias,而留著舊名字要讓五個檔案
   長期說謊。理由與「什麼變了才該重新考慮」寫在
   [設計考證〈前綴換過一次,而且只有那一次〉](design-notes.md#command-ids)。
-- ⚠ 換 `Publisher` 之後**第一次部署要先顯式移除舊套件**:
+- ⚠ 換 `Publisher` 之後**第一次部署先顯式移除舊套件**:
   `Get-AppxPackage '*Inkling*' | Remove-AppxPackage -PreserveApplicationData`。
-  `deploy.ps1` 的重複註冊防護擋不住這一種 —— 它只在 `InstallLocation` 不同時才移除,
-  而這裡佈局路徑沒變、變的是身分,於是移除分支被跳過,最後的驗證又會拿到兩個相同路徑
-  (陣列過濾成空 = falsy),**兩個 Inkling 並存而部署回報成功**。
+  `deploy.ps1` 自己的移除分支**只在 `InstallLocation` 不同時才觸發**,而這裡佈局路徑沒變、
+  變的是身分,那個分支會被跳過(這是讀 `deploy.ps1` 得到的,不是實測 ——
+  兩次換身分都先移除了,沒讓它走那條路)。
+  它開頭那道 `$installed.Count -gt 1` 會擋下「已經有兩個」,但那是**下一次**部署才擋;
+  同一次跑到最後的 `$registered -ne $targetLocation` 驗證**擋不住** ——
+  兩個套件指向同一個路徑時那個比較會把陣列過濾成空,而空陣列是 falsy。
 
 **2026-08-23 · 換成 Partner Center 指派的身分 —— 這一次是最後一次**:
 
@@ -95,8 +98,13 @@ winget-pkgs 才需要買憑證**(見下面 (b))。
   而且那條路連 `reportapp@microsoft.com` 都救不了(那是給持有商標的人用的)。
   保留成 **`Inkling Notes`**;CmdPal 裡的命令標題沒有跟著改。
 - 從 產品管理 → 產品標識 抄回 `Name` / `Publisher` / `PublisherDisplayName`,
-  PFN 變成 `CPPt.InklingNotes_fsn608qftpbpp`,**擴展自己的 `settings.json` 又孤兒化一次**
-  (alias 這次沒事 —— 命令 Id 沒動)。移除舊套件那條注意事項同上一步。
+  PFN 變成 `CPPt.InklingNotes_fsn608qftpbpp`(**與產品標識頁預告的一字不差**),
+  **擴展自己的 `settings.json` 又孤兒化一次**(alias 這次沒事 —— 命令 Id 沒動)。
+  移除舊套件那條注意事項同上一步。
+- ⚠ **實測踩到的是另一件事:主搜尋框變成十列,兩組五列。** 那是 CmdPal 在套件安裝事件上
+  沒有去重(CLAUDE.md 第 6 條的第一種),不是兩個套件 —— `Get-AppxPackage` 全程只回一個。
+  再 Reload 一次收不回去,**停掉 `Microsoft.CmdPal.UI` 讓它重啟就好**,PowerToys 本身不用重開。
+  換身分之後看到十列先想到這個。
 
 ### (a) Microsoft Store 代簽 —— ✅ 走的是這條
 
@@ -225,11 +233,12 @@ schema 一路在動(`.claude/skills/publish-extension` 底下那份參考也已�
 
 ## 6. 公開 repo 之前的最後檢查
 
-- [ ] LICENSE 已存在(MIT)—— 已完成。
-- [ ] `.gitignore` 擋住 `*.pfx` 等簽章產出物 —— 已完成。
+- [x] LICENSE 已存在(MIT)。
+- [x] `.gitignore` 擋住 `*.pfx` 等簽章產出物。
 - [x] git 歷史裡沒有任何憑證、私鑰或本機路徑敏感資訊(`git log -p | grep -i pfx` 之類掃一次)。
-      掃過一次:兩個命中都是誤報(文檔在講「不要提交 `.pfx`」、skill 範例卡片的 `"id": "ApiKey"`),
-      `C:\Users\<名字>` 這類本機路徑零命中。
+      **2026-08-23 在身分定案那一輪之後重掃過**:命中全部是文檔在講憑證本身
+      (「這裡沒有憑證」、「PFX 要以 base64 放進 repo secret」),沒有任何金鑰;
+      `C:\Users\<名字>` 這類本機路徑在追蹤檔案裡零命中。
       **加了新 commit 就要重掃**,這條不是一勞永逸的。
 - [ ] 兩份 README(`README.md` 英文、`README.zh-Hant.md` 繁中)的〈安裝〉章節:目前是
       「還沒發佈」的佔位,第一個 release 出來就把對應那一條換成真的下載 / 安裝指令
@@ -239,8 +248,10 @@ schema 一路在動(`.claude/skills/publish-extension` 底下那份參考也已�
       重拍前先把筆記資料夾指到 demo 資料夾,別把真的筆記放進公開 repo;
       流程見 `docs/development.md`〈重拍截圖與 GIF〉)。
 - [ ] GitHub repo 的 description / topics 還對得上
-      (`gh repo view --json description,repositoryTopics`);social preview 是
-      `assets/social-preview.png`,沒有 API,要手動到 Settings → General → Social preview 上傳。
+      (`gh repo view --json description,repositoryTopics`)—— **2026-08-23 對過**,
+      description 與九個 topics 都在,含 `windows-commandpalette-extension`。
+      **還沒做的是 social preview**:`assets/social-preview.png` 沒有 API,
+      要手動到 Settings → General → Social preview 上傳。
 - [x] SECURITY.md 的私密回報管道已啟用並確認開著
       (`gh api repos/<owner>/<repo>/private-vulnerability-reporting` → `{"enabled":true}`)。
       **沒開的話那條路對外部回報者是死的** —— 只有有寫入權限的人打得開 advisories 的表單,

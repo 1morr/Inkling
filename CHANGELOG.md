@@ -31,10 +31,13 @@
 ⚠ **筆記檔本身完全不受影響。** 但**自訂過筆記資料夾的話,清單會看起來是空的** ——
 路徑退回了預設的 `<OneDrive>\Inkling`,而檔案一個都沒少。先去設定把路徑指回去。
 
-⚠ 換 `Publisher` 之後**第一次部署要先顯式移除舊套件**
+⚠ 換 `Publisher` 之後**第一次部署先顯式移除舊套件**
 (`Get-AppxPackage '*Inkling*' | Remove-AppxPackage -PreserveApplicationData`)——
-`deploy.ps1` 的重複註冊防護擋不到「路徑沒變、身分變了」這一種,會兩個並存而且回報成功。
-考證見 [設計考證〈前綴換過一次,而且只有那一次〉](docs/design-notes.md#command-ids)。
+`deploy.ps1` 的移除分支只認「`InstallLocation` 不同」,認不出「路徑沒變、身分變了」。
+另外**主搜尋框可能變成十列**(CmdPal 在套件安裝事件上沒去重):停掉 `Microsoft.CmdPal.UI`
+讓它重啟就收回去了。考證與詳細步驟見
+[`docs/release-checklist.md` §1](docs/release-checklist.md) 與
+[設計考證〈前綴換過一次,而且只有那一次〉](docs/design-notes.md#command-ids)。
 
 ### 新增
 
@@ -372,6 +375,11 @@
 
 ### 開發工具
 
+- **`deploy.ps1` 最後那道「註冊真的生效了嗎」的驗證,有一種情況永遠不會響。**
+  它寫的是 `(Get-AppxPackage ...).InstallLocation -ne $targetLocation`,而回多個套件時
+  那個屬性存取會展開成陣列 —— PowerShell 的 `$array -ne $x` 是**過濾**不是比較,
+  兩個元素都等於 `$x` 就過濾成空陣列,空陣列是 falsy。也就是說「兩個套件同時註冊在同一個
+  佈局」正好是它唯一漏掉的情況,**而那正是它要擋的東西**。改成先數再比。
 - **發版流程修好了一個一定會炸的地方**:`release.yml` 的 release job 沒有 checkout,
   而 `gh` 解析 repo 的環境變數**只有 `GH_REPO`**——它不會回落到 Actions 內建的
   `GITHUB_REPOSITORY`,也沒有 git remote 可問。也就是第一次打 tag 發版時,建置、簽章、
