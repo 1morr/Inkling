@@ -276,10 +276,22 @@ gh run watch
    `-RegisterProcessAsComServer` 就只印一行然後結束),manifest 刻意設 `AppListEntry="none"`,
    所以它**不會出現在開始功能表、直接啟動也不會有任何畫面**。
    ⚠ **不寫的話審查員很可能把「點了沒反應」當成 bug 退件。**
-6. 想控制風險就勾 **Roll out update gradually**,設一個初始百分比(例如 5%)。這只對 MSIX
+6. **Restricted capabilities 的說明欄**:`Package.appxmanifest` 的
+   `rescap:Capability Name="runFullTrust"` 是**受限能力**,上傳之後 Partner Center 會跳出
+   「Why do you need this capability?」要你填理由,**不填就送不出去**。
+   而且它**不是只有第一次要填** —— 微軟自己的答覆是這個欄位可能在後續更新裡再次要求,
+   即使能力宣告一個字都沒變(來源:Microsoft Q&A
+   [Providing "Restricted Capabilities" explanation](https://learn.microsoft.com/en-us/answers/questions/505097/providing-restricted-capabilities-explanation-via))。
+   照抄同一段就好:這個套件註冊一個 **out-of-process COM server**(Packaged COM)讓
+   PowerToys Command Palette 啟動它,而 Learn 的
+   [App capability declarations](https://learn.microsoft.com/en-us/windows/uwp/packaging/app-capability-declarations)
+   寫明「to be able to register out-of-process COM servers for inter-process
+   communication (IPC), a packaged app needs runFullTrust」—— 也就是說這個宣告是這種套件
+   **無法省略**的,不是我們挑的。理由寫「框架要求」被退過件,要寫成上面那樣的具體用途。
+7. 想控制風險就勾 **Roll out update gradually**,設一個初始百分比(例如 5%)。這只對 MSIX
    有效。發佈後可以在 Overview 頁拉百分比或按 Halt,不用開新的 submission。
    **注意:開下一個 submission 之前必須先把這次的 rollout finalize 或 halt。**
-7. Submit to the Store。
+8. Submit to the Store。
 
 ### 18. `[人工]` 等審核
 

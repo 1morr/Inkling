@@ -127,6 +127,9 @@ repo 樹內沒有任何 `.pfx` / `.p12` / `.cer`,憑證存放區裡也沒有對�
    **兩次簽章都要**:簽章不會從裡面的 `.msix` 傳遞到外層 bundle,只簽裡面的話
    Release 上掛的 bundle 側載一樣會被 `0x800B0109` 擋下。
 5. 走 Store 路線:從 Release 資產拿下 msixbundle,上傳 Partner Center 送審。
+   送審表單那幾格(Notes for certification、`runFullTrust` 的受限能力說明、gradual rollout)
+   見 [`release-runbook.md` 第 17 步](release-runbook.md) —— 那兩段每次送審都要填,
+   第一次尤其容易卡在受限能力那一格。
 
 ## 4. WinGet 上架
 
