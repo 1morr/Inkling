@@ -445,3 +445,19 @@ loose-file 佈局跟 Store 裝的**是同一個套件身分**。`deploy.ps1` 會
 發版流程本身踩到的坑寫回這一份與 [`release-checklist.md`](release-checklist.md)。
 
 這是這個 repo 的既有規則,發版這條路特別適用 —— 它一年跑不了幾次,忘得最快。
+
+**第一個公開版本跑完之後,還要多做一件事:把 `release-checklist.md` 收掉。**
+那份的定位是**一次性**的(身分定案與通路開通),而它的 §3 發版流程 / §4 WinGet /
+§5 Gallery 跟這一份的第 3、7、8 部分講的是同一件事 —— 首版出去之後兩份並存,
+下次發版第一個問題就會是「該翻哪一份」。做法:
+
+1. §1 那張已定案的身分表(`Identity` 的四個欄位、Store ID、PFN)搬進這一份的**步驟 2**,
+   它本來就在引用那張表。
+2. §6〈公開 repo 之前的最後檢查〉是一次性的,首版之後不再適用,直接刪。
+3. 其餘與這一份重複的段落刪掉,整份 `release-checklist.md` 移除,並改掉指向它的連結
+   (`grep -rn release-checklist` 當下重查一次,以下是 2026-08-23 的清單):
+   `CLAUDE.md`(文檔表那一列 + 硬規則 1)、`docs/development.md`(文檔表 + 兩處內文)、
+   `docs/design-notes.md`、`docs/gallery/README.md`、
+   `.claude/skills/publish-extension/SKILL.md`、`.github/workflows/release.yml` 的註解,
+   以及這一份自己的步驟 1、2。**`CHANGELOG.md` 裡的不要動** —— 那是已發生的歷史,
+   連結指向一份當時存在的文檔,改掉等於竄改記錄。
