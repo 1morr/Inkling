@@ -51,12 +51,8 @@ Inkling 自己沒有一行同步程式碼。
 
 ## 安裝
 
-**還沒有發佈安裝包。** 目前沒有 GitHub Release、沒上 WinGet,Microsoft Store 的 listing
-也還沒上線。套件身分已經定案,下一步就是送 Store 審核
-(見 [docs/release-checklist.md](docs/release-checklist.md))。
-
-Store 上的名字是 **Inkling Notes** —— 單獨的 `Inkling` 是別人的商標。
-Command Palette 裡的命令仍然叫 `Inkling`。
+**還沒有發佈安裝包。** 目前沒有 GitHub Release、沒上 WinGet,也還沒進 Microsoft Store ——
+下一步就是送 Store 審核。
 
 **順序是簽章決定的**:沒簽章的 MSIX Windows 不讓側載。所以先走 Store —— 它會代簽,
 而那份簽好的套件才餵得動後面兩條路。開通一條,這一節就補上那一條的安裝方式:
