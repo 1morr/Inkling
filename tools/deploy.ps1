@@ -64,7 +64,14 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $extensionProject = Join-Path $repoRoot 'src\Inkling\Inkling.csproj'
 $verifyProject = Join-Path $repoRoot 'tools\VerifyRegistration\VerifyRegistration.csproj'
 $targetFramework = 'net10.0-windows10.0.26100.0'
-$packageName = 'Inkling'
+# 進程名。Store 不會動它 —— 它來自 manifest 的 Application Executable,不是 Identity。
+$processName = 'Inkling'
+
+# **套件名要用萬用字元比對。** Store 上架時會重指派 Identity 的 Name(變成
+# 「<發行者>.<名稱>」)與 Publisher(變成 CN=<GUID>)—— 本機兩個已上架的 CmdPal
+# 擴展就是證據。`Get-AppxPackage -Name` 是精確比對,寫死 'Inkling' 的話上架之後
+# 一律回 $null,而「找不到套件」在腳本裡多半只是安靜跳過,看起來像沒事。
+$packageNamePattern = '*Inkling*'
 
 function Write-Step($message) {
     Write-Host ''
@@ -81,12 +88,12 @@ if ($devMode -ne 1) {
 
 # --- 停掉還在跑的擴展進程 --------------------------------------------------
 # CmdPal 會把擴展的 COM server 進程留著,不先停掉 build 會因檔案被佔用而失敗。
-$running = Get-Process -Name $packageName -ErrorAction SilentlyContinue
+$running = Get-Process -Name $processName -ErrorAction SilentlyContinue
 if ($running) {
-    Write-Step "停止還在執行的 $packageName 進程(共 $($running.Count) 個)"
+    Write-Step "停止還在執行的 $processName 進程(共 $($running.Count) 個)"
     $running | Stop-Process -Force
     $deadline = (Get-Date).AddSeconds(5)
-    while ((Get-Process -Name $packageName -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
+    while ((Get-Process -Name $processName -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 200
     }
 }
@@ -137,9 +144,9 @@ $targetLocation = (Resolve-Path $layout).Path
 # 見 CLAUDE.md 第 6 條)。`Get-AppxPackage` 回陣列時,底下每一個 `.InstallLocation`
 # 都會變成陣列 —— 比對永遠不相等,於是每次部署都先移除再註冊,而「移除的是哪一個」
 # 不確定。cmdpal-ui.ps1 早就有這道守門,兩支腳本問的是同一件事,答案不該不一樣。
-$installed = @(Get-AppxPackage -Name $packageName)
+$installed = @(Get-AppxPackage -Name $packageNamePattern)
 if ($installed.Count -gt 1) {
-    throw "找到不只一個 $packageName 套件($($installed.PackageFullName -join ', ')),請先清掉重複的再部署。"
+    throw "找到不只一個 Inkling 套件($($installed.PackageFullName -join ', ')),請先清掉重複的再部署。"
 }
 
 $existing = if ($installed.Count -eq 1) { $installed[0] } else { $null }
@@ -166,20 +173,20 @@ catch {
     if ($_.Exception.Message -notmatch '0x80073CFB') { throw }
 
     Write-Host "    manifest 變了,先移除註冊再登錄一次" -ForegroundColor DarkGray
-    $stale = @(Get-AppxPackage -Name $packageName)
+    $stale = @(Get-AppxPackage -Name $packageNamePattern)
     if ($stale.Count -eq 1) { Remove-AppxPackage -Package $stale[0].PackageFullName -PreserveApplicationData }
     Add-AppxPackage -Register $manifest
 }
 
 # 明確確認註冊真的指到我們要的佈局,別再讓靜默的 no-op 混過去。
-$registered = (Get-AppxPackage -Name $packageName).InstallLocation
+$registered = (Get-AppxPackage -Name $packageNamePattern).InstallLocation
 if ($registered -ne $targetLocation) {
     throw "註冊沒有生效。實際指向:`n  $registered`n預期:`n  $targetLocation"
 }
 
 # --- 驗證 ------------------------------------------------------------------
 Write-Step "驗證 Windows AppExtension 目錄"
-dotnet run --project $verifyProject -c Release -- $packageName
+dotnet run --project $verifyProject -c Release -- $processName
 if ($LASTEXITCODE -ne 0) { throw "驗證失敗:套件沒有註冊成 Command Palette 擴展" }
 
 Write-Host ''

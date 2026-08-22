@@ -6,7 +6,11 @@ using Windows.ApplicationModel.AppExtensions;
 // 有了它就不必靠肉眼判斷部署到底有沒有生效 —— 這在沒有 Visual Studio、
 // 不能用 Build > Deploy 的環境下特別重要。
 //
-// 用法: VerifyRegistration [預期的套件名稱]
+// 用法: VerifyRegistration [套件名稱的片段]
+//
+// 比對是「包含」而不是相等:Store 上架時會把 Identity 的 Name 重指派成
+// 「<發行者>.<名稱>」,精確比對從第一個 Store 版本起就一律落空,而這支程式的
+// 用途正是「確認部署真的生效」—— 它自己失明是最糟的失敗方式。
 // 結束碼: 0 = 找到, 1 = 沒找到
 
 var expected = args.Length > 0 ? args[0] : "Inkling";
@@ -20,7 +24,7 @@ var found = false;
 foreach (var ext in extensions)
 {
     var name = ext.Package.Id.Name;
-    var isMatch = string.Equals(name, expected, StringComparison.OrdinalIgnoreCase);
+    var isMatch = name.Contains(expected, StringComparison.OrdinalIgnoreCase);
     found |= isMatch;
 
     Console.WriteLine($"  {(isMatch ? "->" : "  ")} {name}  (Id={ext.Id}, Display={ext.DisplayName})");

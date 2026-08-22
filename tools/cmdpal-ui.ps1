@@ -208,14 +208,16 @@ $CmdPalLocalState = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.CommandPalet
 # 就全變。寫死的話換完身分之後這裡會指向不存在的目錄,而 notes / log / state 讀不到
 # 檔案只會安靜跳過 —— 「看起來沒壞」比報錯更糟,所以動態取、取不到就直接中止。
 $InklingLocalState = $null
-$inklingPackage = @(Get-AppxPackage -Name Inkling -ErrorAction SilentlyContinue)
+# 萬用字元不是偷懶:Store 上架時會把 Identity 的 Name 改成「<發行者>.<名稱>」,
+# 而 -Name 是精確比對 —— 寫死 'Inkling' 的話上架之後這裡一律落空。
+$inklingPackage = @(Get-AppxPackage -Name '*Inkling*' -ErrorAction SilentlyContinue)
 if ($inklingPackage.Count -gt 1) {
     throw "找到不只一個 Inkling 套件($($inklingPackage.PackageFamilyName -join ', ')),請先清掉重複的。"
 }
 if ($inklingPackage.Count -eq 1) {
     $InklingLocalState = Join-Path $env:LOCALAPPDATA "Packages\$($inklingPackage[0].PackageFamilyName)\LocalState"
 } else {
-    Write-Output '  !! 找不到已註冊的 Inkling 套件(Get-AppxPackage -Name Inkling 是空的)——'
+    Write-Output "  !! 找不到已註冊的 Inkling 套件(Get-AppxPackage -Name '*Inkling*' 是空的)——"
     Write-Output '     notes / log / state 會讀不到東西。先跑 tools\deploy.ps1 註冊再來。'
 }
 
