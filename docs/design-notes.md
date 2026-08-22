@@ -310,6 +310,75 @@ CmdPal 的 `ShowEmptyContent` 只看篩完的項目數是不是零,**不看搜�
 
 ## 清單與詳細窗格
 
+<a id="section-not-grouping"></a>
+
+### 分節標頭:`Section` 不是分組鍵
+
+`IListItem` 有一個 `Section` 屬性,名字看起來像「這一列屬於哪一組」。**它不是。**
+
+CmdPal 的清單是**扁平**的 —— `ListViewModel.FilteredItems` 是一個
+`ObservableCollection<ListItemViewModel>`,`ListItemsView.xaml` 直接 `x:Bind` 過去,
+整棵 `src/modules/cmdpal` 裡 `CollectionViewSource` / `GroupStyle` / `IsSourceGrouped`
+一次都沒出現過。所謂的分節標頭就是**那個扁平集合裡的一列**,由型別判斷挑出來:
+
+```csharp
+// Microsoft.CmdPal.UI.ViewModels/ListItemViewModel.cs
+private ListItemType EvaluateType()
+{
+    return Command.IsSet
+        ? ListItemType.Item
+        : string.IsNullOrEmpty(Section) ? ListItemType.Separator : ListItemType.SectionHeader;
+}
+```
+
+`Command.IsSet` 就是 `Model.Unsafe is not null`。也就是說 **`Section` 只有在那一列
+沒有命令的時候才會被讀**;有命令的列一律是 `ListItemType.Item`,`Section` 的值
+被讀出來之後不做任何事 —— 不參與過濾、不參與排序、不參與搜尋評分。
+
+**在一個有命令的 `ListItem` 上設 `Section`,畫面上什麼都不會發生,而且不會有任何錯誤。**
+
+#### 怎麼認出來
+
+CmdPal 主頁的「結果 / 已釘選 / 命令」就是它自己插進去的 command-less 列。在 UIA 樹裡
+兩者長得不一樣,一眼可辨:
+
+```
+ListItem: ' ListItemViewModel'          ← 標頭列:名字是空的,而且沒有 Group 子節點
+  Text: '結果'
+ListItem: 'Inkling'                     ← 普通項目:有 Group
+  Group: 'Inkling'
+    Text: 'Inkling'
+```
+
+**有沒有 `Group:` 子節點,就是「這一列有沒有命令」的外顯特徵。** Inkling 的每一列都有。
+
+#### 我們踩到的
+
+`DeleteNotesPage` 與 `QuickCapturePage` 都在有命令的列上設過 `Section`
+(「動作」/「不是 Inkling 建立的」/「記下」/「已經記過的」),而且**文檔與手動驗證清單
+照著寫了斷言**。2026-08-22 的實機驗證發現那些標頭從來沒有出現過 —— UIA 樹裡沒有、
+截圖上也沒有。那幾處賦值是死碼。
+
+#### 要真的做出標頭的話
+
+照 CmdPal 內建計算機擴展的形狀,自己多插一列:
+
+```csharp
+new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null! }
+```
+
+三個代價要先算清楚:
+
+- **0.11 的 toolkit 沒有 `Separator` / `Section` 這兩個現成類別**(只有不相關的
+  `ISeparatorContextItem` / `ISeparatorFilterItem` 投影),要自己刻。
+- 標頭列是**真的一列** —— 佔一個索引、28px 高、不可選取。`VersionedItemsCache` 的鍵
+  與[〈「刪除全部」排第一的代價〉](#delete-all-first)那套「第一列是什麼」的分析都要重算。
+- 這條路在 out-of-process 擴展上**沒有實測過**。`IListItem.get_Section` 的 proxy 與 vtable
+  兩側在安裝版都掃得到(所以屬性本身跨得過邊界),但「擴展送一列 command-less 的項目過去、
+  CmdPal 把它畫成標頭」這件事本身還沒有在真機上跑過。真要做,先花五分鐘驗掉。
+
+**在沒有做這件事之前,任何文檔都不該斷言 Inkling 的頁面上有分節標頭。**
+
 <a id="details-width"></a>
 
 ### 詳細面板寬度固定在最寬
@@ -500,6 +569,18 @@ CmdPal 的 `ShowEmptyContent` 只看篩完的項目數是不是零,**不看搜�
   `SubmitForm(inputs)` —— 就算把 `Ctrl+S` 綁到擴展的命令上,手上也沒有使用者剛打的字。
   CmdPal 端唯一的鍵盤提交路徑是 `ContentFormControl.OnFormKeyDown`,只認 Enter、只在單行
   輸入框裡有效,而且 0.11.11762.0 還沒有這段程式碼。真要 `Ctrl+S` 得改 PowerToys 本身。
+- **存完不會自己回上一頁 —— `CommandResult.GoBack()` 在安裝版上不動。**
+  `NoteFormContent.cs:114` 的 `AfterSave` 對編輯回傳 `GoBack()`、對新增回傳 `GoHome()`。
+  2026-08-22 實測:新增存完**確實**回到主頁,編輯存完**停在編輯頁不走**(等五秒也一樣),
+  只有底部的 InfoBar「已儲存：<標題>」會出現。同一個 `SubmitForm`、同一個回傳路徑,
+  差別只在回傳哪一種 `CommandResult` —— 所以不是我們的程式沒走到那一行,是 `GoBack`
+  本身沒有被處理。這跟 `CommandResult.GoToPage` 是同一類的空殼
+  (見 [CLAUDE.md](../CLAUDE.md) 硬規則 8)。**能用的只有 `GoHome` / `Dismiss` /
+  `KeepOpen` / `Confirm` / `ShowToast`。**
+  `main` 的 `ShellViewModel.UnsafeHandleCommandResult` 裡是有 `case CommandResultKind.GoBack`
+  的,但那是 `main`;byte-scan 對這個 NativeAOT 影像證否不了
+  (見〈確認框的按鈕沒有顏色…〉那節的教訓),所以結論以實機行為為準。
+  **還沒決定怎麼處理** —— 見 [`known-issues.md` K-4](known-issues.md#k-4)。
 
 <a id="scratchpad-no-autosave"></a>
 
@@ -622,8 +703,12 @@ _initializeSettingsTask ??= Task.Run(InitializeSettingsPage);   // 只跑一次
 的輸入寫回設定 —— 只改資料夾按一次儲存,就足以把 `##` 默默還原成 `;;`。
 
 所以 `OnSettingsApplied` 一進來就 `Refresh()`,排在「資料夾沒變就 return」的前面,
-不分欄位、不比對新舊。表單裡按「瀏覽…」選完資料夾那條路也會走到這裡(它自己另外還會
-呼叫一次 `Refresh()`,多重讀一次無害)。
+不分欄位、不比對新舊。表單裡按「瀏覽…」選完資料夾那條路也會走到這裡 ——
+**而且它只走這裡**。整個 `src/Inkling` 只有一個 `Refresh()` 呼叫點
+(`InklingCommandsProvider.cs:186`),兩條路都靠 `SettingsManager.Apply` → `Applied` 事件
+接過去。`InklingSettingsForm.Browse` 以前另外自己叫過一次,同一次挑選把卡片重建兩遍,
+**那一次已經拿掉**(理由寫在 `InklingSettingsForm.cs:156-159`:兩邊分開的話,哪天事件
+那頭壞了也只會壞掉一半,反而更難查)。
 
 **加新設定項時記得這條** —— 忘了不會有任何錯誤訊息,只會安靜地顯示舊值。
 
@@ -711,8 +796,9 @@ if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不
 從原始碼得到的結論一定要 byte-scan 對照安裝版再寫。
 
 會觸發的情境本身也沒了。當初每按一次 `Ctrl+D`(那時面板寬度可調)就重讀一次表單,人卻在
-主視窗翻筆記,背景視窗因此一直跳。現在 `Refresh()` 只有兩個呼叫點,都源自使用者在設定
-表單上的操作(按儲存、或按「瀏覽…」選完資料夾)——人本來就在設定頁上。唯一還構得成
+主視窗翻筆記,背景視窗因此一直跳。現在 `Refresh()` 只有**一個**呼叫點
+(`InklingCommandsProvider.cs:186`),而走到它的只有兩條路,都源自使用者在設定表單上的
+操作(按儲存、或按「瀏覽…」選完資料夾)——人本來就在設定頁上。唯一還構得成
 問題的組合是「CmdPal 設定視窗停在 Inkling 那一頁,同時從主搜尋框進設定頁按儲存」,
 兩邊共用同一個頁面實例,背景那個會跟著重建。
 
@@ -793,10 +879,16 @@ Windows 會直接永久刪除,而我們設的 `FOF_NOCONFIRMATION` 正好把那�
 這是第四個「`main` 有、安裝版沒有」的落差,見 [CLAUDE.md](../CLAUDE.md)〈查證 CmdPal 的行為〉)。
 也就是說「想刪下一則而順手按 Enter」有機會落在這一列上。
 
-三道防線:它一定會跳確認框、確認框標題明著寫「刪除全部 N 則筆記?」、刪掉的檔案進資源回收筒。
+四道防線:它一定會跳確認框、**確認框的焦點落在「取消」上**、確認框標題明著寫
+「刪除全部 N 則筆記?」、刪掉的檔案進資源回收筒。
 **而連著按 `Ctrl+Enter` 清理的那條路完全踩不到它** —— 那一列沒有次要命令,
 焦點跳過來時 `Ctrl+Enter` 什麼都不會發生。想連續刪就用 `Ctrl+Enter`,這是它比 `Enter` 更安全
 的地方(雖然聽起來反過來)。
+
+第二道防線是 2026-08-22 才確認存在的:那兩列有設 `IsPrimaryCommandCritical`,而這一頁
+以前寫著那個旗標在安裝版沒有效果 —— **是錯的,它有效**(見〈確認框的按鈕沒有顏色,
+也沒有「危險」樣式〉)。所以「順手按 Enter 落到刪除全部、再順手按一次 Enter」的結果是
+**取消**,不是確認。風險比這一節原本估的低一級。
 
 <a id="no-multiselect"></a>
 
@@ -927,26 +1019,35 @@ if (vm.IsPrimaryCommandCritical)
 ```
 
 紅色按鈕在 `ShellPage.xaml.cs` 裡是**註解掉的 TODO**,微軟自己也還沒做。所以「刪除」按鈕
-沒有紅色、也沒有強調色,這是 CmdPal 目前就長這樣,不是我們漏設什麼 —— 兩個按鈕都是預設樣式,
-開啟時焦點落在主要按鈕(截圖上那圈黑框),Enter 就是確認。
+沒有紅色、也沒有強調色,這是 CmdPal 目前就長這樣,不是我們漏設什麼 —— 兩個按鈕都是預設樣式。
 
 這一節講的只有**確認框**。`Ctrl+K` 選單裡的那一列是另一回事 —— 那裡有一個真的會變紅的
 開關,見下一節〈刪除的紅色只有一個地方碰得到〉。
 
-**而且 0.11 安裝版連上面那個 `if` 都沒有。** 整個套件掃不到 `set_DefaultButton`,
-同一段程式碼的 `set_PrimaryButtonText` / `set_CloseButtonText` / `set_XamlRoot` 卻都掃得到,
-所以不是掃描失準(這是第三個「原始碼有、安裝版沒有」的落差,見
-[CLAUDE.md](../CLAUDE.md)〈查證 CmdPal 的行為〉):
+**但「預設按鈕」那一半是有作用的 —— 這裡以前寫反了。**
 
-```powershell
-$exe = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8wekyb3d8bbwe\Microsoft.CmdPal.UI.exe"
-$u8 = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($exe))
-$u8.Contains('set_PrimaryButtonText')   # True
-$u8.Contains('DefaultButton')           # False ← 一次都沒設過
-```
+這一節曾經斷言「0.11 安裝版連上面那個 `if` 都沒有,整個套件掃不到 `set_DefaultButton`,
+所以 `IsPrimaryCommandCritical` 設不設畫面上完全一樣」。**2026-08-22 的實機驗證推翻了它。**
+三種確認框各開一次,讀 UIA 樹上的 `[FOCUS]`:
 
-也就是說在使用者手上的版本裡,`IsPrimaryCommandCritical` 設不設**畫面上完全一樣**,
-`DefaultButton` 永遠是 `None`。旗標還是照語意設,等 CmdPal 更新上來就會生效:
+| 確認框 | `IsPrimaryCommandCritical` | 焦點落在 |
+|---|---|---|
+| 清單頁 `Ctrl+D` 單則 | false | **刪除** |
+| 刪除頁 · Inkling 建立的 | false | **刪除** |
+| 刪除頁 · 外來檔案(`DeleteNotesPage.cs:197`) | true | **取消** |
+| 刪除頁 · 刪除全部 / 只刪 Inkling 建立的(`:271`、`:299`) | true | **取消** |
+
+也就是說旗標**設了就生效**,`DefaultButton` 確實被設成了 `Close`。
+
+**為什麼 byte-scan 會誤判,這件事比結論本身重要。** `Microsoft.CmdPal.UI.exe` 是
+**NativeAOT** 影像(`PEHeaders.CorHeader` 是 null、整包沒有 `hostfxr` / `hostpolicy` /
+`coreclr`),裡面的識別名來自被裁過的 AOT metadata。所以
+[CLAUDE.md](../CLAUDE.md)〈查證 CmdPal 的行為〉那套 `#Strings` / `#US` 模型在這個 exe 上
+只有一半成立:**命中是硬證據,沒命中不是。** `set_PrimaryButtonText` 掃得到而
+`set_DefaultButton` 掃不到,只代表前者被保留、後者被裁掉,不代表那段程式碼不存在。
+CLAUDE.md 的〈已知落差〉刻意把這一條留著當反例。
+
+旗標照語意設的規則不變:
 
 | | `IsPrimaryCommandCritical` | 為什麼 |
 |---|---|---|
@@ -954,9 +1055,13 @@ $u8.Contains('DefaultButton')           # False ← 一次都沒設過
 | 刪一則(外來檔案,刪除頁) | **設** | 那是別的工具寫的檔案,誤刪的代價不一樣,值得多那一下 |
 | 批次刪除(兩列都是) | **設** | 一次動幾十個檔案就該多花那一下 |
 
-已知的口徑不一:清單頁的 `Ctrl+D` 對外來檔案**不設**(那條路本來就一律先跳確認框,
-焦點一律在確認鈕上),刪除頁對外來檔案設 —— 兩頁對同一種檔案的 critical 標記目前不一致,
-留待 CmdPal 真的實作那條路時再統一。
+**而且既然它真的生效,那張表就不只是「等 CmdPal 更新上來」的宣告,而是現在就成立的行為。**
+順帶讓〈「刪除全部」排第一的代價〉那一節的風險降了一級:順手按 Enter 落在「刪除全部」時,
+確認框的焦點在**取消**上,再按一次 Enter 是取消而不是確認。
+
+已知的口徑不一:清單頁的 `Ctrl+D` 對外來檔案**不設**(那條路本來就一律先跳確認框),
+刪除頁對外來檔案設 —— 兩頁對同一種檔案的 critical 標記不一致,而**現在這個差異是使用者
+看得到的**(焦點落在不同的按鈕上),值得統一。
 
 要注意批次刪除**現在沒有這道防線**(0.11 上 Enter 一樣是確認),真正的防線是刪除全部那一頁
 本身會先列出會刪掉哪些檔案。SDK 也沒有辦法把預設按鈕指定成「確認」—— 上游只有「設成取消」

@@ -104,7 +104,7 @@ keyboard — and the separator is optional, a title on its own is a perfectly go
 | Copy body / Open file location | `Ctrl+Shift+C` copies the body (without front matter, **the palette stays open** — [why that matters](docs/design-notes.md#copy-feedback)); `Ctrl+L` selects the `.md` in File Explorer |
 | After jumping out | After `Ctrl+O` or `Ctrl+L` hands off to another app, the palette only steps aside — the hotkey brings it back **on the same page** ([why](docs/design-notes.md#open-external-return)). Two pages are the exception and dismiss the palette instead: the edit form and the scratchpad, because both hold a copy you could still save over the file you just went out to edit. If the file was renamed or moved, or nothing is registered to open `.md`, the reason shows at the bottom instead of [silently doing nothing](docs/design-notes.md#open-external-silent) |
 | Scratchpad | `Inkling: Scratchpad` is one permanent sticky note: it opens with whatever you left there, no title required. **No autosave** (CmdPal cannot do it, [why](docs/design-notes.md#scratchpad-no-autosave)): `Tab` → `Enter` saves, **shows "Saved to scratchpad" and dismisses the palette by itself** (Discard changes says so too); `Ctrl+O` opens it in the system's default editor, where autosave lives |
-| Delete | `Ctrl+D` on the list page; after confirming, the file **goes to the Recycle Bin**. On a network drive, or a device without a Recycle Bin, Windows deletes it for good instead — the confirmation says so |
+| Delete | `Ctrl+D` on the list page; after confirming, the file **goes to the Recycle Bin**. On a network drive, or a device without a Recycle Bin, Windows deletes it for good instead — the **Delete notes** page spells this out in its details pane |
 | Delete many / clear all | `Inkling: Delete notes` opens a page where `Enter` deletes (asks once) and `Ctrl+Enter` deletes immediately; "Delete all" on the same page lists which files it would remove first. Files not created by Inkling are always confirmed on both paths ([why those two keys](docs/design-notes.md#delete-keys)) |
 | UI language | English, Traditional Chinese, Simplified Chinese, following the Windows display language — [no setting](docs/design-notes.md#ui-language) |
 
@@ -187,7 +187,7 @@ Select the **Inkling** row in the main search box and press `Ctrl+K` → Setting
 
 | Setting | Default | Notes |
 |---|---|---|
-| Notes folder | `%OneDrive%\Inkling` | **Full paths only** (a relative path rejects the whole save); a folder that does not exist yet is flagged immediately and created on first save. "Browse…" next to it opens the system folder picker and saves the choice on the spot |
+| Notes folder | `%OneDrive%\Inkling`, or `Documents\Inkling` when there is no OneDrive | **Full paths only** (a relative path rejects the whole save); a folder that does not exist yet is flagged immediately and created on first save. "Browse…" next to it opens the system folder picker and saves the choice on the spot |
 | Quick capture separator | `;;` | Title before it, body after. Any length; half-width and full-width count as the same; clearing it restores `;;`. A quick capture page that is already open picks up the change — no reload |
 | Preview after capture | On | Enter captures and stays on the note, a second Enter dismisses; off means capture and dismiss at once |
 
@@ -205,8 +205,11 @@ OneDrive app; Obsidian or similar tools can point at the same folder.
 
 **OneDrive users**: mark the Inkling folder "Always keep on this device" (right-click the folder).
 With Files On-Demand, cloud-only placeholders trigger a download on read and search stalls.
-When two machines edit the same note at once OneDrive creates a `name-ComputerName.md` copy;
-nothing is lost, the copy shows up in the list, you decide which to keep.
+When two machines edit the same note at once OneDrive creates a `name-ComputerName.md` copy.
+Nothing is lost on disk and both files show up in the list — but the copy carries the **same
+`id`** as the original, and Inkling currently resolves a note by `id`, so editing or deleting
+either row acts on whichever file it finds first. **Sort conflict copies out in File Explorer
+or your editor, not inside Inkling.**
 
 ## Troubleshooting
 
@@ -232,6 +235,7 @@ The in-depth docs are written in Traditional Chinese.
 |---|---|
 | [docs/development.md](docs/development.md) | Build, deploy, project layout, troubleshooting |
 | [docs/design-notes.md](docs/design-notes.md) | The full "why" behind every decision (why quick capture is a page and not a fallback, why not a single toast may be shown, why the confirm dialog's buttons have no color…), for maintainers and other CmdPal extension authors |
+| [docs/known-issues.md](docs/known-issues.md) | Defects that are known and not yet fixed, each with a reproduction |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Read before changing this repo |
 

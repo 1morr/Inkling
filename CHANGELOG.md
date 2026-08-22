@@ -195,6 +195,25 @@
 
 ### 文檔
 
+- **新增 [`docs/known-issues.md`](docs/known-issues.md)** —— 已知但還沒修的缺陷,每條附
+  重現步驟與建議修法。首次公開發佈前的總體檢查出來的東西進了這裡,包括一條使用者摸得到的:
+  **OneDrive 的衝突副本帶著跟原檔一樣的 `id`,而 Inkling 以 `id` 認一則筆記,所以編輯或
+  刪除任何一列都只會動到其中一份**。兩份 README 的同步章節因此改寫 —— 以前寫著
+  「資料不會遺失,自己決定留哪份」,實際上「決定留哪份」正是目前做不到的那件事;
+  現在改成請在檔案總管或編輯器裡處理衝突副本。
+- **新增 [`docs/release-runbook.md`](docs/release-runbook.md)** —— 每次發新版本要跑的重複
+  流程(版本號規則、試跑打包、送審、更新怎麼到使用者手上、壞版怎麼辦)。
+  `docs/release-checklist.md` 因此收斂成純粹一次性的身分定案與通路開通。
+- **`IsPrimaryCommandCritical` 的結論改正。** 文檔以前寫著那個旗標在 0.11.11762.0 上
+  「完全沒有效果」,實機驗證推翻了:設了它的確認框焦點會落在**取消**上(刪除頁的外來檔案、
+  刪除全部、只刪 Inkling 建立的),沒設的落在**刪除**上。誤判的成因是 byte-scan ——
+  `Microsoft.CmdPal.UI.exe` 是 NativeAOT 影像、metadata 被裁過,**掃得到是證據,
+  掃不到不是**。`CLAUDE.md`、`docs/design-notes.md` 與手動驗證清單一起改,
+  那條方法論陷阱本身也寫進了 `CLAUDE.md`。
+- **兩份 README 補上筆記資料夾的 fallback**:沒有 OneDrive 時預設是 `Documents\Inkling`,
+  以前只寫 `%OneDrive%\Inkling`,對沒裝 OneDrive 的人是錯的。
+- 兩份 README 不再說網路磁碟的永久刪除警語「確認框會講明白」—— 那段話在**刪除筆記那一頁的
+  詳細窗格**,不在單則刪除的確認框裡。
 - `docs/development.md`〈讓擴展自己說話〉補上失敗那條路(`DiagnosticLog.Failure`)、
   CmdPal log 的位置與撈法,以及一次實測結果;`CLAUDE.md` 同步。
 - 兩份 README 的〈安裝〉章節改寫:**發佈順序是簽章決定的**。以前寫成「GitHub Releases

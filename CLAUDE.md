@@ -221,7 +221,13 @@ Version 的症狀)。
    需要回饋又要留在原地時走 `ListItem.Tags`(見〈查證 CmdPal 的行為〉最後那段)。
    而**導頁也不能靠回傳值**:`CommandResult.GoToPage` 是空殼,SDK 有型別但
    `ShellViewModel.UnsafeHandleCommandResult` 的 switch 裡沒有那個 case(安裝版沒有,
-   `main` 也沒有)。唯一還通的路是讓那一列的命令**本身就是一個 `IPage`** ——
+   `main` 也沒有)。**`CommandResult.GoBack()` 在安裝版上同樣不動** —— 2026-08-22 實測:
+   編輯表單存檔後回傳 `GoBack()`(`NoteFormContent.cs:114`),畫面停在編輯頁不走,
+   等五秒也一樣;同一個 `SubmitForm` 的新增路徑回傳 `GoHome()` 則**正常**回到主頁,
+   所以不是我們的程式沒走到那一行。`main` 的 switch 裡是有 `case CommandResultKind.GoBack`
+   的,但那是 `main`,byte-scan 對 NativeAOT 影像證否不了(見〈查證 CmdPal 的行為〉)。
+   **能用的只有 `GoHome` / `Dismiss` / `KeepOpen` / `Confirm` / `ShowToast`。**
+   唯一還通的路是讓那一列的命令**本身就是一個 `IPage`** ——
    CmdPal 對頁面的處理是導覽而不是 `Invoke`,副作用因此得寫在 `GetContent()` 裡
    (`CapturedNotePage` 就是這個形狀)。三件事跟著來:`GetContent` **會被呼叫很多次**,
    副作用要自己上一次性旗標;CmdPal 讀 `Commands` 的時機**比 `GetContent` 早**
@@ -257,6 +263,19 @@ Version 的症狀)。
     另外**這是少數「發提示看得見」的地方**:失敗的定義就是沒有外部視窗跳出來,面板還在
     前景,所以 `ToastStatusMessage` 的 InfoBadge 讀得到(成功那條路相反,發什麼都是白費)。
     考證見[設計考證〈跳出去之後回得到哪一頁〉](docs/design-notes.md#open-external-return)。
+12. **`ListItem.Section` 只在那一列「沒有命令」時才是標頭文字 —— 有命令的列上它是死的。**
+    CmdPal 的清單是**扁平**的,沒有任何 grouping;所謂的分節標頭就是集合裡的一列,
+    由 `ListItemViewModel.EvaluateType` 挑出來:`Command.IsSet` 為真就是普通項目,
+    否則才看 `Section` 決定是標頭還是分隔線。也就是說在一個有命令的 `ListItem` 上設
+    `Section`,**畫面上什麼都不會發生**,而且不會有任何錯誤。
+    CmdPal 主頁的「結果 / 已釘選 / 命令」是它自己插進去的 command-less 列 ——
+    UIA 樹裡長成 `ListItem: ' ListItemViewModel'` + `Text: '結果'`,**沒有 `Group:` 子節點**,
+    那正是「這一列沒有命令」的外顯特徵;Inkling 的每一列都有 `Group:`。
+    要真的做出標頭,得自己多插一列命令為 null 的項目
+    (`new ListItem(new NoOpCommand()) { Title = t, Section = t, Command = null! }`)——
+    **0.11 的 toolkit 沒有 `Separator` / `Section` 這兩個現成類別**,而且那一列會佔一個索引,
+    `VersionedItemsCache` 的鍵與「刪除全部排第一」的風險分析都要跟著重算。
+    見 [設計考證〈分節標頭:`Section` 不是分組鍵〉](docs/design-notes.md#section-not-grouping)。
 
 ## 慣例
 
@@ -308,13 +327,21 @@ Version 的症狀)。
   結果是好幾個 commit 的行為改動沒有記錄)。**README 有兩個語言版本**:`README.md` 英文是預設、
   `README.zh-Hant.md` 繁中,是同一份文檔的兩個版本 —— 章節、表格的列、截圖都要對得上,
   改一份就改另一份(英文 pitch 以 `README.md` 為準,Store listing 與 gallery 從那裡拿)。
-  **文檔分三份,別放錯**:README 是使用者文檔(怎麼用、有哪些鍵、筆記檔長什麼樣),
-  `docs/development.md` 是建置/部署/專案結構/排錯,`docs/design-notes.md` 是
-  「為什麼是這樣」的考證 —— README 每一節只留結論加連結(快速鍵那一節曾經漂回考證口吻,
-  壓回去過一次)。改了 build、部署腳本或圖示流程,更新的是 `docs/development.md`。
-  `CONTRIBUTING.md`(英文)是對外的薄入口,只指路、不重複規則 —— 規則在這份與
-  `docs/development.md`,README 的文檔表對外列的是它而不是這份。
-  **「查過、量過,然後決定不做」的東西也進 `design-notes.md`**,收在
+  **文檔各有各的家,別放錯:**
+
+  | 檔案 | 裝什麼 |
+  |---|---|
+  | 兩份 README | 使用者文檔:怎麼用、有哪些鍵、筆記檔長什麼樣。**每一節只留結論加連結**(快速鍵那一節曾經漂回考證口吻,壓回去過一次) |
+  | `docs/development.md` | 建置 / 部署 / 專案結構 / 排錯。改了 build、部署腳本或圖示流程,更新的是它 |
+  | `docs/design-notes.md` | 「為什麼是這樣」的考證 —— **已經決定的**取捨 |
+  | [`docs/known-issues.md`](docs/known-issues.md) | **「這樣是錯的,只是還沒修」** —— 每條附重現步驟與建議修法。**修掉一條就從那裡刪掉**,修好的東西留著比沒寫更糟 |
+  | [`docs/release-checklist.md`](docs/release-checklist.md) | **一次性**的:身分定案與通路開通 |
+  | [`docs/release-runbook.md`](docs/release-runbook.md) | **每次發版都要跑**的重複流程 |
+  | `CONTRIBUTING.md`(英文) | 對外的薄入口,只指路、不重複規則 —— 規則在這份與 `docs/development.md`,README 的文檔表對外列的是它而不是這份 |
+
+  `design-notes.md` 與 `known-issues.md` 的界線是**決定 vs 債**:同一件事查清楚之後
+  決定「就這樣」就進前者,決定「這是錯的但先不修」就進後者。
+  **「查過、量過,然後決定不做」屬於前者**,收在
   [〈評估過但沒有做〉](docs/design-notes.md#deferred) ——
   沒寫下來的話,每隔一陣子就會有人重新想到同一個點子再走一遍同樣的路。
   每一條都要寫「什麼變了才該重新考慮」,否則那節會變成一張看不出還算不算數的否決清單。
@@ -364,11 +391,20 @@ Get-ChildItem $d -Recurse -Include *.dll,*.exe | Where-Object {
 | `windows-commandpalette-extension` | 沒有 | 命中 | 字串常量(#US) |
 | `x-cmdpal://reload` | 沒有 | 命中 | 字串常量(#US) |
 | `Reload Command Palette extensions` | 命中 | 沒有 | .resw 資源字串(編進 exe 的資源段) |
-| `set_DefaultButton` | 沒有 | 沒有 | 真的不存在 |
+| `set_DefaultButton` | 沒有 | 沒有 | **兩種都掃不到,但那條路實際上是通的** —— 見下面那條紅字 |
 
 只掃 UTF-8 的話,gallery 的 tag(`windows-commandpalette-extension`)、reload 的 URI、
 gallery feed 的名字(`CmdPal-ExtensionsJson`)全都會被誤判成「安裝版沒有」——
-**兩種編碼都掃不到,才算沒有。** 下面〈已知落差〉的每一條都用兩種編碼重掃過,結論不變。
+**兩種編碼都掃不到,也只是「這個掃法沒找到」,不等於不存在。**
+
+**⚠ 這個掃法可以證實,不能證否。** `Microsoft.CmdPal.UI.exe` 是 **NativeAOT** 影像 ——
+不是 managed assembly、也不是 single-file bundle(`PEHeaders.CorHeader` 是 null,
+整包沒有 `hostfxr` / `hostpolicy` / `coreclr`)。裡面的識別名來自**被裁過的 AOT metadata**,
+所以上面那套 `#Strings` / `#US` 的模型在這個 exe 上只有一半成立:**命中仍然是硬證據,
+沒命中不是。** 這不是理論 —— `set_DefaultButton` 兩種編碼都掃不到,而 2026-08-22 的實機
+驗證證明 `IsPrimaryCommandCritical` 在安裝版上**是有作用的**(見下面〈已知落差〉那一條)。
+從原始碼得到的結論,byte-scan 掃得到就當它有;掃不到的時候**要用實機行為判**,
+不要寫成「安裝版沒有」。
 
 (別用 `Select-String -Encoding Byte`,PowerShell 7 已經移除那個參數,整條會靜靜地失敗。)
 
@@ -390,13 +426,23 @@ $bytes = [System.IO.File]::ReadAllBytes("$d\resources.pri")
   只有這個判斷沒有(`OnlyControl` / `SoleControl` / `SingleControl` 各種變體也都沒有)。
   設定頁因此曾經多掛一塊空的 `MarkdownContent` 去「湊滿兩塊內容」,而那招在安裝版上
   八成從來沒生效過,現在已經移除,見 [設計考證〈表單後面那塊空白已經拿掉了(而且它八成從來沒生效過)〉](docs/design-notes.md#blank-markdown-removed)。
-- 確認框的 `ContentDialog.DefaultButton` —— `main` 在 `IsPrimaryCommandCritical` 時把它設成
-  `Close`,安裝版整個套件掃不到 `set_DefaultButton`(同一段的 `set_PrimaryButtonText` /
-  `set_CloseButtonText` / `set_XamlRoot` 都掃得到,所以不是掃描失準)。也就是說**那個旗標
-  在使用者手上完全沒有效果**,批次刪除跟單則刪除的確認框長得一模一樣,Enter 都是確認。
-  README 曾經照 `main` 寫成「設了它預設按鈕就變取消」,手動驗證清單還照那個寫了一條測試項。
-  順帶一提**按鈕的顏色擴展碰不到**:`ConfirmationArgs` 只有四個屬性,而 CmdPal 那段把主要
-  按鈕標紅的樣式是註解掉的 TODO。見 [設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](docs/design-notes.md#confirm-dialog-colors)。
+- **~~確認框的 `ContentDialog.DefaultButton`~~ —— 這一條是錯的,2026-08-22 實機推翻。**
+  這裡以前寫著「安裝版掃不到 `set_DefaultButton`,所以 `IsPrimaryCommandCritical`
+  在使用者手上完全沒有效果」。**不成立。** 三種確認框的實測焦點:
+
+  | 確認框 | `IsPrimaryCommandCritical` | 焦點落在 |
+  |---|---|---|
+  | 清單頁 `Ctrl+D` 單則 | false | **刪除** |
+  | 刪除頁 · Inkling 建立的 | false | **刪除** |
+  | 刪除頁 · 外來檔案(`DeleteNotesPage.cs:197`) | true | **取消** |
+  | 刪除頁 · 刪除全部 / 只刪 Inkling 建立的(`:271`、`:299`) | true | **取消** |
+
+  也就是說那個旗標**設了就會生效**,批次刪除的反射性 Enter 落在取消。
+  誤判的成因是上面那條紅字:NativeAOT 影像掃不到不等於沒有。
+  **這一條留著不刪,因為它是那個方法論陷阱最好的例子。**
+  順帶一提**按鈕的顏色擴展仍然碰不到**:`ConfirmationArgs` 只有四個屬性,而 CmdPal 那段把
+  主要按鈕標紅的樣式是註解掉的 TODO —— 那部分沒有被推翻。
+  見 [設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](docs/design-notes.md#confirm-dialog-colors)。
 - `ListItemsView` 的 sticky selection —— `main` 在清單更新後會盡量把選中項留在原處
   (`_stickySelectedItem`),留不住才退回 `GetFirstSelectableIndex()` 選第一個可選項;
   安裝版 `_stickySelectedItem` / `firstUsefulIndex` / `ensureSelectionVisible` **一個都掃不到**。
