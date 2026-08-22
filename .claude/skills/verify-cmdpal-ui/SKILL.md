@@ -141,7 +141,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"
 要跑寫入類的驗證,先換到測試資料夾,跑完換回去:
 
 ```powershell
-$pfn = (Get-AppxPackage Inkling).PackageFamilyName
+$pfn = (Get-AppxPackage '*Inkling*').PackageFamilyName
 $settings = "$env:LOCALAPPDATA\Packages\$pfn\LocalState\settings.json"
 $backup = Get-Content $settings -Raw -Encoding UTF8      # 先留一份原值
 
@@ -161,7 +161,7 @@ Set-Content $settings -Value $backup -Encoding UTF8      # 一定要換回去
 ### 3. 想看擴展內部發生了什麼就開診斷日誌
 
 在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\` 建一個空檔 `diagnostic.on`
-(`<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查),
+(`<PFN>` 用 `(Get-AppxPackage '*Inkling*').PackageFamilyName` 查),
 Reload,之後 `-Steps "...|log"` 就讀得到。擴展沒有主控台,`Debug.WriteLine` 在 Release
 被編掉,這是唯一能讓它自己說話的路。
 

@@ -87,7 +87,7 @@ trimming 只在 `dotnet publish` 時生效,而 `Add-AppxPackage -Register` 註�
 `src\Inkling\bin\` 底下那個佈局,所以**不要在部署後刪掉 `bin\`**(`git clean -xfd` 也會刪),
 否則擴展會壞掉;真的刪了就重跑一次 `deploy.ps1`。
 
-**移除**:`Get-AppxPackage -Name Inkling | Remove-AppxPackage`。
+**移除**:`Get-AppxPackage -Name '*Inkling*' | Remove-AppxPackage`。
 
 ### 改了圖示
 
@@ -133,7 +133,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
 
 1. **先把筆記資料夾指到 demo 資料夾**,別把真的筆記放進公開 repo。備份
    `%LOCALAPPDATA%\Packages\<PFN>\LocalState\settings.json`(`<PFN>` 用
-   `(Get-AppxPackage Inkling).PackageFamilyName` 查),把 `Inkling.NotesDirectory` 改成
+   `(Get-AppxPackage '*Inkling*').PackageFamilyName` 查),把 `Inkling.NotesDirectory` 改成
    `%TEMP%\inkling-demo`,裡面放幾則英文的 demo 筆記(帶 front matter,標題像真的),
    `Stop-Process -Name Inkling` 再 `Start-Process 'x-cmdpal://reload'`,
    用 `-Steps "notes"` 確認清單讀到的是 demo。
@@ -281,7 +281,7 @@ docs/                design-notes.md(設計考證)、development.md(這一份)�
 %LOCALAPPDATA%\Packages\<PFN>\LocalState\settings.json
 ```
 
-`<PFN>` 是套件家族名,用 `(Get-AppxPackage Inkling).PackageFamilyName` 查得到 ——
+`<PFN>` 是套件家族名,用 `(Get-AppxPackage '*Inkling*').PackageFamilyName` 查得到 ——
 **不要把它寫死進文檔**,換套件身分時那些字串會靜靜失效。路徑裡那串雜湊是從
 `Package.appxmanifest` 的 `Identity` 算出來的(MSIX 路徑重導向)。CmdPal 自己那份設定
 (啟用與否、alias、快速鍵、釘選)存在 CmdPal 的套件底下,擴展碰不到。
@@ -348,7 +348,7 @@ Get-StartApps | Where-Object { $_.Name -like '*Inkling*' }
 `Add-AppxPackage -Register` 會**靜默地什麼都不做**,舊的 `InstallLocation` 原封不動
 (在 Debug 與 Release 之間切換時特別容易中招)。`deploy.ps1` 已經處理:位置不同就先
 `Remove-AppxPackage -PreserveApplicationData` 再註冊,事後還會確認 `InstallLocation`
-真的變了。想確認目前跑的是哪一份:`(Get-AppxPackage -Name Inkling).InstallLocation`。
+真的變了。想確認目前跑的是哪一份:`(Get-AppxPackage -Name '*Inkling*').InstallLocation`。
 
 **設定頁按 Save 什麼都沒發生** — 那個頁面是綁在**某一個擴展實例**上的。中間只要發生過
 Reload 或重新部署,舊的擴展進程就被換掉了,設定頁手上的物件已經死了,按下去靜靜地什麼也
@@ -384,13 +384,17 @@ Windows 認得的所有 CmdPal 擴展:不在裡面是註冊沒成功;在裡面�
 預設關閉。開啟方式是在設定資料夾裡建一個空檔,然後 Reload:
 
 ```powershell
-$ls = "$env:LOCALAPPDATA\Packages\$((Get-AppxPackage Inkling).PackageFamilyName)\LocalState"
+$ls = "$env:LOCALAPPDATA\Packages\$((Get-AppxPackage '*Inkling*').PackageFamilyName)\LocalState"
 New-Item -ItemType File "$ls\diagnostic.on"
 Get-Content "$ls\diagnostic.log" -Encoding utf8 -Wait   # 邊操作邊看
 ```
 
+(`-Name` 用萬用字元不是偷懶:Store 上架時會把 `Identity` 的 `Name` 改成
+「<發行者>.<名稱>」,精確比對從第一個 Store 版本起就一律落空。)
+
 沒有 `diagnostic.on` 時 `DiagnosticLog.Write` 的每次呼叫只是一個布林判斷。
-用完把 `.on` 檔刪掉即可。
+用完把 `.on` 檔刪掉即可 —— 檔案本身有 **2 MB 上限**(超過搬成 `.log.1` 重新開始),
+但清單頁每個按鍵寫一行,裡面有使用者打過的每一個查詢字串,不需要就別留著。
 
 (`dotnet run --project tools\ApiDump -- --paths` 印的是**未封裝**身分下的路徑,
 跟上面那個不是同一個,別搞混。)
@@ -413,6 +417,23 @@ Get-Content $log.FullName | Select-String '\[Inkling\]'
 那份 log 是所有擴展共用的,所以:訊息一律帶 `[Inkling]` 前綴(否則不知道是誰寫的),
 而且**只有真的失敗才寫** —— 追蹤性質的訊息走 `Write`,把每次 `GetItems` 都寫進去
 只會把別人的線索淹掉。
+
+**而且它等於公開場合。** PowerToys 的 Bug Report Tool 會把整個
+`%LOCALAPPDATA%\Microsoft\PowerToys\` 打包,使用者拿去貼在 `microsoft/PowerToys` 的
+公開 issue 上,完全繞過我們自己的 issue 範本與那裡的遮蔽提醒。所以簽章是
+`Failure(string summary, string? detail = null)`:
+
+- `summary` 進兩個通道 —— **去識別化的失敗種類**,例外只放 `ex.GetType().Name`。
+- `detail` 只進本機的 `diagnostic.log` —— 路徑、`ex.ToString()` 這些查起來才有用、
+  但不能公開的東西。筆記路徑同時帶著**筆記標題**與(經 `%OneDrive%` / `Documents`)
+  **Windows 使用者名字**。
+
+訊息一律**英文**:那份 log 會被 PowerToys 的維護者拿去 triage 別人的 bug。
+考證見 [設計考證〈診斷 log 有兩個通道〉](design-notes.md#log-two-channels)。
+
+**`SettingsManager` 建構子裡發的 `Failure` 送不到共用通道** —— 那時 `ExtensionHost`
+還沒接到 host(`InitializeWithHost` 才呼叫 `ExtensionHost.Initialize`),`LogMessage`
+靜靜地什麼都不做。設定檔被隔離那一句因此在 `InitializeWithHost` 裡補發一次。
 
 ## 查 SDK 與 CmdPal 的實際行為
 

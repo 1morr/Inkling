@@ -137,7 +137,13 @@ So each page gives `Enter` the natural next step on that path:
 | Preview | Edit | Done (dismiss) |
 | Capture and preview (where quick capture's Enter lands) | Done (dismiss) | Edit |
 | `Inkling: Delete notes` | Delete (asks once) | Delete now |
+| Edit form | Keep editing (does nothing) | Open in default editor |
 | Scratchpad | Discard changes (inside the text box `Enter` is a newline — `Tab` out first) | Open in default editor |
+
+On the edit form, **saving is `Tab` to "Save", then `Enter`**, and the form **stays open** —
+press `Esc` to go back. `Enter` from the single-line title field is deliberately harmless there:
+it used to jump straight to the external editor and dismiss the palette, dropping whatever you
+had typed into the card.
 
 On the scratchpad, **saving is `Tab` to "Save", then `Enter`**, and the palette dismisses itself;
 both exits say what just happened, because a vanishing palette alone cannot tell "saved" from
@@ -166,13 +172,24 @@ The data format is a promise. A few deliberate choices:
 
 - **`id` is the identity; the file name is only for humans.** Renaming a title does not rename
   the file — frequent renames inside a cloud-synced folder are the top source of duplicate and
-  conflict copies.
+  conflict copies. Which *file* a row acts on is decided by its path, not by `id`, so a cloud
+  conflict copy (same `id`, different file) stays independently editable.
+- **Dates it cannot read are left alone.** `created`/`updated` are written and read as ISO 8601
+  (`2026-08-10T14:30:52+08:00`). Anything else — `2024-01-05 (approx)`, or the ambiguous
+  `05/01/2024` — is kept verbatim instead of being guessed at and rewritten.
 - **Unknown front matter fields are preserved as-is.** `aliases` or `cssclass` added by Obsidian
   or similar tools survive a round of editing in Inkling. An empty `tags` is not written.
 - **`.md` files without front matter still show up in the list**, with the title taken from the
   first meaningful line of the body and the timestamps from the file. Point Inkling at an existing
   notes folder and it just works. Such files are marked (`Note.IsExternal`): browsing treats them
   the same, only the delete paths handle them separately ([why](docs/design-notes.md#delete-page)).
+  "Created by Inkling" means the `id` has the shape Inkling generates — an `id:` of your own
+  (Zettelkasten, Hugo, Obsidian) keeps the file on the *not mine* side, and Inkling never
+  overwrites it.
+- **Files must be UTF-8.** Anything else (Big5, GBK, Latin-1 without a BOM) is skipped rather
+  than read as garbage, and the list says how many were skipped. Files with a BOM — UTF-8,
+  UTF-16 LE/BE — read fine. This is on purpose: decoding such a file would replace every
+  non-ASCII byte with `` and a single edit in Inkling would write that back permanently.
 - Subfolders are scanned; new notes are always written to the root.
 - **The scratchpad is `scratchpad.md` in the root of the same folder**, plain text with no front
   matter, so any other editor opens exactly what you typed. It **does not appear in the list or in
@@ -206,10 +223,10 @@ OneDrive app; Obsidian or similar tools can point at the same folder.
 **OneDrive users**: mark the Inkling folder "Always keep on this device" (right-click the folder).
 With Files On-Demand, cloud-only placeholders trigger a download on read and search stalls.
 When two machines edit the same note at once OneDrive creates a `name-ComputerName.md` copy.
-Nothing is lost on disk and both files show up in the list — but the copy carries the **same
-`id`** as the original, and Inkling currently resolves a note by `id`, so editing or deleting
-either row acts on whichever file it finds first. **Sort conflict copies out in File Explorer
-or your editor, not inside Inkling.**
+Both files show up in the list, and because the copy carries the **same `id`** as the original,
+Inkling tags both rows **Conflict copy** so you can tell what happened. Editing or deleting a row
+acts on that row's own file — the two are independent. Inkling does not merge them: compare the
+two rows in the details pane, keep the one you want, and delete the other.
 
 ## Troubleshooting
 
@@ -223,6 +240,12 @@ exe is a pure COM server, so "launching" it was never going to do anything. Rein
 
 **Wrong UI language** — the language follows the Windows **display language** (not the "regional
 format" setting) and there is no override. After changing the display language, sign out and back in.
+
+**Your settings went back to the defaults** — if `settings.json` was left in a state that is not
+valid JSON (an editor mishap, a crash mid-write), Inkling moves it aside as
+`settings.json.corrupt-<timestamp>` and starts from the defaults, so that saving works again
+instead of failing silently forever. The settings page says so at the top and names the file;
+the old values are still in it if you want to pick them back out.
 
 Everything else (deploy, registration, trimming, the extension's own diagnostic log):
 [docs/development.md → troubleshooting](docs/development.md#troubleshooting).

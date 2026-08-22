@@ -85,7 +85,7 @@ repo 樹內沒有任何 `.pfx` / `.p12` / `.cer`,憑證存放區裡也沒有對�
 (讀不到檔案不會報錯,只會讓驗證失明)。改名那一輪順手全部改成動態查:
 
 ```powershell
-(Get-AppxPackage Inkling).PackageFamilyName
+(Get-AppxPackage '*Inkling*').PackageFamilyName
 ```
 
 文檔裡一律寫成 `%LOCALAPPDATA%\Packages\<PFN>\LocalState`,腳本片段直接內插上面那一行。
@@ -119,7 +119,7 @@ repo 樹內沒有任何 `.pfx` / `.p12` / `.cer`,憑證存放區裡也沒有對�
 2. 跑過 `docs/manual-test-checklist.md`(至少發版相關的段落)。
 3. 打 tag:`git tag v1.1.0 && git push origin v1.1.0`。
    ⚠ **第一段不能是 0** —— Store 不收 `0.x.y` 的套件,而 `release.yml` 的 regex 目前
-   放行它(見 [`known-issues.md` K-15](known-issues.md#k-15))。第一個公開版本從
+   放行它 —— **已經收成 `^[1-9]\d*\.\d+\.\d+$`**。第一個公開版本從
    `v1.0.0` 起。
 4. release.yml 自動:跑測試 → 建 x64 + ARM64(trimmed publish)→ 注入版本 → 組 msix →
    (有設憑證 secret 才)簽 msix → 組 msixbundle(帶 `/bv`,版本跟著 tag)→
@@ -144,7 +144,7 @@ MSIX 專屬的欄位別漏(用 `winget-create` 產 manifest 的話它會問,手�
 | 欄位 | 值 | 漏了會怎樣 |
 |---|---|---|
 | `InstallerType` | `msix` | 型別錯了驗證直接擋下 |
-| `PackageFamilyName` | `(Get-AppxPackage Inkling).PackageFamilyName` | WinGet 對不上「這台機器已經裝了」,升級與解安裝會失準 |
+| `PackageFamilyName` | `(Get-AppxPackage '*Inkling*').PackageFamilyName` | WinGet 對不上「這台機器已經裝了」,升級與解安裝會失準 |
 | `SignatureSha256` | `AppxSignature.p7x` 的 SHA256 | 少了它沒有串流安裝;而 MSIX 本來就必須簽章才收 |
 | `InstallerSha256` | 資產本身的 SHA256 | 必填 |
 | `Platform` | `Windows.Desktop` | —— |

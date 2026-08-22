@@ -23,7 +23,7 @@ git diff <上一個 tag>..HEAD -- src/Inkling/CommandIds.cs
 [設計考證〈命令 Id 為什麼要寫死〉](design-notes.md#command-ids))。改一個字,使用者設過的
 alias、全域快速鍵、釘選當場失效。
 
-⚠ **這條沒有任何自動化把關**(見 [`known-issues.md` K-11](known-issues.md#k-11)),
+⚠ **除了 `tests/Inkling.Tests/CommandIdTests.cs` 逐字比對那七個常數之外沒有別的把關**,
 這個 diff 是唯一的閘門,不要跳過。
 
 ### 2. `[自動]` `Identity` 的身分欄位沒變
@@ -80,7 +80,7 @@ manifest 還原回舊的 CN,`makeappx pack` 與 CI **都不會報錯**,Partner C
   first section, which cannot be 0)」。
 
   ⚠ **`v0.x.y` 的 tag 產不出 Store 收得下的套件**,而 `release.yml` 的 regex 目前放行它 ——
-  見 [`known-issues.md` K-15](known-issues.md#k-15)。在那條修掉之前,自己記得別打 `v0.*`。
+  `release.yml` 的版本 regex 已經收成 `^[1-9]\d*\.\d+\.\d+$`,打 `v0.*` 會在 CI 就被擋下。
 - Store 端每個 package full name(Name + Publisher + Version + 架構)必須唯一,
   **同一個版本號不能傳第二次**,即使前一次的 draft 已經刪掉。所以試跑失敗要重來時,
   是重跑 `workflow_dispatch`,不是重推同一個 tag。
@@ -256,7 +256,8 @@ gh run watch
   —— job 層的 env 連 `dotnet publish` 都讀得到)。
 
   ⚠ 在沒有憑證的期間,`release.yml` 仍然會把未簽章資產掛上公開 Release 且不加說明 ——
-  見 [`known-issues.md` K-14](known-issues.md#k-14)。
+  沒有簽章時 `release.yml` 會把 release 建成 **prerelease** 並改用顯式的 `--notes`
+  講明「這些資產沒有簽章、是給 Store 送審用的」,而不是 `--generate-notes`。
 
 ---
 

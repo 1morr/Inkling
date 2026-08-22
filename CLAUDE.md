@@ -48,13 +48,24 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
 - 擴展沒有主控台,`Debug.WriteLine` 在 Release 被編掉。要確認某段程式有沒有跑到,
   用 `DiagnosticLog.Write`:在 `%LOCALAPPDATA%\Packages\<PFN>\LocalState\`
   建一個空檔 `diagnostic.on`,Reload,然後看同目錄的 `diagnostic.log`。
-  `<PFN>` 用 `(Get-AppxPackage Inkling).PackageFamilyName` 查 —— 不要把它寫死進文檔,
+  `<PFN>` 用 `(Get-AppxPackage '*Inkling*').PackageFamilyName` 查 —— 不要把它寫死進文檔,
   換套件身分時那些字串會靜靜失效(讀不到檔案不報錯,只會讓驗證失明)。
   **失敗要用 `DiagnosticLog.Failure`**:上面那個檔預設是關的,而使用者回報問題時
   失敗現場多半沒被記下來。`Failure` 會另外送一份到 CmdPal 自己的 log
   (`%LOCALAPPDATA%\Microsoft\PowerToys\CmdPal\Logs\<版本>\`),那份永遠開著,
   訊息帶 `[Inkling]` 前綴(所有擴展共用同一份)。**只有真的失敗才用它** ——
   追蹤性質的訊息塞進去會把別的擴展的線索淹掉。實測見 `docs/development.md`。
+  **而那個共用通道等於公開場合**:PowerToys 的 Bug Report Tool 會把整個
+  `%LOCALAPPDATA%\Microsoft\PowerToys\` 打包,使用者拿去貼在 `microsoft/PowerToys` 的
+  公開 issue 上,完全繞過我們自己的 issue 範本與那裡的遮蔽提醒。所以簽章是
+  **`Failure(string summary, string? detail = null)`**:`summary` 進兩個通道,
+  **不准帶檔案路徑、筆記標題、使用者打的字或例外全文**(例外只放 `ex.GetType().Name`);
+  路徑與 `ex.ToString()` 一律走 `detail`,只進本機那一份。筆記路徑同時帶著筆記標題與
+  (經 `%OneDrive%` / `Documents`)Windows 使用者名字。考證見
+  [設計考證〈診斷 log 有兩個通道〉](docs/design-notes.md#log-two-channels)。
+  另外**所有 log 訊息都是英文**(慣例那一條),而且 `diagnostic.log` 有 2 MB 上限。
+  `SettingsManager` 建構子裡發的 `Failure` **送不到共用通道** —— 那時 `ExtensionHost`
+  還沒接到 host,所以 `InitializeWithHost` 會補發一次。
 
 ## 架構
 
@@ -65,6 +76,11 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
   全部在這一層,因此全部有單元測試。跨消費者的概念只留一份實作 ——
   「內文的第一行有效文字」收在 `NoteBody`(清單摘要、外來檔案的推導標題、
   預覽判斷「內文是否已含標題」三處共用),曾經各寫一份而且字元集已經漂移過。
+  **`id` 是筆記的身分,但「這一列對應哪個檔案」認的是 `FilePath`。**
+  `Update` / `Delete` / `GetByPath` 都吃路徑,`GetById` 是 repository 的 private
+  (只給 `Create` 做碰撞偵測)—— 雲端硬碟的衝突副本是整檔複製,同一個 `id` 會出現在
+  兩個檔案上,用 id 解析目標就會寫進錯的那一份(踩過)。UI 層留路徑而不是留 id,
+  見 [設計考證〈解析一則筆記認的是路徑,不是 `id`〉](docs/design-notes.md#identity-is-the-path)。
 - **`src/Inkling`** — MSIX COM server,只負責把 Core 的結果翻譯成 `IListItem` / `IContent`。
   這一層**有測試**(`tests/Inkling.Tests`),但只測「不需要 CmdPal 在跑」的那部分:
   頁面的命令順序與快速鍵(底部工具列那兩顆按鈕是位置鍵,插一項就換掉 `Enter` 的意思)、
@@ -227,6 +243,9 @@ Version 的症狀)。
    所以不是我們的程式沒走到那一行。`main` 的 switch 裡是有 `case CommandResultKind.GoBack`
    的,但那是 `main`,byte-scan 對 NativeAOT 影像證否不了(見〈查證 CmdPal 的行為〉)。
    **能用的只有 `GoHome` / `Dismiss` / `KeepOpen` / `Confirm` / `ShowToast`。**
+   repo 裡兩處 `GoBack()` 已經全部拿掉:編輯表單存完明著回 `KeepOpen()`(卡片底部
+   提示「按 Esc 回上一頁」),記下並預覽頁失敗時那顆「回上一步」換成就地「再試一次」。
+   **不要再寫回去** —— 留一個看起來會導頁、實際上不會的回傳值,下一個人只會往錯的方向查。
    唯一還通的路是讓那一列的命令**本身就是一個 `IPage`** ——
    CmdPal 對頁面的處理是導覽而不是 `Invoke`,副作用因此得寫在 `GetContent()` 裡
    (`CapturedNotePage` 就是這個形狀)。三件事跟著來:`GetContent` **會被呼叫很多次**,
@@ -275,7 +294,11 @@ Version 的症狀)。
     (`new ListItem(new NoOpCommand()) { Title = t, Section = t, Command = null! }`)——
     **0.11 的 toolkit 沒有 `Separator` / `Section` 這兩個現成類別**,而且那一列會佔一個索引,
     `VersionedItemsCache` 的鍵與「刪除全部排第一」的風險分析都要跟著重算。
-    見 [設計考證〈分節標頭:`Section` 不是分組鍵〉](docs/design-notes.md#section-not-grouping)。
+    Inkling 原本那六處賦值(刪除頁四處、快速記下頁兩處)連同五條資源字串**已經刪掉** ——
+    留著只會讓下一個人以為畫面上有標頭。設定卡片上那兩個 `"separator": true` 是同一類的
+    死宣告(線畫不出來,顏色與粗細擴展碰不到),也已經換成 `spacing: medium`。
+    見 [設計考證〈分節標頭:`Section` 不是分組鍵〉](docs/design-notes.md#section-not-grouping)
+    與[〈設定卡片上沒有分隔線〉](docs/design-notes.md#settings-no-separator)。
 
 ## 慣例
 

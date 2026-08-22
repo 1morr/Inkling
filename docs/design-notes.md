@@ -359,6 +359,11 @@ ListItem: 'Inkling'                     ← 普通項目:有 Group
 照著寫了斷言**。2026-08-22 的實機驗證發現那些標頭從來沒有出現過 —— UIA 樹裡沒有、
 截圖上也沒有。那幾處賦值是死碼。
 
+**六處賦值連同那五條資源字串已經整個刪掉**,而不是留著等哪天做標頭 —— 留下來的話,
+下一個人讀到程式碼會以為畫面上有標頭,而那正是這一輪查了很久才發現的誤會。
+刪除頁區分「外來 / 自己的」現在只靠排序(外來排前面)與圖示(`Icons.External`),
+兩者都是實際看得到的。
+
 #### 要真的做出標頭的話
 
 照 CmdPal 內建計算機擴展的形狀,自己多插一列:
@@ -580,7 +585,37 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   `main` 的 `ShellViewModel.UnsafeHandleCommandResult` 裡是有 `case CommandResultKind.GoBack`
   的,但那是 `main`;byte-scan 對這個 NativeAOT 影像證否不了
   (見〈確認框的按鈕沒有顏色…〉那節的教訓),所以結論以實機行為為準。
-  **還沒決定怎麼處理** —— 見 [`known-issues.md` K-4](known-issues.md#k-4)。
+
+  **處置:明著回 `KeepOpen()`,並把「按 Esc 回上一頁」寫進卡片。**
+  三條路都試過了 ——`GoBack()` 不動;改回 `GoHome()` 會把使用者丟回主搜尋框,
+  比停在原地更遠(他剛從清單裡找到這一則);讓表單自己導頁做不到,因為擴展手上
+  沒有任何導頁的入口(`GoToPage` 也是空殼)。留在原地 + 底部 InfoBar 的
+  「已儲存:<標題>」是可用的結果,而 `Esc` 本來就回得去。
+  **重點是回傳值不要說謊**:留著一個看起來會導頁、實際上不會的 `GoBack()`,
+  下一個人只會以為畫面沒回上一頁是別的地方壞了。同一輪把
+  `CapturedNotePage` 失敗路徑上那個 `GoBack()` 也拿掉了 —— 那顆按鈕寫著「回上一步」
+  而按下去什麼都不會發生,「唯一的重試路徑」其實從來沒通過,現在改成就地「再試一次」
+  (放掉一次性旗標 + `RaiseItemsChanged`,讓 `GetContent` 重新寫一次檔)。
+
+<a id="edit-form-enter"></a>
+
+### 編輯表單的 `Enter` 是一顆什麼都不做的命令
+
+`ContentPage` 的底部工具列主命令就是 `Commands[0]`(位置鍵,見〈兩個位置鍵〉)。
+編輯頁一度只掛一項「在預設編輯器開啟」,於是 **`Enter` 就是它**:焦點在**單行**的標題欄時
+按 Enter 是很自然的「送出」手勢,結果卻是跳去外部編輯器、面板被 `Dismiss` 收掉,
+卡片上打過而還沒儲存的字全部消失。實機重現過。
+
+當時的結論寫著「Enter 本身收不回來」,**那句話是錯的**,而且同一個 repo 裡就有三個反例:
+`ScratchpadPage` 刻意把無害的「捨棄變更」放在 `Commands[0]`、把跳外部推到 `Commands[1]`;
+`NewNotePage` 與 `InklingSettingsPage` 根本不設 `Commands`。`Commands[0]` 一直都是可控的。
+
+現在第一顆是一顆 `AnonymousCommand(() => { })` 配 `CommandResult.KeepOpen()`,名字叫
+「繼續編輯」—— 誤按 Enter 的代價變成零。它**不能**是「儲存」:底部工具列走的是無參數的
+`ICommand.Invoke()`,拿不到使用者剛打的字(同一件事 `ScratchpadFormContent` 已經記過),
+放上去只會是一顆假按鈕。真正的儲存只有卡片裡那顆 `Action.Submit` 一條路。
+`tests/Inkling.Tests/PageCommandOrderTests.cs` 有一條斷言把 `Commands[0]` 釘住 ——
+這個位置一動,`Enter` 的意思就變了,而那不會有任何編譯或執行期訊號。
 
 <a id="scratchpad-no-autosave"></a>
 
@@ -735,6 +770,25 @@ toolkit 的 `Settings.RaiseSettingsChanged()` 是 `internal`,本來就叫不動�
 **相對路徑整筆拒絕**(它會對著擴展 COM server 進程的 CWD 解析,筆記落在意想不到的位置),
 表單留在原地什麼都不存;**完整但還不存在的路徑照存**(repository 第一次存檔時會建),
 但當場提示 —— 打錯一個字就靜靜換了資料夾,看起來會像「舊筆記全部消失」。
+
+<a id="settings-no-separator"></a>
+
+### 設定卡片上沒有分隔線,因為畫不出來
+
+三個設定項之間曾經宣告 `"separator": true` 配 `spacing: default`(8px)。
+**那條線從來沒有被畫出來。** 2026-08-22 實機截圖逐列掃過,而且是在**淺色**主題下 ——
+所以不是「深色背景上的半透明黑看不見」那種解釋。
+
+Adaptive Cards 的分隔線粗細與顏色來自 hostConfig 的 `separator` 區塊,而 **CmdPal 沒有給
+擴展任何碰 hostConfig 的入口**:我們手上只有 `TemplateJson` 與 `DataJson`。
+查不出為什麼沒渲染,也改不動它。
+
+處置是**把那個宣告刪掉,改用間距**(`spacing: medium`,20px)。留著一個不生效的宣告
+跟〈分節標頭〉是同一類問題:下一個人讀到程式碼會以為線是別的地方弄丟的。
+`default` 的 8px 是配合線才夠的 —— 少了線,上一項的說明會直接黏著下一項的標籤,
+看不出哪句話屬於哪個欄位;`medium` 之後三個區塊在截圖上清楚分開。
+
+**什麼變了才該重新考慮**:CmdPal 開放 hostConfig,或它自己換了一份會畫線的預設值。
 
 <a id="browse-button"></a>
 
@@ -1231,6 +1285,178 @@ VS Code 照開,`DiagnosticLog` 記的是「已交給 shell」。**用 `assoc` �
 
 失敗時一律 `KeepOpen`,連隨手草稿也不例外 —— 面板收掉的話,那則訊息連同
 「什麼都沒發生」會一起消失,使用者只會以為編輯器在背景開好了。
+
+## 資料完整性
+
+這一節收的是「使用者的檔案在什麼情況下會被弄壞,以及我們決定怎麼不弄壞它」。
+每一條都在真機上重現過壞掉的樣子,再改的。
+
+<a id="identity-is-the-path"></a>
+
+### 解析一則筆記認的是路徑,不是 `id`
+
+`id` 仍然是**筆記的身分**(改標題不重新命名檔案,那條沒有變)。但「清單上這一列
+對應磁碟上哪一個檔案」是另一個問題,而那個問題的答案是 <b>`FilePath`</b>。
+
+**為什麼**:`id` 在磁碟上不保證唯一。雲端硬碟的衝突副本是**整檔複製** ——
+OneDrive 產生的 `<檔名>-<電腦名>.md` 連 front matter 都一模一樣,同一個 `id`
+就這樣出現在兩個檔案上。而「把筆記放進 OneDrive、同步交給它」正是這個擴展的賣點。
+
+以前 `Update` / `Delete` 都經由 `GetById`(=「`GetAll` 裡第一個 id 相符的」)解析目標,
+於是:清單列出兩列,**兩列都指向同一份檔案**。實機重現(2026-08-22):選中第二列按
+`Ctrl+E`,頁面標題寫著第二列的標題,欄位帶出來的卻是**第一份**的內容;改一下按儲存,
+寫進第一份,第二份一個位元組都沒動。刪除同理。
+
+現在:
+
+- `INoteRepository.Update` / `Delete` 直接吃 `Note`,用它的 `FilePath` 定位
+  (內部仍會重新查一次磁碟上的最新內容,所以傳一份舊快照進來也安全)。
+- `GetById` **從介面上拿掉了**,只留成 `FileSystemNoteRepository` 的 private ——
+  它唯一的用途是 `Create` 時的 id 碰撞偵測。留在介面上遲早會有人拿它去解析編輯 /
+  刪除的目標,那正是修掉的這個 bug。要重新取內容走 `GetByPath`。
+- 預覽頁、記下並預覽頁、編輯頁留的是**路徑**而不是 id;`NoteListPage.FlashTag`
+  也改成用路徑找那一列。
+
+**而且要講出來。** 兩份的標題與副標可能一模一樣,不標記的話使用者根本不會發現多了一份。
+`Load()` 掃完之後按 `id` 分組,一組多於一筆就把那幾則標上 `Note.HasDuplicateId`,
+清單頁掛一個 `ListItem.Tags` 的「衝突副本」標籤 —— 那條路跨進程是通的
+(見[〈複製完留在原地〉](#copy-feedback))。README 的〈同步〉那段跟著改掉了:
+以前寫「請在檔案總管裡處理」,那是繞過去;現在是「兩份各自獨立,自己挑一份留下」。
+
+<a id="external-id-shape"></a>
+
+### 「不是 Inkling 建立的」判準是 `id` 的**形狀**
+
+`Note.IsExternal` 以前是 `parsed.Id is null` —— 只要 front matter 裡有 `id:` 這個 key,
+就算成 Inkling 建立的。
+
+**而 `id:` 在 Obsidian / Zettelkasten / Hugo 生態裡到處都是。** 實機重現:一個
+`id: 202401051200` 的 zettel 被算成我們的,刪除頁顯示「只刪 Inkling 建立的 **2** 則」/
+「保留 **1** 則不是 Inkling 建立的」—— 那句「保留」是假的,按下去會刪掉使用者自己的東西
+(進資源回收筒救得回來,但畫面上的承諾不成立)。
+
+判準改成 `NoteFileName.IsGeneratedId`:`yyyyMMdd-HHmmss-xxxx`,八位日期、六位時間、
+四位**小寫**十六進位。只看形狀,不驗日期真偽 —— 目的是把別人的 id 擋在外面,
+而誤判的方向(當成外來檔案)那一邊是安全的。修完同一個資料夾顯示的是 4 / 2。
+
+**外來檔案第一次在 Inkling 裡編輯時會被「接手」,但只在它本來沒有 id 的時候。**
+沒有 id 的檔案,它的 `id` 是我們拿路徑算的(`file-<FNV1a>`)—— 那個東西跟著檔名跑,
+不是身分,不能寫進檔案。所以 `Update` 會替它產一個真的 id,從此它算我們的。
+front matter 裡**已經有別人的 id** 就原樣留著,那個檔案永遠算外來的 ——
+覆蓋它等於毀掉使用者的 metadata,而「不認得的東西不要動」比「讓它變成我們的」重要得多。
+兩條路都有實機驗證與單元測試。
+
+<a id="strict-utf8"></a>
+
+### 非 UTF-8 的檔案整個跳過,不讀成亂碼
+
+`File.ReadAllText` 的預設解碼器把無效位元組**默默換成 U+FFFD**。於是一個 Big5 / GBK /
+Latin-1 的 `.md` 會被讀成一串 �,清單上長成亂碼標題;而使用者一旦在 Inkling 裡編輯它,
+那些 � 就被寫回檔案 —— **原始位元組永久消失**,沒有備份、沒有提示,資源回收筒裡什麼都沒有
+(實機驗過,前後項目數相同)。順帶還替它塞進了 front matter,`title` 就是那串亂碼。
+
+現在讀檔走 `new UTF8Encoding(false, throwOnInvalidBytes: true)`,失敗就回 null、
+計進 `SkippedFileCount`。那條路早就有畫面 —— 清單最後那一列「有 N 個檔案讀不出來」,
+訊息也已經是「檔案還在資料夾裡」的口徑,正好對得上(副標補上了「或者編碼不是 UTF-8」)。
+
+**有 BOM 的檔案不受影響**:`File.ReadAllText(path, encoding)` 底下的 `StreamReader` 仍然
+先照 BOM 判編碼,UTF-8 / UTF-16 LE / BE 都認得,這個編碼只是「沒有 BOM 時的假設」。
+測試裡兩種 BOM 各釘一條。
+
+**取捨**:那個檔案從清單上消失了,而 README 承諾「外來的 `.md` 也要列得出來」。
+兩害相權 —— 列出一則永久性地會被自己毀掉的亂碼筆記,比暫時不列它糟得多,
+而「有 N 個檔案讀不出來」那一列讓它至少不是無聲消失。
+
+<a id="unreadable-dates"></a>
+
+### 讀不懂的日期原樣留著,而且只認 ISO 8601
+
+`created` / `updated` 以前是 `DateTimeOffset.TryParse` + `InvariantCulture`,
+讀不出來就回 null、改用檔案系統時間,而**原始那一行連 `ExtraFrontMatter` 都進不去**
+(它在認得的 switch 分支裡就被消化掉了)—— 下一次在 Inkling 裡編輯就把原字串永久覆蓋。
+
+兩種觸發,第二種更糟因為完全無聲:
+
+- `created: 2024-01-05 (approx)` → 編輯一次 → 變成檔案建立時間,原字串消失。
+- `created: 05/01/2024`(dd/MM,多數非美式工具的寫法)→ InvariantCulture 讀成 **5 月 1 日**
+  → 寫回 `2024-05-01T…`。**日期被默默改掉,而且是永久的。**
+
+現在兩件事一起做:
+
+1. **只認 ISO 8601 的起手式**(開頭是 `yyyy-MM-dd`)。`05/01/2024` 因此讀不出來 ——
+   與其猜錯,不如認不出來就別動它。我們自己寫出去的一律是 `yyyy-MM-ddTHH:mm:sszzz`,
+   擋不到自己。
+2. **讀不出來就把整行原文留在 `Note.CreatedRaw` / `UpdatedRaw`,`Serialize` 原樣寫回去**,
+   取代我們自己產的那一行。**不能丟進 `ExtraFrontMatter`** —— 那樣寫出去會變成兩個
+   `created:`,而且我們自己的 Parse 下一輪又會把它讀成 null,每編輯一次多一份殘骸。
+
+`UpdatedRaw` 在 `Update` 時會被清掉:`updated` 的語意就是「最後改動時間」,而我們正在改它。
+`CreatedRaw` 永遠留著。
+
+<a id="settings-quarantine"></a>
+
+### `settings.json` 壞掉時把它搬走,否則設定會永久性、無聲地卡住
+
+toolkit 的 `JsonSettingsManager` 兩頭都吞例外:
+
+- **讀**:`LoadSettings` 失敗 → 四項設定全部退回預設 → **筆記資料夾變回 `%OneDrive%\Inkling`**,
+  使用者的清單換成別的內容。
+- **寫**:`SaveSettings` 內部要先 `JsonNode.Parse` 舊內容再合併,解析失敗就走 else 分支
+  ——**完全不寫檔,也不丟例外**。於是 `SettingsManager.Save` 回 true、設定頁走成功路徑、
+  檔案一個位元組都沒變,而 `ApplyResult.SaveFailed` 那條路**永遠到不了**。
+
+加起來就是「設定頁怎麼改都沒有用,重啟又還原」,而使用者**在 app 裡修不好它** ——
+唯一的解是手動去刪那個檔案,而他不會知道要去做。觸發也不需要手改:toolkit 走的是
+`File.WriteAllText`,**不是** atomic write(我們自己寫筆記時走 `AtomicFile`,設定檔沒有
+這個保護),寫到一半斷電就會留下半個檔案。
+
+現在三件事:
+
+1. `SettingsManager` 建構子在 `LoadSettings()` **之前**先 `JsonNode.Parse` 試一次,
+   失敗就把檔案搬成 `settings.json.corrupt-<時間戳>`。**搬走而不是刪掉** ——
+   裡面是使用者設過的東西,壞的可能只有一個字元,手工救得回來。
+2. `Save` 寫完**讀回來對一次**(比對筆記資料夾那一項)。對不上就回 false,
+   `ApplyResult.SaveFailed` 那條路才不是死的。
+3. 隔離掉的話,設定卡片**最上面**多一塊 `attention` 色的警告,寫出被搬走的檔名。
+   那是卡片頂上唯一允許出現的區塊(其他說明一律掛在各自欄位下面,見〈設定頁的表單〉)——
+   它不是說明而是錯誤,絕大多數時候不存在,而且使用者會來這一頁正是因為「筆記全部不見了」,
+   那句解釋必須在他看到資料夾欄位**之前**就讀到。
+
+**那一句也要進 CmdPal 的共用 log**,但發不出去:隔離發生在 `SettingsManager` 建構子裡,
+而 `ExtensionHost` 要到 `InitializeWithHost` 才接到 host,那之前 `LogMessage` 靜靜地什麼都不做
+(實測確認)。所以 `InitializeWithHost` 在 `ExtensionHost.Initialize(host)` 之後補發一次。
+
+<a id="log-two-channels"></a>
+
+### 診斷 log 有兩個通道,隱私等級不一樣
+
+`DiagnosticLog.Write` 只寫本機的 `diagnostic.log`,而且**預設是關的**(使用者要自己建一個
+`diagnostic.on` 才會開始記)。`DiagnosticLog.Failure` 另外送一份給 CmdPal 自己的 log
+——那份**永遠開著、所有擴展共用**,而且 **PowerToys 的 Bug Report Tool 會把整個
+`%LOCALAPPDATA%\Microsoft\PowerToys\` 打包**,使用者拿去貼在 `microsoft/PowerToys` 的
+**公開** issue 上,完全不會經過我們自己的 issue 範本與那裡的遮蔽提醒。
+
+以前十四個 `Failure` 呼叫點有四個直接把**筆記檔案的完整路徑**送進去,另外八個把例外全文
+(裡面也有路徑)送進去。那個路徑形如 `<筆記資料夾>\<時間戳>-<標題 slug>.md`,同時帶著
+**筆記標題**與(經 `%OneDrive%` 或 `Documents`)**Windows 使用者名字**。
+
+現在簽章是 `Failure(string summary, string? detail = null)`:
+
+- `summary` 進兩個通道 —— **去識別化的失敗種類**,例外只放 `ex.GetType().Name`。
+- `detail` 只進本機那一份 —— 路徑、例外全文這些查起來才有用、但不能公開的東西。
+
+實機對照(2026-08-22):共用 log 拿到
+`[Inkling] settings.json was not valid JSON; it was moved aside and defaults are in use`,
+本機那份同一筆後面接著 ` — <完整路徑>`。
+
+**訊息一律英文。** 這是 log(見 CLAUDE.md〈慣例〉),而共用那一份會被 PowerToys 的維護者
+拿去 triage 別人的 bug —— `[Inkling]` 前綴認得出是誰寫的,訊息本身除了我們沒人讀得懂
+就白寫了。十四條 `Failure` 加上其餘的 `Write` 這一輪全部改成英文。
+
+`diagnostic.log` 另外有 **2 MB 的上限**,超過就搬成 `.log.1` 重新開始。清單頁每次重建
+(≈每個按鍵)就寫一行,裡面有使用者打過的每一個查詢字串;使用者照排錯指示建了
+`diagnostic.on` 之後多半不會記得刪,沒有上限的話那個檔案會一直長,附進 bug report
+等於交出搜尋歷史。留一代而不是直接砍:失敗現場前面那幾行往往才是線索。
 
 ## 身分與介面
 
