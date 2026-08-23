@@ -207,7 +207,8 @@ Select the **Inkling** row in the main search box and press `Ctrl+K` → Setting
 | Quick capture separator | `;;` | Title before it, body after. Any length; half-width and full-width count as the same; clearing it restores `;;`. A quick capture page that is already open picks up the change — no reload |
 | Preview after capture | On | Enter captures and stays on the note, a second Enter dismisses; off means capture and dismiss at once |
 
-Saving keeps you on the settings page and confirms in the bottom bar — `Esc` goes back.
+A successful save shows a toast and returns you to the main search box. A rejected one
+(relative path, write failure) keeps the form up with your values so you can fix it.
 
 Those three are all the form shows. `settings.json` has a fourth key, `Inkling.ShowSource`
 (source view), which `Ctrl+U` writes back itself — deliberately not in the form, because the

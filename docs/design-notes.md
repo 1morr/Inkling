@@ -798,32 +798,69 @@ toolkit 的 `Settings.RaiseSettingsChanged()` 是 `internal`,本來就叫不動�
 表單留在原地什麼都不存;**完整但還不存在的路徑照存**(repository 第一次存檔時會建),
 但當場提示 —— 打錯一個字就靜靜換了資料夾,看起來會像「舊筆記全部消失」。
 
-#### 送出之後四條路全部 `KeepOpen()`,一條都不導覽
+<a id="settings-save-feedback"></a>
 
-**這不是偏好,是先決條件。** 那四則提示走的是 `ToastStatusMessage`,而它畫成的 InfoBar
-綁在當下這一頁的 view model 上 —— 回傳 `GoHome()` 導覽走的時候,訊息連同這一頁一起被拆掉。
+#### 存成功就帶一則 toast 回主頁,存不成才留在原地
 
-成功那兩條(「設定已儲存」、「已儲存 —— 這個資料夾還不存在…」)以前就是 `GoHome()`,
-也就是說**那兩句話從來沒有真的出現在畫面上過**。2026-08-23 在同一頁上做的 A/B,
-同樣 800 毫秒取樣:
+| 送出的結果 | 通道 | 回傳值 | 使用者看到 |
+|---|---|---|---|
+| 正常存檔 | `ShowToast` | `GoHome()` | toast「設定已儲存」+ 面板切回主搜尋框 |
+| 存了但資料夾還不存在 | `ShowToast` | `GoHome()` | toast 帶著那個路徑 + 面板切回主搜尋框 |
+| 相對路徑(整筆拒絕) | `ToastStatusMessage` | `KeepOpen()` | 底部 InfoBar + 徽章,表單留著讓你改 |
+| 寫不進 `settings.json` | `ToastStatusMessage` | `KeepOpen()` | 同上 |
 
-| 送出的路徑 | 回傳值 | UIA 樹上讀到 |
+**兩個通道不能亂配,配錯的代價是訊息根本不會出現。** `ToastStatusMessage` 畫成的
+InfoBar 綁在當下這一頁的 view model 上,`GoHome()` 導覽走的時候會連同訊息一起拆掉 ——
+成功那兩條以前正是這個組合,所以「設定已儲存」與「已儲存 —— 這個資料夾還不存在…」
+**一個字都沒有真的出現在畫面上過**(跟[〈編輯表單〉](#edit-form)最後那條是同一個機制)。
+2026-08-23 在同一張卡片上 A/B,同樣 800 毫秒取樣:
+
+| 回傳值 | UIA 樹上讀到 |
+|---|---|
+| `KeepOpen()`(相對路徑那條) | `StatusBar` +「沒有儲存 —— 筆記資料夾要填完整路徑…」+ 徽章計數 1 |
+| `GoHome()`(正常存檔那條) | **一個字都沒有** |
+
+`CommandResult.ShowToast` 是**獨立視窗**,導覽拆不掉它 —— 要跨頁活下來只有它。
+
+<a id="toast-does-not-steal-focus"></a>
+
+#### ⚠ 而 toast **不會**把面板關掉 —— 硬規則 8 的前提在這一頁上不成立
+
+`CommandResult.ShowToast` 一直被當成「會關面板的那一種」,理由是「toast 搶焦點 →
+CmdPal 主視窗一失焦就自我隱藏」。**2026-08-23 在設定頁上量到的不是這樣。**
+
+存檔當下同時量兩個視窗(`GetForegroundWindow` + `IsWindowVisible`,行程先
+`SetProcessDPIAware()`,否則座標會差一個縮放倍率):
+
+```
+toast   可見=True  前景=False  204x75      ← 拿不到前景
+主面板  可見=True  前景=True   1200x720    ← 還開著,而且是前景
+```
+
+toast 那個視窗是 `WS_EX_TOOLWINDOW | WS_DISABLED`(`WS_DISABLED` 代表它不收輸入),
+**它從頭到尾沒有拿到前景**。對它 `PrintWindow` 印得出「設定已儲存」那張圖,所以也不是
+「有視窗但沒畫」。
+
+決定面板去留的是 **`ToastArgs.Result`**,不是 toast 本身。三種都跟 toast 併得起來:
+
+| `Result` | 面板 | 停在哪 |
 |---|---|---|
-| 資料夾填相對路徑(整筆拒絕) | `KeepOpen()` | `StatusBar` +「沒有儲存 —— 筆記資料夾要填完整路徑…」+ 徽章計數 1 |
-| 正常存檔 | `GoHome()` | **一個字都沒有**(toast 視窗也是 `可見=False`) |
+| `KeepOpen()` | 開著、前景 | 原本那一頁(當場量過:還在設定頁) |
+| `GoHome()` | 開著、前景 | 主搜尋框(當場量過) |
+| `Dismiss()` | 收起來 | 下次叫出來是主頁 |
 
-同一個 `Show()`、同一張卡片、同一個取樣點,差別只在回傳值。成因與
-[〈編輯表單〉](#edit-form)最後那條(完整表單新增筆記沒有確認)是同一個,
-那一條在 2026-08-23 修掉之後,這裡是同一個機制殘留的第二個現場。
+**⚠ 但不要把這句話推廣到整個 repo。** 硬規則 8 的原始證據來自**清單頁**的刪除路徑 ——
+2026-08-13 的 `0bb731a`(`fix: stop the palette from closing after a delete`),當時的程式碼
+**確實**是 `ShowToast` 配 `Result = KeepOpen()`,而觀察到的現象是每刪一則面板就關一次。
+那條路**還沒有重測**,所以現在能講的只有「設定頁這個 `ContentPage` 上不成立」。
+`CopyNoteBodyCommand` 那一條則本來就跟焦點無關 —— toolkit 的預設 `ToastArgs.Result`
+是 `Dismiss`,面板是被那個收掉的。
 
-**沒有改成 toast**(`CommandResult.ShowToast`,會關面板的那一種)。判準是硬規則 8 的
-「使用者接下來還要不要看著這個面板」—— 改設定的人常常要接著再改一項,或是當場確認
-欄位真的變了,面板收掉就沒得看。形狀因此跟編輯表單存完那條一致:留在原地 + 徽章,
-`Esc` 本來就退得回去。
-
-代價是**存完不再自動回主頁**,多一次 `Esc`。付得起:那四則提示裡有一則
-(「這個資料夾還不存在」)存在的唯一理由,就是攔住「打錯一個字靜靜換了家」,
-它看不到的話這個設定項等於沒有防線。
+**什麼變了才該重新考慮**:把清單頁的刪除成功路徑臨時改成 `ShowToast` + `KeepOpen()`
+量一次。量出來面板照樣留著的話,硬規則 8 與底下這幾處都要改寫 ——
+`DeleteNoteCommand`、`ConfirmedDeleteAllNotesCommand`、`CopyNoteBodyCommand`、
+`CapturedNotePage`、[〈刪除成功時一個 toast 都不發〉](#delete-no-toast)。
+那是一次跨檔案的取捨翻案,**不要順手做**。
 
 <a id="settings-no-separator"></a>
 

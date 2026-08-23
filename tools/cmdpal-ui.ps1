@@ -834,7 +834,11 @@ function Write-ToastState {
     } else {
         Write-Output '     內容:讀不到(轉場中的話把前面的 wait 拉長一點再試)'
     }
-    Write-Output '     ※ 主面板會跟著隱藏。這一條是對是錯要看那條路徑的預期,見函式上方說明。'
+    # 這裡刻意**不再**斷言「主面板會跟著隱藏」。2026-08-23 實機量過:toast 那個視窗是
+    # WS_EX_TOOLWINDOW | WS_DISABLED,拿不到前景 —— 面板去留是 ToastArgs.Result 決定的
+    # (KeepOpen / GoHome 都留著,只有 Dismiss 才收)。同一次跑裡加一個 tree 就看得出
+    # 面板還在不在、停在哪一頁,別憑這一行推論。
+    Write-Output '     ※ 面板去留看 ToastArgs.Result,不是看有沒有 toast。同一串加個 tree 對一下。'
 }
 
 function Get-NotesDirectory {

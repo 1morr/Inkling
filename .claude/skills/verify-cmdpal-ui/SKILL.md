@@ -355,17 +355,34 @@ Window: 'Command Palette' [FOCUS]
 
 [設計考證〈刪除成功時一個 toast 都不發〉](../../../docs/design-notes.md#delete-no-toast)那條規矩靠 `toast` 動作驗。CmdPal 的 toast 是
 **另一個頂層視窗**(標題跟著顯示語言走,這台機器上是「命令選擇區快顯通知」;腳本不靠標題
-認它,見上面〈CmdPal 的面板〉),它一出現就搶焦點,主視窗一失焦就自己隱藏 ——
-「做完之後整個面板消失」的成因就是它,不是 `GoHome()`。
+認它,見上面〈CmdPal 的面板〉)。
 
 ```
-toast 視窗:HWND=132196 可見=False / 主視窗還在=True     ← 對
-!! 有 toast 跳出來 —— 主面板會跟著消失                    ← 錯,那條路徑上有人回了 ShowToast
+toast 視窗:HWND=132196 可見=False / 主視窗還在=True     ← 那條路徑上沒有人回 ShowToast
 ```
 
 toast 視窗**本來就一直存在**(CmdPal 啟動時就建好了),所以要看的是 `可見=`,不是存不存在。
 `ToastStatusMessage` 不會讓它可見 —— 那個走的是 host 的 `ShowStatus`,畫成底部命令列的
 `InfoBadge`,兩者名字很像但不是同一件事。
+
+**⚠ 有 toast 不等於面板會消失。這一節以前寫著「它一出現就搶焦點,主視窗一失焦就自己隱藏」,
+2026-08-23 在設定頁上實機推翻了。** 那個 toast 視窗是 `WS_EX_TOOLWINDOW | WS_DISABLED`,
+**它拿不到前景**;決定面板去留的是 `ToastArgs.Result`。存檔當下同時量兩個視窗:
+
+```
+toast   可見=True  前景=False  204x75
+主面板  可見=True  前景=True   1200x720   ← 還開著,而且是前景
+```
+
+所以**要判斷面板去留,同一串裡加一個 `tree` 直接看**,不要從「有沒有 toast」推論。
+量法(行程要先 `SetProcessDPIAware()`,否則 `GetWindowRect` 的座標跟截圖差一個縮放倍率,
+會截到完全不相干的位置 —— 踩過):`EnumWindows` 挑 CmdPal 進程的
+`WinUIDesktopWin32WindowClass`,用 `WS_DISABLED` 分辨 toast 與面板,再各自
+`GetForegroundWindow` 比對。要確認 toast 真的畫出來而不是「有視窗沒內容」,對它
+`PrintWindow`(不要用螢幕座標裁圖,同一個 DPI 問題)。
+
+**這只涵蓋設定頁那個 `ContentPage`。** 清單頁的刪除路徑(硬規則 8 的原始證據來源)
+還沒重測,詳見[設計考證](../../../docs/design-notes.md#toast-does-not-steal-focus)。
 
 ## 典型的驗證流程
 

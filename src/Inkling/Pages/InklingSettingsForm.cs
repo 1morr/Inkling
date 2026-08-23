@@ -14,9 +14,8 @@ namespace Inkling.Pages;
 /// 2. **欄位名根本不會顯示。** 它把 <c>Label</c> 塞進 Adaptive Cards 的 <c>title</c>,
 ///    而 <c>Input.Text</c> 沒有那個屬性;真正會顯示的 <c>label</c> 它拿去放 <c>Description</c>。
 ///    結果就是每個欄位頭上頂著一整句說明,看不到「筆記資料夾」這種短名字。
-/// 3. **送出之後它固定 <c>GoHome</c>**,而我們每一條路都得留在原地 —— 按「瀏覽…」時是
-///    因為表單還要用,存完之後則是因為 <c>GoHome</c> 會把提示連同這一頁一起拆掉
-///    (見 <see cref="SubmitForm(string, string)"/> 上那段 A/B)。
+/// 3. **送出之後它固定 <c>GoHome</c>**,而我們得按結果分兩種:存不成要留在原地讓使用者改,
+///    按「瀏覽…」時也是。見 <see cref="SubmitForm(string, string)"/> 上那張表。
 ///
 /// 代價是存檔那條路要自己接:值交給 <see cref="SettingsManager.Apply"/>,由它存檔與通知
 /// (toolkit 的 <c>Settings.RaiseSettingsChanged()</c> 是 internal,擴展叫不動)。
@@ -97,21 +96,31 @@ internal sealed partial class InklingSettingsForm : FormContent
 
         var outcome = _settings.Apply(directory, separator, preview);
 
-        // **四條路全部 KeepOpen,沒有例外 —— 因為 `ToastStatusMessage` 配 `GoHome()` 等於不發。**
+        // **分兩種:存成功就帶一則 toast 回主頁,存不成就留在原地讓使用者改。**
         //
-        // 成功那兩條以前回 `GoHome()`,於是「設定已儲存」與「已儲存 —— 這個資料夾還不存在…」
-        // **一個字都沒真的出現過**。成因跟 NoteFormContent 的新增路徑是同一個(那條在
-        // 2026-08-23 修掉,見那個檔案):status 的 InfoBar 綁在當下這一頁的 view model 上,
-        // 導覽走的時候連同訊息一起拆掉。
+        // 兩個通道不能亂配,而配錯的代價是「訊息根本不會出現」:
         //
-        // 2026-08-23 在同一頁上做過 A/B,同樣 800 毫秒取樣:填相對路徑那條(KeepOpen)
-        // 讀得到 `StatusBar` 加徽章計數 1;正常存檔那條(GoHome)整棵 UIA 樹一個字都沒有,
-        // toast 視窗也是 `可見=False`。同一個 `Show()`,差別只在回傳值。
+        // - `ToastStatusMessage`(底部 InfoBar + 徽章)**綁在當下這一頁的 view model 上**,
+        //   回傳 `GoHome()` 導覽走的時候會連同訊息一起拆掉。成功那兩條以前正是這個組合,
+        //   所以「設定已儲存」與「已儲存 —— 這個資料夾還不存在…」**一個字都沒真的出現過**
+        //   (2026-08-23 在這一頁上 A/B 過:填相對路徑那條回 `KeepOpen`,800 毫秒讀得到
+        //   `StatusBar` 加徽章計數 1;正常存檔那條回 `GoHome`,整棵 UIA 樹一個字都沒有)。
+        // - `CommandResult.ShowToast` 是**獨立視窗**,導覽拆不掉它,所以要跨頁活下來只有它。
         //
-        // **沒有改成 toast**:那是會關面板的另一種東西,而判準(硬規則 8)是
-        // 「使用者接下來還要不要看著這個面板」—— 改設定的人常常要接著再改一項、
-        // 或是當場確認欄位真的變了,面板收掉就沒得看。留在原地 + 徽章,`Esc` 本來就退得回去,
-        // 形狀跟編輯表單存完那條一致。
+        // **而 toast 不會把面板關掉 —— 這一點跟硬規則 8 的前提相反,2026-08-23 實機量過。**
+        // 那個 toast 視窗是 `WS_EX_TOOLWINDOW | WS_DISABLED`,**它拿不到前景**。
+        // 存檔當下同時量兩個視窗(`GetForegroundWindow` + `IsWindowVisible`,DPI-aware):
+        //
+        //   toast   可見=True  前景=False  204x75
+        //   主面板  可見=True  前景=True   1200x720
+        //
+        // `Result` 才是決定面板去留的東西:`GoHome` 留著面板並切回主頁、`KeepOpen` 留在原頁、
+        // `Dismiss` 才收起來。三種都跟 toast 併得起來(前兩種當場量過,`PrintWindow` 也
+        // 印得出「設定已儲存」那張圖)。
+        //
+        // ⚠ **但別把這句話推廣到整個 repo。** 硬規則 8 的原始證據來自**清單頁**的刪除路徑
+        // (2026-08-13 的 `0bb731a`,當時真的是 `ShowToast` 配 `Result = KeepOpen()`,
+        // 而面板每刪一則就關一次),那條路還沒重測。這裡量到的只涵蓋設定頁這個 `ContentPage`。
         switch (outcome)
         {
             case SettingsManager.ApplyResult.RejectedRelativePath:
@@ -128,14 +137,21 @@ internal sealed partial class InklingSettingsForm : FormContent
 
             case SettingsManager.ApplyResult.AppliedToMissingFolder:
                 // 存是存了,但資料夾還不存在 —— 當場講,「打錯一個字就換了家」才不會無聲發生。
-                // **這一則尤其不能丟**:它存在的唯一理由就是那個無聲的換家。
-                new ToastStatusMessage(
-                    Strings.Format(Resources.SettingsDirectoryWillBeCreated, _settings.NotesDirectory)).Show();
-                return CommandResult.KeepOpen();
+                // **這一則尤其不能丟**:它存在的唯一理由就是那個無聲的換家,而 toast 是
+                // 唯一能跨過導覽活下來的通道。
+                return CommandResult.ShowToast(new ToastArgs
+                {
+                    Message = Strings.Format(
+                        Resources.SettingsDirectoryWillBeCreated, _settings.NotesDirectory),
+                    Result = CommandResult.GoHome(),
+                });
 
             default:
-                new ToastStatusMessage(Resources.SettingsSaved).Show();
-                return CommandResult.KeepOpen();
+                return CommandResult.ShowToast(new ToastArgs
+                {
+                    Message = Resources.SettingsSaved,
+                    Result = CommandResult.GoHome(),
+                });
         }
     }
 
