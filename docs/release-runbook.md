@@ -140,7 +140,19 @@ manifest 還原回舊的 CN,`makeappx pack` 與 CI **都不會報錯**,Partner C
 - 畫面變了就重拍 `docs/images/` 的截圖與 GIF(流程見
   [`development.md`](development.md))。重拍前先把筆記資料夾指到 demo 資料夾。
   ⚠ **Store listing 的截圖另有尺寸下限(≥1366×768),而 `cmdpal-ui.ps1` 抓的面板視窗
-  只有 1200×720** —— 那一組要另外做,不能直接沿用 `docs/images/`。
+  只有 1200×720** —— 那一組**不要重拍,用合成的**:
+
+  ```powershell
+  pwsh -NoProfile -File tools\make-store-screenshots.ps1
+  ```
+
+  它把 `docs/images/` 那三張裁掉 PrintWindow 的黑邊,**原尺寸**放到 1920×1080 的畫布
+  中央再補背景與陰影,輸出到 `assets/store/`。**不放大** —— 那是文字截圖,放大就糊。
+  來源沿用 `docs/images/` 是因為那三張已經是**英文介面**(Store listing 是英文,
+  重拍要再登出登入切一次 Windows 顯示語言)而且內容是安排過的 demo 筆記。
+  要換內容就先重拍 `docs/images/` 再跑這支,不要另外維護一套。
+  `assets/store/` **不進 MSIX**(套件圖示在 `src/Inkling/Assets/`),三張都在
+  gallery 的 1 MB/張 上限內,檔名前綴就是上傳順序。
 
 ### 9. `[自動]` 圖示改過就重產 PNG
 
