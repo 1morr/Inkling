@@ -1,10 +1,12 @@
 # 首次公開發佈 checklist
 
-這份清單是「從本機側載專案」走到「公開散佈」的完整待辦。順序有意義:
+**只剩兩件真的一輩子只做一次的事**:套件身分為什麼永久凍結(§1),
+與公開 repo 之前的最後檢查(§3)。順序有意義 ——
 **身分一定要在第一個公開版本之前定案**,之後永久凍結。
 
-> 這一份是**一次性**的:身分定案與通路開通,很多事一輩子只做一次。
-> **之後每次發新版本走 [`release-runbook.md`](release-runbook.md)。**
+> **每次發新版本走 [`release-runbook.md`](release-runbook.md),不是這一份。**
+> 這裡原本還抄了版本策略、發版流程、WinGet、gallery 四節,2026-08-23 整組刪掉,
+> 對照表留在 §2。**§3 那兩項打完勾之後整份就可以移除**,做法見 runbook 第 26 步。
 
 ## 1. 套件身分 —— ✅ 已定案(2026-08-23)
 
@@ -145,93 +147,22 @@ winget-pkgs 才需要買憑證**(見下面 (b))。
 那幾處的重點正是那個字串本身。**換過 `Publisher` 就要把它們重量一次**,
 `Package.appxmanifest` 的註解現在只寫「要量」而不寫值,就是為了少一處會過期的地方。
 
-## 2. 版本策略
+## 2. 每次發版的東西全部搬到 runbook 了
 
-- **單一來源是 git tag**:`v<major>.<minor>.<patch>`。release.yml 會注入成四段的
-  `<major>.<minor>.<patch>.0` —— MSIX 版本必須四段,且第四段必須是 0(Store 規定)。
-- manifest 裡的 `0.1.0.0` 只是開發期預設,發版不用手改;CI 在 checkout 上改完就丟。
-- Store 與 WinGet 都以 manifest 的 Version 判斷升級,**每次發版都要嚴格遞增**,
-  版本不動使用者永遠收不到更新。
-- 注意 `-p:AppxPackageVersion` 對這套單專案 MSIX 目標**沒有作用**(本機實測,
-  產生的 AppxManifest.xml 仍是 0.1.0.0),所以 release.yml 是直接改 manifest 檔。
+這裡原本有〈版本策略〉〈發版流程〉〈WinGet 上架〉〈Gallery 提交〉四節,而
+[`release-runbook.md`](release-runbook.md) 逐步寫過同樣的事,而且寫得更細。
+兩份副本並存的話,下次發版第一個問題就會是「該翻哪一份」,而先過期的那一份
+**不會有任何東西報錯** —— 所以四節整組刪掉,只留這張對照表:
 
-## 3. 發版流程(身分與簽章都定案之後)
+| 原本的哪一節 | 現在看哪裡 |
+|---|---|
+| 版本策略(tag 是單一來源、MSIX 四段版本、第一段不能是 `0`) | runbook 第 4 ~ 6 步 |
+| 發版流程(收 CHANGELOG → 驗證 → 打 tag → CI 出貨 → 送審) | runbook 第 7 ~ 18 步 |
+| 發版時哪兩個欄位要英文(GitHub Release 正文、Store 的「What's new」) | runbook 第 7 步 |
+| WinGet 上架的必填欄位與 `SignatureSha256` 的取法 | runbook 第 19 步 |
+| CmdPal Extension Gallery 投稿 | runbook 第 20 步;欄位規則在 [`gallery/README.md`](gallery/README.md) |
 
-1. 把 `CHANGELOG.md` 的 `[Unreleased]` 內容移到新版本段落,標上日期。
-   **`CHANGELOG.md` 本身維持繁體中文** —— 它是維護者紀錄,而且是這個 repo
-   churn 前四名的檔案,雙語等於每個 commit 都要翻兩次(見
-   [CLAUDE.md 〈文檔語言分層〉](../CLAUDE.md#docs-language))。對外那兩個欄位才用英文,
-   而且一個版本只寫一次:
-   - **GitHub Release 的正文** —— 不用手寫也不要手寫。release.yml 用 `--generate-notes`,
-     GitHub 從 commit message 產生,而那些本來就是英文(Conventional Commits)。
-     **不要把 `CHANGELOG.md` 貼進去**,那會把一段中文推到每一個下載頁面上。
-   - **Partner Center 的「What's new in this version」** —— 這一欄要自己寫英文,
-     從當次的 CHANGELOG 段落譯過去(第 5 步送審時)。
-2. 跑過 `docs/manual-test-checklist.md`(至少發版相關的段落)。
-3. 打 tag:`git tag v1.1.0 && git push origin v1.1.0`。
-   ⚠ **第一段不能是 0** —— Store 不收 `0.x.y` 的套件,而 `release.yml` 的 regex 目前
-   放行它 —— **已經收成 `^[1-9]\d*\.\d+\.\d+$`**。第一個公開版本從
-   `v1.0.0` 起。
-4. release.yml 自動:跑測試 → 建 x64 + ARM64(trimmed publish)→ 注入版本 → 組 msix →
-   (有設憑證 secret 才)簽 msix → 組 msixbundle(帶 `/bv`,版本跟著 tag)→
-   (有設憑證 secret 才)**再簽 bundle** → 建 GitHub Release 附資產。
-   **兩次簽章都要**:簽章不會從裡面的 `.msix` 傳遞到外層 bundle,只簽裡面的話
-   Release 上掛的 bundle 側載一樣會被 `0x800B0109` 擋下。
-5. 走 Store 路線:從 Release 資產拿下 msixbundle,上傳 Partner Center 送審。
-   送審表單那幾格(Notes for certification、`runFullTrust` 的受限能力說明、gradual rollout)
-   見 [`release-runbook.md` 第 17 步](release-runbook.md) —— 那兩段每次送審都要填,
-   第一次尤其容易卡在受限能力那一格。
-
-## 4. WinGet 上架
-
-- 前提:**已簽章**的 msix —— 只有 (b) 路線的 CI 產出算數。
-  winget-pkgs 不收未簽章的 MSIX。
-  ⚠ **不要指望「Store 簽好拿回來」** —— Partner Center 沒有文檔化的「把 Store 重簽後的
-  套件下載回來」流程。只走 Store 的話,實務上就是跳過 winget-pkgs 的 PR:winget 使用者
-  照樣可以 `winget install --source msstore`,而 gallery 也接受 `msstore` 型別的
-  `installSources`。
-- `PackageIdentifier` 建議 `<author>.Inkling`,版本與 tag 對齊。
-- `License` / `LicenseUrl` 填 MIT 與 repo 的 LICENSE 連結(已備妥)。
-
-MSIX 專屬的欄位別漏(用 `winget-create` 產 manifest 的話它會問,手寫容易漏):
-
-| 欄位 | 值 | 漏了會怎樣 |
-|---|---|---|
-| `InstallerType` | `msix` | 型別錯了驗證直接擋下 |
-| `PackageFamilyName` | `(Get-AppxPackage '*Inkling*').PackageFamilyName` | WinGet 對不上「這台機器已經裝了」,升級與解安裝會失準 |
-| `SignatureSha256` | `AppxSignature.p7x` 的 SHA256 | 少了它沒有串流安裝;而 MSIX 本來就必須簽章才收 |
-| `InstallerSha256` | 資產本身的 SHA256 | 必填 |
-| `Platform` | `Windows.Desktop` | —— |
-| `MinimumOSVersion` | `10.0.19041.0`,跟 `Package.appxmanifest` 的 `TargetDeviceFamily/@MinVersion` 一致 | 兩邊不一致會裝到不支援的機器上 |
-| `Tags` | 要含 **`windows-commandpalette-extension`** | CmdPal 自己的擴展搜索是靠這個 tag 找套件的 —— 少了它,使用者在 Command Palette 裡搜不到 |
-
-`SignatureSha256` 從 msixbundle 裡取(bundle 是 zip):
-
-```powershell
-$bundle = 'artifacts\Inkling_v1.1.0.msixbundle'
-$tmp = Join-Path $env:TEMP 'inkling-sig'
-Expand-Archive $bundle $tmp -Force
-(Get-FileHash "$tmp\AppxSignature.p7x" -Algorithm SHA256).Hash
-```
-
-`ManifestVersion` 用當下 winget-pkgs 收的最新 schema —— **不要照抄這份文檔裡的版本號**,
-schema 一路在動(`.claude/skills/publish-extension` 底下那份參考也已經落後過一次)。
-
-## 5. CmdPal Extension Gallery 提交
-
-前提:已上 WinGet 或 Store(gallery 的 `installSources` 必填其中一個 id)。
-
-在 microsoft/CmdPal-Extensions 開 PR(需簽 Microsoft CLA):
-
-- 建 `extensions/<author>/inkling/`,id 用 `<author>.inkling`,**必須與資料夾路徑一致**
-  (CI 會驗 schema)。
-- `extension.json`:categories 建議 `productivity`,tags ≤ 5,title **不得含
-  "for Command Palette"**。
-- `icon.png`:PNG/JPEG、≤ 100KB、建議 256x256,**SVG 不收** —— 用
-  `tools/render-icons.ps1` 從 `assets/icon/*.svg` 另外算一張。
-- `screenshots/` 至多 5 張,每張 ≤ 1MB。
-
-## 6. 公開 repo 之前的最後檢查
+## 3. 公開 repo 之前的最後檢查
 
 - [x] LICENSE 已存在(MIT)。
 - [x] `.gitignore` 擋住 `*.pfx` 等簽章產出物。

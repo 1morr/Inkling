@@ -53,7 +53,7 @@ description: >-
 > 8. **`references/winget-publishing.md` 的 schema 版本已經落後。** 那份範例寫死
 >    `ManifestVersion: 1.6.0`(與對應的 `$schema` URL),而 winget-pkgs 的 schema 一路在動。
 >    送 manifest 時查當下收的最新版,或直接用 `winget-create` 產 —— 別照抄那個數字。
->    本專案要填的 MSIX 欄位整理在 `docs/release-checklist.md`〈WinGet 上架〉。
+>    本專案要填的 MSIX 欄位整理在 `docs/release-runbook.md` 第 19 步。
 
 # Publish Your Command Palette Extension
 

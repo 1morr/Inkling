@@ -398,12 +398,15 @@ wingetcreate update <PackageIdentifier> `
 ```
 
 每次發版要跟著換:`PackageVersion`、`InstallerUrl`、`InstallerSha256`、`SignatureSha256`。
-**不會變、但漏了會出事**的兩個:
+**不會變、但漏了會出事**的三個:
 
 - `PackageFamilyName` —— 少了它 winget 對不上「這台機器已經裝了」,升級與解安裝都會失準。
   用 `(Get-AppxPackage *Inkling*).PackageFamilyName` 取,不要寫死。
 - `Tags` 必須含 **`windows-commandpalette-extension`** —— CmdPal 內建的擴展搜索靠這個 tag
   找套件,少了它使用者在 Command Palette 裡搜不到。
+- `InstallerType: msix` / `Platform: Windows.Desktop` / **`MinimumOSVersion` 要跟
+  `Package.appxmanifest` 的 `TargetDeviceFamily/@MinVersion` 對齊**(現在是 `10.0.19041.0`)。
+  型別填錯驗證直接擋下;版本兩邊不一致則是 winget 把它裝到跑不起來的機器上。
 
 `SignatureSha256` 從 bundle 裡取(bundle 就是 zip):
 
@@ -509,14 +512,18 @@ loose-file 佈局跟 Store 裝的**是同一個套件身分**。`deploy.ps1` 會
 這是這個 repo 的既有規則,發版這條路特別適用 —— 它一年跑不了幾次,忘得最快。
 
 **第一個公開版本跑完之後,還要多做一件事:把 `release-checklist.md` 收掉。**
-那份的定位是**一次性**的(身分定案與通路開通),而它的 §3 發版流程 / §4 WinGet /
-§5 Gallery 跟這一份的第 3、7、8 部分講的是同一件事 —— 首版出去之後兩份並存,
-下次發版第一個問題就會是「該翻哪一份」。做法:
+那份的定位是**一次性**的(身分定案與通路開通),而它的發版流程 / WinGet / Gallery
+三節跟這一份的第 3、7、8 部分講的是同一件事 —— 兩份並存的話,下次發版第一個問題
+就會是「該翻哪一份」,而先過期的那一份不會有任何東西報錯。
+
+**重複的四節 2026-08-23 已經刪掉了**,那裡現在只剩一張指回這一份的對照表。
+剩下的收尾:
 
 1. §1 那張已定案的身分表(`Identity` 的四個欄位、Store ID、PFN)搬進這一份的**步驟 2**,
    它本來就在引用那張表。
-2. §6〈公開 repo 之前的最後檢查〉是一次性的,首版之後不再適用,直接刪。
-3. 其餘與這一份重複的段落刪掉,整份 `release-checklist.md` 移除,並改掉指向它的連結
+2. §3〈公開 repo 之前的最後檢查〉是一次性的,首版上架之後不再適用,直接刪 ——
+   **前提是那兩項還沒打勾的先做完**(兩份 README 的〈安裝〉章節、GitHub 的 social preview)。
+3. 兩步都做完就把整份 `release-checklist.md` 移除,並改掉指向它的連結
    (`grep -rn release-checklist` 當下重查一次,以下是 2026-08-23 的清單):
    `CLAUDE.md`(文檔表那一列 + 硬規則 1)、`docs/development.md`(文檔表 + 兩處內文)、
    `docs/design-notes.md`、`docs/gallery/README.md`、

@@ -370,7 +370,7 @@ Version 的症狀)。
 
   **`CHANGELOG.md` 維持繁中**,對外那兩個欄位在發版時才處理(GitHub Release 正文其實不用譯,
   `--generate-notes` 從英文 commit message 產;Store 的「What's new」要**手寫三份**,
-  英文那份從中文譯過去)—— 見 [`docs/release-checklist.md` §3](docs/release-checklist.md)。
+  英文那份從中文譯過去)—— 見 [`docs/release-runbook.md` 第 7 步](docs/release-runbook.md)。
 
   新增文檔時先問這一條,別憑檔案放在哪決定。
 - 註釋寫「為什麼」,特別是繞過 CmdPal 限制的地方 —— 這個 repo 的註釋密度刻意偏高,
@@ -396,7 +396,7 @@ Version 的症狀)。
   | `docs/development.md` | 建置 / 部署 / 專案結構 / 排錯。改了 build、部署腳本或圖示流程,更新的是它 |
   | `docs/design-notes.md` | 「為什麼是這樣」的考證 —— **已經決定的**取捨 |
   | [`docs/known-issues.md`](docs/known-issues.md) | **「這樣是錯的,只是還沒修」** —— 每條附重現步驟與建議修法。**修掉一條就從那裡刪掉**,修好的東西留著比沒寫更糟 |
-  | [`docs/release-checklist.md`](docs/release-checklist.md) | **一次性**的:身分定案與通路開通 |
+  | [`docs/release-checklist.md`](docs/release-checklist.md) | **一次性**的:身分為什麼凍結、公開 repo 前的最後檢查。每次發版的流程**不在這裡**,在 runbook |
   | [`docs/release-runbook.md`](docs/release-runbook.md) | **每次發版都要跑**的重複流程 |
   | `CONTRIBUTING.md`(英文) | 對外的薄入口,只指路、不重複規則 —— 規則在這份與 `docs/development.md`,README 的文檔表對外列的是它而不是這份 |
 
