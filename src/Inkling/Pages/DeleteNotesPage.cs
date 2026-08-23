@@ -179,9 +179,10 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// 跳一個對話框。<c>IsPrimaryCommandCritical</c> 分兩種:**Inkling 建立的刻意不設** ——
     /// 上游拿它做的事是把預設按鈕設成「取消」,而這條路的存在意義就是「看一眼再按 Enter」,
     /// 再多一次方向鍵就本末倒置了。**外來檔案刻意設** —— 那是別的工具寫的檔案,
-    /// 值得多那一下方向鍵。(反正 0.11 安裝版根本沒有那條程式路徑,設不設畫面一模一樣,
-    /// 見 docs/design-notes.md〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉;現在這樣設是為了 CmdPal
-    /// 更新上來時語意就對。)
+    /// 值得多那一下方向鍵。(**兩邊都是實質的差別,不是空手勢** —— 這個旗標在
+    /// 0.11.11762.0 安裝版上是有作用的,2026-08-22 實機驗過:設了焦點落在「取消」,
+    /// 沒設落在「刪除」。同一段註解以前寫著「安裝版根本沒有那條程式路徑」,已經被推翻,
+    /// 見 docs/design-notes.md〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。)
     /// </summary>
     private AnonymousCommand CreateConfirmedDelete(Note note) => new(() => { })
     {

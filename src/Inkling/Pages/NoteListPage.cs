@@ -313,11 +313,13 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 也就是把預設按鈕設成「取消」,Enter 下去等於放棄。單則刪除有資源回收筒兜底,
     /// 不值得為此讓每次刪除都多按一次方向鍵。刪除全部那一頁上的兩個批次刪除維持 critical。
     ///
-    /// **注意 0.11 安裝版根本沒有那條路**:整個套件掃不到 <c>set_DefaultButton</c>
-    /// (同一段程式碼的 <c>set_PrimaryButtonText</c> / <c>set_CloseButtonText</c> 都掃得到,
-    /// 所以不是掃描失準)。也就是說現在這個旗標設不設**畫面上完全一樣**,
-    /// 兩邊都是 <c>DefaultButton.None</c> + 焦點落在主要按鈕。維持現在的用法是為了
-    /// 之後 CmdPal 更新上來時語意正確。詳見 docs/design-notes.md〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。
+    /// **這個旗標在 0.11.11762.0 安裝版上是真的有作用的,所以不設是一個實質決定,不是空手勢。**
+    /// 2026-08-22 實機驗過:設 true 的三個確認框焦點落在「取消」,沒設的兩個落在「刪除」。
+    /// 這裡不設,按下 <c>Ctrl+D</c> 再按 Enter 就刪掉了 —— 那正是想要的。
+    ///
+    /// (這段以前寫著「安裝版掃不到 <c>set_DefaultButton</c>,所以設不設畫面完全一樣」。
+    /// **那是錯的**:<c>Microsoft.CmdPal.UI.exe</c> 是 NativeAOT 影像,byte-scan
+    /// 可以證實、不能證否。詳見 docs/design-notes.md〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉。)
     /// </summary>
     private AnonymousCommand CreateDeleteCommand(Note note) => new(() => { })
     {

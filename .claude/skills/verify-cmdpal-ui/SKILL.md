@@ -494,10 +494,25 @@ orca computer list-windows --app pid:$pid --json
 別在這些上面浪費時間,它們只能靠眼睛看 `shot` 出來的圖,或者根本驗不到:
 
 - **顏色。** `CommandContextItem.IsCritical` 的紅色是擴展唯一碰得到的顏色,
-  而 UIA 不給顏色資訊。確認框的按鈕連屬性都沒有([設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](../../../docs/design-notes.md#confirm-dialog-colors))。
+  而 UIA 不給顏色資訊。確認框那兩顆按鈕的顏色**擴展碰不到**(上游把主要按鈕標紅的樣式是
+  註解掉的 TODO)——但別把這句話讀成「`ConfirmationArgs` 沒有旗標」,它有,見下面。
+  ([設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](../../../docs/design-notes.md#confirm-dialog-colors))
 - **圖示的外觀。** 樹裡只有 `Image: ''`。
 - **游標在輸入框裡的位置。** 做不到,見 CLAUDE.md 第 4 條。
-- **確認框的預設按鈕。** 安裝版整個套件掃不到 `set_DefaultButton`,那個旗標沒有效果。
+
+**⚠ 這一節以前多列了一條「確認框的預設按鈕」,說「安裝版掃不到 `set_DefaultButton`,
+那個旗標沒有效果」。那是錯的,而且錯得很貴** —— 它讓好幾輪驗證主動跳過一個
+**驗得到、而且真的有作用**的東西。`IsPrimaryCommandCritical` 在 0.11.11762.0 上設了就生效
+(2026-08-22 實機:設 true 的三個確認框焦點落在「取消」,沒設的兩個落在「刪除」),
+而**焦點落在哪一顆,UIA 樹上的 `[FOCUS]` 直接讀得到**:
+
+```powershell
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|key:Ctrl+D|wait:1800|tree:8"
+```
+
+誤判的成因是 byte-scan 對 NativeAOT 影像**只能證實、不能證否**(見 CLAUDE.md
+〈查證 CmdPal 的行為〉)。**「掃不到」永遠不能直接寫成「驗不到」** ——
+先想想有沒有辦法用實機行為判。
 
 ## 驗完之後
 

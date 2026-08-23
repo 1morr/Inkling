@@ -1236,7 +1236,7 @@ $d = "C:\Program Files\WindowsApps\Microsoft.CommandPalette_0.11.11762.0_x64__8w
 | | 屬性在誰身上 | 做什麼 | 0.11 安裝版 |
 |---|---|---|---|
 | `IsCritical` | `CommandContextItem` | 選單那一列變紅 | **有效** |
-| `IsPrimaryCommandCritical` | `ConfirmationArgs` | 把確認框的預設按鈕設成「取消」 | **完全沒作用**(見上一節) |
+| `IsPrimaryCommandCritical` | `ConfirmationArgs` | 把確認框的預設按鈕設成「取消」 | **有效**(2026-08-22 實機,見上一節) |
 
 碰不到的地方,一次講完:
 
