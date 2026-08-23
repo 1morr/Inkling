@@ -357,6 +357,17 @@ The other {2} have no Inkling id in their front matter (written by another tool,
 Deleted files go to the Recycle Bin. On network drives, or devices without one, they are gone for good — that is Windows behaviour, not something we choose.</value>
     <comment>Markdown。{0} 是資料夾路徑,{1} 是 DeleteAllScope / DeleteMineScope 那一段。</comment>
   </data>
+  <!-- 刪除是唯一不可逆的動作,而它以前是唯一不出聲的成功路徑 —— 那是「發訊息會關掉面板」
+       那條假規則的遺產。措辭刻意**不提資源回收筒**:網路磁碟與沒有回收筒的裝置上
+       Windows 是直接刪除,那句話會變成假的(刪除頁的詳細窗格已經講明這個差別)。 -->
+  <data name="DeleteDone" xml:space="preserve">
+    <value>Deleted: {0}</value>
+    <comment>{0} 是筆記標題。刪完焦點會跳到第一列,視覺錨點沒了,標題是「剛才刪的是哪一則」的唯一線索。</comment>
+  </data>
+  <data name="DeleteAllDone" xml:space="preserve">
+    <value>Deleted {0} notes</value>
+    <comment>{0} 是刪掉的則數。跟 DeleteAllConfirmTitle 一樣不做單複數 —— 那是這份資源檔的既有慣例。</comment>
+  </data>
   <data name="DeletePartialFailure" xml:space="preserve">
     <value>Deleted {0}; {1} could not be deleted (a file may be open in another program)</value>
     <comment>{0} 成功、{1} 失敗的則數。</comment>

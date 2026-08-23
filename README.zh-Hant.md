@@ -96,7 +96,7 @@ CmdPal 設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 
 | 複製內文 / 開啟檔案位置 | `Ctrl+Shift+C` 複製內文,不含 front matter。**面板停在原地不動**,底部會講出複製到的是哪一則 —— 剪貼簿是看不見的,什麼都不說跟快速鍵壞掉分不出來([為什麼這件事重要](docs/design-notes.md#copy-feedback))。`Ctrl+L` 在檔案總管裡選中那個 `.md` |
 | 跳出去之後 | `Ctrl+O` 與 `Ctrl+L` 跳到外部程式之後,面板只是讓開 —— 熱鍵叫回來**還停在原本那一頁**([為什麼](docs/design-notes.md#open-external-return))。**編輯表單與隨手草稿這兩頁是例外**,它們會把面板收起來:那兩頁畫面上有一份你還能按儲存的副本,留著就可能蓋掉你剛跳出去改的東西。檔案被改名、移走,或 `.md` 根本沒有預設程式時,會在底部說明原因,[不會靜靜地什麼都不做](docs/design-notes.md#open-external-silent) |
 | 隨手草稿 | `Inkling：隨手草稿` 開一塊永久的便條紙,打開就是上次留下的東西,不必取標題。**沒有自動儲存**(CmdPal 做不到,[為什麼](docs/design-notes.md#scratchpad-no-autosave)):`Tab` → `Enter` 存檔,**跳一句「已存到隨手草稿」再自己收起面板**(捨棄變更也會說一聲);`Ctrl+O` 跳到系統預設編輯器,自動儲存在那邊 |
-| 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**。網路磁碟、或沒有資源回收筒的裝置上,Windows 會直接永久刪除 ——**刪除筆記**那一頁的詳細窗格會講明白 |
+| 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**,底部會講出刪掉的是哪一則。網路磁碟、或沒有資源回收筒的裝置上,Windows 會直接永久刪除 ——**刪除筆記**那一頁的詳細窗格會講明白 |
 | 連續刪 / 清空 | `Inkling：刪除筆記` 開一頁,`Enter` 刪除(先問一次)、`Ctrl+Enter` 直接刪;同一頁的「刪除全部」會先列出會刪掉哪些檔案。不是 Inkling 建立的檔案兩條路都會問([這兩個鍵為什麼這樣配](docs/design-notes.md#delete-keys)) |
 | 介面語言 | 英文、繁體中文、簡體中文,跟著 Windows 的顯示語言走,[沒有設定項](docs/design-notes.md#ui-language) |
 

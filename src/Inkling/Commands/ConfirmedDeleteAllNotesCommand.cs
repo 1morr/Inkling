@@ -57,13 +57,15 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
             var deleted = _repository.DeleteMany(targets);
             DiagnosticLog.Write($"DeleteAllNotes: scope={_scope}, deleted {deleted}/{targets.Count}");
 
-            // **成功時一個 toast 都不發 —— 現在這是選擇,不再是被迫。**
-            // 舊註解把「面板消失」歸因於 toast 搶焦點,那個歸因 2026-08-23 量過是錯的
-            // (見 DeleteNoteCommand 同一段與 docs/design-notes.md〈toast 不會把面板關掉〉)。
-            // 不發的理由是清單當場變成「沒有筆記可以刪除」,那本來就是最好的回饋。
+            // **全部成功也要講。** 這裡以前是靜默的,而下面「部分失敗」那條會講 ——
+            // 於是「沒聲音」得同時承擔「全部成功」的意思,那正是我們在別處剛消滅掉的歧義。
+            //
+            // 「刪除全部」那條路清單會整個空掉、換成 EmptyContent,回饋確實夠強;
+            // 但**「只刪 Inkling 建立的」不會** —— 外來檔案還留在清單上,
+            // 畫面看起來跟「刪到一半失敗」分不出來。則數是唯一講得清楚的東西。
             if (deleted == targets.Count)
             {
-                return CommandResult.KeepOpen();
+                return Feedback.Stay(Strings.Format(Resources.DeleteAllDone, deleted));
             }
 
             // 有漏網的就非講不可 —— 使用者按下刪除之後看到清單還剩東西,

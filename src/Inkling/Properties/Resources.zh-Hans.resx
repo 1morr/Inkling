@@ -317,6 +317,12 @@
 
 删掉的文件会进回收站。网络磁盘或没有回收站的设备上则是直接消失,那是 Windows 的行为,不是我们能选的。</value>
   </data>
+  <data name="DeleteDone" xml:space="preserve">
+    <value>已删除：{0}</value>
+  </data>
+  <data name="DeleteAllDone" xml:space="preserve">
+    <value>已删除 {0} 则</value>
+  </data>
   <data name="DeletePartialFailure" xml:space="preserve">
     <value>已删除 {0} 则,{1} 则删不掉(文件可能被其他程序开着)</value>
   </data>

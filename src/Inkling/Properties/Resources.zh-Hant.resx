@@ -317,6 +317,12 @@
 
 刪掉的檔案會進資源回收筒。網路磁碟或沒有回收筒的裝置上則是直接消失,那是 Windows 的行為,不是我們能選的。</value>
   </data>
+  <data name="DeleteDone" xml:space="preserve">
+    <value>已刪除：{0}</value>
+  </data>
+  <data name="DeleteAllDone" xml:space="preserve">
+    <value>已刪除 {0} 則</value>
+  </data>
   <data name="DeletePartialFailure" xml:space="preserve">
     <value>已刪除 {0} 則,{1} 則刪不掉(檔案可能被其他程式開著)</value>
   </data>

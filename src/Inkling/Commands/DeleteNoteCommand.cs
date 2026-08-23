@@ -35,17 +35,22 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
             // 留在原來那一頁:刪完通常還想接著整理下一則。repository 的 Changed 會讓
             // 清單自己更新,不必離開再重進。
             //
-            // **成功時一個 toast 都不發 —— 現在這是選擇,不再是被迫。**
+            // **講一句話,留在原地。**
             //
-            // 這裡曾經回一個「已移到資源回收筒」的 toast 配 KeepOpen,而 2026-08-13 觀察到
-            // 「刪一則面板就關一次」,當時歸因於「toast 搶焦點 → 主視窗自我隱藏」。
-            // **2026-08-23 在同一條路上量過,那個歸因是錯的**:toast 視窗拿不到前景,
-            // ShowToast 配 KeepOpen 面板穩穩停在清單頁(見 docs/design-notes.md
-            // 〈toast 不會把面板關掉〉)。當年為什麼會關掉沒有查出來,CmdPal 版本沒變過。
+            // 這條路曾經整整十天是靜默的,理由是「那一列當場從清單上消失,比什麼訊息都直接」——
+            // 而那句話是在「發訊息會把面板關掉」那條假規則底下寫的:當年沒得選,
+            // 於是把「沒有回饋」合理化成優點。規則倒了之後(見 docs/design-notes.md
+            // 〈toast 不會把面板關掉〉)它就站不住了:
             //
-            // 不發的理由改成它本來就該有的那一個:**那一列當場從清單上消失,
-            // 比什麼訊息都直接**,再疊一則 toast 只是重複講同一件事。
-            return CommandResult.KeepOpen();
+            //  - **刪除是唯一不可逆的動作,卻是唯一不出聲的成功路徑。** 複製、存檔、
+            //    快速記下現在都會講,只有它沉默。
+            //  - **刪完焦點會跳到第一列**(安裝版沒有 sticky selection,見 CLAUDE.md
+            //    〈已知落差〉)—— 視覺錨點沒了,「剛才刪掉的是哪一則」只剩訊息講得出來。
+            //  - 清單頁的 `Ctrl+D` 更弱:那裡連則數都不會變,只有一列悄悄消失。
+            //
+            // **措辭刻意不提資源回收筒**:網路磁碟與沒有回收筒的裝置上 Windows 是直接刪除,
+            // 那句話會變成假的。刪除頁的詳細窗格已經把這個差別講清楚了。
+            return Feedback.Stay(Strings.Format(Resources.DeleteDone, _note.Title));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NoteNotFoundException)
         {

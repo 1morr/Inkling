@@ -15,10 +15,14 @@ description: >-
 >
 > 1. **下面〈Status Messages and Toasts〉那兩行是兩種完全不同的東西,只有一種會關掉面板。**
 >
->    - **`CommandResult.ShowToast(...)`(以及 `CopyTextCommand` 的預設 `Result`)會讓面板消失。**
->      它送的是 `ShowToastMessage`,由 CmdPal 開一個獨立的 `ToastWindow` —— 那個視窗會搶焦點,
->      而主視窗一失焦就自我隱藏。`ToastArgs.Result = KeepOpen` 救不回來,搶焦點的是視窗本身。
->      [設計考證〈刪除成功時一個 toast 都不發〉](../../../docs/design-notes.md#delete-no-toast)。
+>    - **`CommandResult.ShowToast(...)`(以及 `CopyTextCommand` 的預設 `Result`)會讓面板消失,
+>      但成因不是焦點。** 它送的是 `ShowToastMessage`,由 CmdPal 開一個獨立的 `ToastWindow`,
+>      而那個視窗是 `WS_EX_TOOLWINDOW | WS_DISABLED` —— **它拿不到前景**。
+>      收面板的是 `ToastArgs.Result`,而字串那個簡寫吃的預設值正好是 `Dismiss`。
+>      明著給 `Result = KeepOpen()` 面板就留著(實機量過)。
+>      ⚠ 這一段以前寫著「那個視窗會搶焦點,`KeepOpen` 救不回來」——**那是錯的**,
+>      2026-08-23 在三條路上推翻,見
+>      [設計考證〈toast 不會把面板關掉〉](../../../docs/design-notes.md#toast-does-not-steal-focus)。
 >    - **`new ToastStatusMessage(...).Show()` 不會。** 它名字裡有 Toast,但根本沒開視窗:
 >      呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 加進 `StatusMessages`,顯示成底部命令列
 >      左邊那個 `InfoBadge`(點開是 flyout 裡的 `InfoBar`),2.5 秒後自己收掉。

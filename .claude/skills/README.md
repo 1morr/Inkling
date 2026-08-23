@@ -59,10 +59,12 @@ Copilot 專用的格式(`description` + `applyTo: '**/*.cs'`),frontmatter 換成
 ## 每一份都加了「本專案的例外」
 
 **正文一個字都沒改**,只在 frontmatter 後面插了一塊引言,寫這個 repo 實測到、跟上游文檔
-衝突的地方。這件事非做不可:那份文檔推薦 `ToastStatusMessage`,而在這個專案裡發一個 toast
-等於把整個 CmdPal 面板關掉(見 [設計考證〈刪除成功時一個 toast 都不發〉](../../docs/design-notes.md#delete-no-toast));它也把
-`ListItem.Details` 寫成一般屬性,而那條通知路徑跨進程是斷的。照著做不會有編譯錯誤,
-只會得到「值改了、畫面不動」這種查半天的症狀。
+衝突的地方。這件事非做不可:那份文檔把 `ShowToast` 與 `ToastStatusMessage` 講成兩個
+可以互換的提示,而它們的**收尾行為完全不同** —— 前者的預設 `Result` 是 `Dismiss`,
+「只想發個提示」的最順手寫法會順手把面板收掉(見
+[設計考證〈通道的分工〉](../../docs/design-notes.md#feedback-channels));
+它也把 `ListItem.Details` 寫成一般屬性,而那條通知路徑跨進程是斷的。
+照著做不會有編譯錯誤,只會得到「值改了、畫面不動」這種查半天的症狀。
 
 正文不動是為了之後好對差異:CmdPal 更新之後重新產生一份模板,直接 diff 正文就知道上游改了什麼。
 
