@@ -66,11 +66,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 而在設定頁上 `GoHome` 明確是「面板留著、切回主頁」。也就是說那個「分不出來」
             // 跟現在的模型對不起來,**還沒重測**。`Dismiss()` 本身不受影響:
             // 這條路要的就是把面板收掉,它是直接講出那件事的那一個。
-            return CommandResult.ShowToast(new ToastArgs
-            {
-                Message = Strings.Format(Resources.CaptureSaved, note.Title),
-                Result = CommandResult.Dismiss(),
-            });
+            return Feedback.Done(Strings.Format(Resources.CaptureSaved, note.Title));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -92,8 +88,7 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 〈toast 不會把面板關掉〉),`ShowToast` 配 `KeepOpen` 同樣留得住那些字。
             // 維持 InfoBadge 是因為訊息與那句還在搜尋框裡的字是同一件事,
             // 放在同一個面板裡讀比較連貫;真正非顧不可的是 `Result`,不是通道。
-            new ToastStatusMessage(Strings.Format(Resources.SaveFailed, ex.Message)).Show();
-            return CommandResult.KeepOpen();
+            return Feedback.Stay(Strings.Format(Resources.SaveFailed, ex.Message));
         }
     }
 }

@@ -217,34 +217,47 @@ Version 的症狀)。
    (代價是那顆按鈕的圖示固定是套件的 Square44x44Logo —— 工作列按鈕的圖示擴展改不了)。
    另外 CmdPal 主視窗一失焦就自己隱藏(沒有開關),所以對話框選完的結果要**當場存**,
    不能指望使用者回到表單再按儲存。
-8. **關面板的是 `ToastArgs.Result`,不是 toast —— 而它的預設是 `Dismiss`。**
-   `CommandResult.ShowToast("訊息")` 那個字串簡寫吃的就是預設值,所以它**看起來只是
-   發個提示,實際上附帶收面板**。要留在原地就寫完整的
-   `new ToastArgs { Message = …, Result = CommandResult.KeepOpen() }`。
-   toolkit 幾個現成命令(例如 `CopyTextCommand`)的預設 `Result` 也是這一種。
-   ⚠ **這一條 2026-08-23 整個改寫過,舊版是錯的。** 它以前寫著「想讓使用者做完之後留在
-   畫面上看,就一個 toast 都不能發」,理由是「toast 是另一個會搶焦點的視窗,主視窗一失焦
-   就自我隱藏(第 7 條那個機制)」。**量過之後不成立**:toast 視窗是
-   `WS_EX_TOOLWINDOW | WS_DISABLED`,**它拿不到前景**。三條路各量一次
-   (設定頁 `ContentPage`、清單頁的複製與刪除,後者還過確認框),結論一致:
-   `toast 前景=False` / `主面板 可見=True 前景=True`,面板去留完全看 `Result` ——
-   `KeepOpen` 留在原頁、`GoHome` 切回主頁且面板還開著、只有 `Dismiss` 才收起來。
-   連原始證據那條路(2026-08-13 `0bb731a` 的清單頁刪除)都重測過了,CmdPal 版本沒變。
-   那條假規則長出過 `FlashTag`、兩個 `ContentPage` 的靜默成功路徑、三條「失敗時順手把
-   面板收掉」,**現在全部改掉了**。方法論教訓見
+8. **回饋一律走 `Feedback`,通道由面板去留決定。三個方法,沒有第四種。**
+
+   | 收尾 | 用什麼 | 畫在哪 |
+   |---|---|---|
+   | 留在原來那一頁 | `Feedback.Stay(訊息)` | 面板底部的 `InfoBar` + 計數徽章 |
+   | 收起面板(收工) | `Feedback.Done(訊息)` | toast(獨立視窗,面板外面的下方) |
+   | 切回主搜尋框 | `Feedback.Home(訊息)` | toast(同上)|
+
+   **`ShowToast` 與 `ToastStatusMessage` 只准出現在 `Feedback.cs` 裡** ——
+   `grep -rn "ShowToast\|ToastStatusMessage" src/` 多命中一處就是有人繞過去了。
+   理由是這兩件事配錯**完全靜默**,而兩種錯法都真的發生過:
+   - **InfoBar 配導覽 = 訊息一個字都不會出現。** 它綁在當下這一頁的 view model 上,
+     `GoHome` / `Dismiss` 會連同它一起拆掉。新增筆記表單與設定頁存檔各中過一次,
+     兩次都撐了很久 —— 看起來就像「本來就沒有提示」。
+   - **`CommandResult.ShowToast("字串")` 附帶收面板。** 它吃 `ToastArgs` 的預設 `Result`,
+     而那個預設是 `Dismiss`(`new` 一個出來讀到的)。刪除失敗三條路中過。
+     toolkit 幾個現成命令(例如 `CopyTextCommand`)的預設也是這一種。
+
+   把訊息與收尾綁成同一個呼叫,那些組合就建構不出來。`FeedbackTests` 釘住三個 `Kind`。
+
+   ⚠ **這一條 2026-08-23 大改過兩次,舊版的理由是錯的。** 它原本寫著「想讓使用者做完
+   之後留在畫面上看,就一個 toast 都不能發」,理由是「toast 是另一個會搶焦點的視窗,
+   主視窗一失焦就自我隱藏(第 7 條那個機制)」。**量過之後不成立**:toast 視窗是
+   `WS_EX_TOOLWINDOW | WS_DISABLED`,**它拿不到前景**。三條路各量一次(設定頁
+   `ContentPage`、清單頁的複製與刪除,後者還過確認框),結論一致:`toast 前景=False` /
+   `主面板 可見=True 前景=True`。連原始證據那條路(2026-08-13 `0bb731a` 的清單頁刪除)
+   都重測過了,CmdPal 版本沒變。那條假規則長出過 `FlashTag` 與兩個 `ContentPage` 的靜默
+   成功路徑,現在都沒了。方法論教訓見
    [設計考證〈toast 不會把面板關掉〉](docs/design-notes.md#toast-does-not-steal-focus)。
-   **toast 畫在面板外面的下方**(量到:面板底邊 y=1404、toast 頂邊 y=2005,重疊為零),
-   所以它不像 `ToastStatusMessage` 的 InfoBar 會壓住內容 —— 選通道時這是個真的差別。
-   **收工那一下該發 toast,而且要配 `Dismiss()`。** 判準是**「使用者接下來還要不要看著
-   這個面板」**:不要的話,toast 是唯一能在面板消失之後還留在畫面上的通道
-   (InfoBadge 畫在面板上,面板收了就跟著沒了)。記下並預覽頁的「完成」、
-   隨手草稿的存檔與「捨棄變更」都走這條 —— 記下並預覽頁那一顆跟關掉「記下後先看一眼」
-   那條路共用 `Resources.CaptureSaved`,少了它同一個動作換個設定就沒有結尾確認。
-   **唯一的例外是跳到外部程式那幾條**(第 11 條):那時焦點剛給了編輯器或檔案總管,
-   toast 比它晚出現會蓋在它上面,所以成功路徑一個字都不說。
-   **這一條專指 `CommandResult.ShowToast`。`ToastStatusMessage` 名字很像但不是同一件事** ——
-   它呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 畫成一條橫跨面板底部的 `InfoBar`
-   加一個計數 `InfoBadge`,不開視窗、不關面板,存檔提示用的就是它。
+   **所以「toast 會關面板」這句話現在只是慣例,不是機制** —— 上面那張表是我們自己選的
+   分工(理由:InfoBar 跟著頁面走,面板一關就沒了;而 toast 活得比頁面久),
+   不是 CmdPal 逼的。要翻案得先想清楚為什麼,別再從現象反推。
+
+   **判準是「使用者接下來還要不要看著這個面板」。** 不要的話走 `Done` ——
+   記下並預覽頁的「完成」、隨手草稿的存檔與「捨棄變更」都是,而它們跟關掉
+   「記下後先看一眼」那條路共用 `Resources.CaptureSaved`,少了它同一個動作換個設定
+   就沒有結尾確認。**唯一的例外是跳到外部程式那幾條**(第 11 條):那時焦點剛給了編輯器
+   或檔案總管,成功路徑一個字都不說。
+   **`ToastStatusMessage` 名字很像但不是那個 toast** —— 它呼叫的是
+   `IExtensionHost.ShowStatus`,由 CmdPal 畫成一條橫跨面板底部的 `InfoBar` 加一個計數
+   `InfoBadge`,不開視窗、不關面板。**兩個都不會搶焦點。**
    **前提是 `ExtensionHost` 接到了 host**:那是靜態的,沒有在
    `CommandProvider.InitializeWithHost` 裡呼叫 `ExtensionHost.Initialize(host)` 的話,
    `Show()` 靜靜地什麼都不做 —— 這條路曾經整個是死的,而文檔一直寫成通的。

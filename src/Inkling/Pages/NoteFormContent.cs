@@ -132,8 +132,7 @@ internal sealed partial class NoteFormContent : FormContent
         if (title.Length == 0)
         {
             // Adaptive Cards 的 isRequired 已經會擋一次,這裡是防呆的第二道。
-            new ToastStatusMessage(Resources.FormTitleRequired).Show();
-            return CommandResult.KeepOpen();
+            return Feedback.Stay(Resources.FormTitleRequired);
         }
 
         try
@@ -146,51 +145,34 @@ internal sealed partial class NoteFormContent : FormContent
                 // 上一頁不會因為導覽回來就重新取內容,所以一定要通知(見 NotePreviewContent)。
                 _onSaved?.Invoke();
 
-                // **新增這條路一定要走 toast,不能走 ToastStatusMessage。**
+                // **`Done` = 收工:面板收掉,訊息走 toast。** 判準是「使用者接下來還要不要
+                // 看著這個面板」—— 填完整張表單按儲存就是收工,不需要。
                 //
-                // 2026-08-23 的全量驗證抓到:這裡本來是 `ToastStatusMessage(...).Show()`
-                // 配 `GoHome()`,結果**畫面上一個字都沒有** —— 檔案確實建立了(所以 Show()
-                // 一定執行過),但 CmdPal 的 status InfoBar 綁在當下那一頁的 view model 上,
-                // `GoHome()` 導覽時連同訊息一起拆掉。Enter 之後 400 / 900 / 1500 / 2500 ms
-                // 四次截圖都沒有徽章。對照組是下面編輯那條:同樣發訊息,但回 `KeepOpen()`,
-                // 「已儲存:標題」看得見。
+                // 通道不能自己挑,這正是 `Feedback` 存在的理由:2026-08-23 的全量驗證抓到
+                // 這裡本來是 `ToastStatusMessage(...).Show()` 配 `GoHome()`,結果**畫面上
+                // 一個字都沒有** —— 檔案確實建立了(所以 Show() 一定執行過),但那個 InfoBar
+                // 綁在當下這一頁的 view model 上,導覽時連同訊息一起拆掉。
+                // Enter 之後 400 / 900 / 1500 / 2500 ms 四次截圖都沒有徽章。
                 //
-                // 換成 toast 而不是想辦法留住徽章,理由是硬規則 8 的判準 ——
-                // **「使用者接下來還要不要看著這個面板」**。填完整張表單按儲存就是收工,
-                // 不需要;而 toast 是唯一能在面板消失之後還留在畫面上的通道。
-                // `ToastArgs.Result` 是 CmdPal 顯示完提示要做的事 ——
-                // 分兩次回傳做不到,`SubmitForm` 只有一次回傳的機會。
-                //
-                // **`Dismiss()` 而不是 `GoHome()`**:同一個判準的下半句 ——
-                // 存完就是回去做原本的事,留一個主搜尋框只是多一次 Esc。
                 // 收工的四條路(這裡、快速記下、記下並預覽頁的「完成」、隨手草稿的存檔
-                // 與捨棄)因此全部回 `Dismiss()`,不再有例外可以照抄錯。
-                return CommandResult.ShowToast(new ToastArgs
-                {
-                    Message = Strings.Format(Resources.NoteCreated, title),
-                    Result = CommandResult.Dismiss(),
-                });
+                // 與捨棄)全部走 `Done`,不再有例外可以照抄錯。
+                return Feedback.Done(Strings.Format(Resources.NoteCreated, title));
             }
 
             _repository.Update(editing, title, body);
 
-            // **編輯這條路相反,絕對不能收面板。** 卡片上還壓著使用者剛打的字。
-            // (以前這裡寫的是「一個 toast 都不能發,toast 一搶焦點主視窗就自我隱藏」——
-            // 那個理由是假的,見 docs/design-notes.md〈toast 不會把面板關掉〉;
-            // 真正要顧的是 `Result`,`ShowToast` 配 `KeepOpen` 同樣留得住那些字。
-            // 維持 InfoBadge 是因為訊息與卡片是同一件事,讀起來連貫。)
-            // 這裡回 `KeepOpen()` 也是明著寫的:以前是 `CommandResult.GoBack()`,
+            // **編輯這條路相反,絕對不能收面板** —— 卡片上還壓著使用者剛打的字,
+            // 所以走 `Stay`(留在原地 + 底部 InfoBar)。
+            // 留在原地是明著選的:以前是 `CommandResult.GoBack()`,
             // 而那個回傳值在 0.11.11762.0 安裝版上**完全不動** —— 2026-08-22 實機驗過,
             // 存完畫面停在編輯頁,等五秒也一樣;跟 `GoToPage` 是同一類的空殼。
             // **也不改成 `GoHome()`**:那會把使用者丟回主搜尋框,比停在原地更遠
             // (他剛從清單裡找到這一則)。留在原地 + 底部 InfoBar 的「已儲存:標題」
             // 是可用的結果,而 `Esc` 本來就回得去 —— 卡片底部那行提示把這件事講出來。
-            new ToastStatusMessage(Strings.Format(Resources.NoteSaved, title)).Show();
-
             // 上一頁不會因為導覽回來就重新取內容,所以一定要通知(見 NotePreviewContent)。
             _onSaved?.Invoke();
 
-            return CommandResult.KeepOpen();
+            return Feedback.Stay(Strings.Format(Resources.NoteSaved, title));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NoteNotFoundException)
         {
@@ -198,8 +180,7 @@ internal sealed partial class NoteFormContent : FormContent
             // 走 DiagnosticLog 而不是 Debug.WriteLine:後者在 Release 被整個編掉,
             // 而日常安裝的就是 Release,那樣等於這條路完全查不到。
             DiagnosticLog.Failure($"NoteFormContent save failed ({ex.GetType().Name})", ex.ToString());
-            new ToastStatusMessage(Strings.Format(Resources.SaveFailed, ex.Message)).Show();
-            return CommandResult.KeepOpen();
+            return Feedback.Stay(Strings.Format(Resources.SaveFailed, ex.Message));
         }
     }
 

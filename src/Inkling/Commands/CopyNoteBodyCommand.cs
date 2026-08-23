@@ -72,7 +72,7 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
             // 照實講。剪貼簿看不見,不講的話按下去就是完全沒有反應,
             // 使用者只會以為快速鍵壞了。這條路**沒有動到剪貼簿**,所以不提標題:
             // 「已複製:X」講的是「X 進了剪貼簿」,這裡什麼都沒進去。
-            return StayAndSay(Resources.CopyNoBody);
+            return Feedback.Stay(Resources.CopyNoBody);
         }
 
         // base.Invoke 是同步的(ClipboardHelper 自己開一條 STA 執行緒再 Join),
@@ -83,22 +83,9 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
         base.Invoke();
 
         return WroteToClipboard()
-            ? StayAndSay(Strings.Format(Resources.CopyDone, NoteTitle))
-            : StayAndSay(Resources.CopyFailed);
+            ? Feedback.Stay(Strings.Format(Resources.CopyDone, NoteTitle))
+            : Feedback.Stay(Resources.CopyFailed);
     }
-
-    /// <summary>
-    /// 發一則提示,然後**留在原來那一頁**。
-    ///
-    /// <c>ToastArgs.Result</c> 一定要明著給:它的預設是 <c>Dismiss</c>,
-    /// 漏掉就是「講完話順手把面板收掉」,而三個呼叫端沒有一個想要那樣。
-    /// </summary>
-    private static CommandResult StayAndSay(string message) =>
-        CommandResult.ShowToast(new ToastArgs
-        {
-            Message = message,
-            Result = CommandResult.KeepOpen(),
-        });
 
     /// <summary>
     /// 剪貼簿裡現在真的是這段文字嗎。

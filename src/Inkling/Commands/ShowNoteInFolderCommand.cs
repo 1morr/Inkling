@@ -53,8 +53,7 @@ internal sealed partial class ShowNoteInFolderCommand : ShowFileInFolderCommand
         {
             // 留痕跡,理由同 OpenNoteFileCommand:畫面上那條訊息 2.5 秒就收掉了。
             DiagnosticLog.Failure("ShowNoteInFolder: the file no longer exists", _filePath);
-            new ToastStatusMessage(Resources.OpenFileMissing).Show();
-            return CommandResult.KeepOpen();
+            return Feedback.Stay(Resources.OpenFileMissing);
         }
 
         return base.Invoke();

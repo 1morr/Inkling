@@ -61,11 +61,7 @@ internal sealed partial class DeleteNoteCommand : InvokableCommand
             // 那個「可以接受」建立在一條假規則上(以為 toast 會搶焦點、面板必關,見
             // docs/design-notes.md〈toast 不會把面板關掉〉)—— 既然是自由選擇,
             // 就沒有理由選「失敗時把證據收走」:那一則筆記還在清單上,留著面板才看得到。
-            return CommandResult.ShowToast(new ToastArgs
-            {
-                Message = Strings.Format(Resources.DeleteFailed, ex.Message),
-                Result = CommandResult.KeepOpen(),
-            });
+            return Feedback.Stay(Strings.Format(Resources.DeleteFailed, ex.Message));
         }
     }
 }

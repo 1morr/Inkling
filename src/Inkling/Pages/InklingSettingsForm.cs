@@ -115,33 +115,23 @@ internal sealed partial class InklingSettingsForm : FormContent
         {
             case SettingsManager.ApplyResult.RejectedRelativePath:
                 // 整筆都沒存,表單留在原地:使用者打的東西還在卡片上,改完路徑再送一次就好。
-                new ToastStatusMessage(Resources.SettingsDirectoryRejected).Show();
-                return CommandResult.KeepOpen();
+                return Feedback.Stay(Resources.SettingsDirectoryRejected);
 
             case SettingsManager.ApplyResult.SaveFailed:
                 // 值在這個工作階段生效了,但沒寫進 settings.json —— 重啟就還原。
                 // 留在原地(KeepOpen):使用者打的東西還在卡片上,排掉問題再送一次就好,
                 // 而 GoHome 會讓那句話跟著這一頁一起走掉。
-                new ToastStatusMessage(Resources.SettingsSaveFailed).Show();
-                return CommandResult.KeepOpen();
+                return Feedback.Stay(Resources.SettingsSaveFailed);
 
             case SettingsManager.ApplyResult.AppliedToMissingFolder:
                 // 存是存了,但資料夾還不存在 —— 當場講,「打錯一個字就換了家」才不會無聲發生。
                 // **這一則尤其不能丟**:它存在的唯一理由就是那個無聲的換家,而 toast 是
                 // 唯一能跨過導覽活下來的通道。
-                return CommandResult.ShowToast(new ToastArgs
-                {
-                    Message = Strings.Format(
-                        Resources.SettingsDirectoryWillBeCreated, _settings.NotesDirectory),
-                    Result = CommandResult.GoHome(),
-                });
+                return Feedback.Home(Strings.Format(
+                    Resources.SettingsDirectoryWillBeCreated, _settings.NotesDirectory));
 
             default:
-                return CommandResult.ShowToast(new ToastArgs
-                {
-                    Message = Resources.SettingsSaved,
-                    Result = CommandResult.GoHome(),
-                });
+                return Feedback.Home(Resources.SettingsSaved);
         }
     }
 
@@ -188,18 +178,16 @@ internal sealed partial class InklingSettingsForm : FormContent
                 // 使用者挑完資料夾回到 CmdPal 時,預設的 2500 毫秒多半已經走完。
                 // 撐長一點讓它有機會還在,但**真正可靠的確認是卡片本身**:Apply 之後
                 // provider 會叫設定頁重讀,回到這一頁時資料夾欄位顯示的就是剛挑的那個。
-                new ToastStatusMessage(Strings.Format(Resources.SettingsFolderPicked, picked))
-                {
-                    Duration = FolderPickedToastMs,
-                }.Show();
+                Feedback.Say(
+                    Strings.Format(Resources.SettingsFolderPicked, picked), FolderPickedToastMs);
             },
             // 對話框開不起來也要講一聲,否則「瀏覽…」看起來像壞掉 —— 之前只有 DiagnosticLog
             // 留一行字,而它預設是關的。用 InfoBadge:不開視窗、不關面板,表單留在原地。
-            failed: () => new ToastStatusMessage(Resources.SettingsFolderPickerFailed).Show());
+            failed: () => Feedback.Say(Resources.SettingsFolderPickerFailed));
 
         if (!opened)
         {
-            new ToastStatusMessage(Resources.SettingsPickerAlreadyOpen).Show();
+            return Feedback.Stay(Resources.SettingsPickerAlreadyOpen);
         }
 
         return CommandResult.KeepOpen();

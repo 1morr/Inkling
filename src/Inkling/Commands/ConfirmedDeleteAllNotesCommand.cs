@@ -74,22 +74,14 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
             // 上面那句「要能立刻知道清單還剩東西」就自相矛盾了:看不到清單。
             // 當時以為 toast 必然關面板(假規則,見 docs/design-notes.md
             // 〈toast 不會把面板關掉〉),所以沒發現這個矛盾。
-            return CommandResult.ShowToast(new ToastArgs
-            {
-                Message = Strings.Format(Resources.DeletePartialFailure, deleted, targets.Count - deleted),
-                Result = CommandResult.KeepOpen(),
-            });
+            return Feedback.Stay(
+                Strings.Format(Resources.DeletePartialFailure, deleted, targets.Count - deleted));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             DiagnosticLog.Failure($"DeleteAllNotes failed ({ex.GetType().Name})", ex.ToString());
 
-            // Result 明著給,理由同上面那條部分失敗。
-            return CommandResult.ShowToast(new ToastArgs
-            {
-                Message = Strings.Format(Resources.DeleteFailed, ex.Message),
-                Result = CommandResult.KeepOpen(),
-            });
+            return Feedback.Stay(Strings.Format(Resources.DeleteFailed, ex.Message));
         }
     }
 }

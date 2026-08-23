@@ -74,11 +74,7 @@ internal sealed partial class ScratchpadPage : ContentPage
         //
         // 面板本來就要關,所以下面明著回 `Dismiss()`,而 toast 在面板收掉之後還留得住
         // (同一個判斷見 ScratchpadFormContent 的存檔路徑與 CapturedNotePage 的「完成」)。
-        Result = CommandResult.ShowToast(new ToastArgs
-        {
-            Message = Resources.ScratchpadDiscarded,
-            Result = CommandResult.Dismiss(),
-        }),
+        Result = Feedback.Done(Resources.ScratchpadDiscarded),
     };
 
     public override IContent[] GetContent()

@@ -186,11 +186,7 @@ internal sealed partial class CapturedNotePage : ContentPage
             // ToastArgs.Result 是 CmdPal 顯示完提示之後要做的事,維持 Dismiss ——
             // 不是 GoHome:記完這則想法就要回去做原本的事,留一個主搜尋框在畫面上
             // 只是多一次 Esc(同一個取捨見 NoteCommands.Done)。
-            _done.Result = CommandResult.ShowToast(new ToastArgs
-            {
-                Message = Strings.Format(Resources.CaptureSaved, note.Title),
-                Result = CommandResult.Dismiss(),
-            });
+            _done.Result = Feedback.Done(Strings.Format(Resources.CaptureSaved, note.Title));
 
             _error = null;
 
