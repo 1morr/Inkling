@@ -46,11 +46,15 @@ param(
     [ValidateRange(0, 255)]
     [int] $Scrim = 34,
 
-    # 輸出格式。**預設 JPEG,而且理由不是「好看」是「大小」** —— 背景換成照片式的桌布
-    # 之後 PNG 一張要 930 KB,而 CmdPal gallery 的 screenshots/ 上限是 1 MB/張,
-    # 只剩 7% 餘裕,換一張桌布就會爆掉。JPEG 品質 95 大約 200 KB,
-    # 面板上的文字在 1:1 檢視下看不出差別(那是純色底黑字,不是漸層)。
-    # Store 與 gallery 都收 JPEG。真的要無損就 -Format Png,但記得對一下大小。
+    # 輸出格式。**兩個通路要的格式不一樣,所以兩份都要產。**
+    #   Store listing:**只收 PNG** —— 2026-08-23 實測上傳 .jpg 被擋下來,
+    #     訊息是「is not a valid .png file」。上限 50 MB,所以大小不是問題。
+    #   CmdPal gallery 的 screenshots/:上限 **1 MB/張**,而背景換成照片式的桌布
+    #     之後 PNG 一張要 ~1000 KB,只剩不到 3% 餘裕,換一張桌布就會爆掉。
+    #     JPEG 品質 95 大約 200 KB,面板上的文字在 1:1 檢視下看不出差別
+    #     (那是純色底黑字,不是漸層)。
+    # 預設仍是 JPEG(gallery 那條比較容易踩雷);要給 Store 就再跑一次 -Format Png,
+    # 兩種副檔名不會互相覆蓋,assets/store/ 同時放得下。
     [ValidateSet('Jpeg', 'Png')]
     [string] $Format = 'Jpeg',
 
