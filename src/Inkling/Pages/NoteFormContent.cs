@@ -117,22 +117,6 @@ internal sealed partial class NoteFormContent : FormContent
         }.ToJsonString();
     }
 
-    /// <summary>
-    /// 存檔成功後要往哪走。新增回首頁;**編輯留在原地**。
-    ///
-    /// 這裡以前是 <c>CommandResult.GoBack()</c>,而那個回傳值在 0.11.11762.0 安裝版上
-    /// **完全不動** —— 2026-08-22 實機驗過:編輯存完畫面停在編輯頁,等五秒也一樣;
-    /// 同一個 <c>SubmitForm</c> 的新增路徑回 <c>GoHome()</c> 則正常回到主頁,所以不是
-    /// 我們的程式沒走到這一行。跟 <c>GoToPage</c> 是同一類的空殼(見 CLAUDE.md 硬規則 8)。
-    ///
-    /// 既然做不到,就明著寫 <c>KeepOpen()</c>,不要留一個看起來會導頁、實際上不會的回傳值 ——
-    /// 下一個人讀到 <c>GoBack()</c> 只會以為畫面沒回上一頁是別的地方壞了。
-    /// **不改成 <c>GoHome()</c>**:那會把使用者丟回主搜尋框,比停在原地更遠(他剛從清單裡
-    /// 找到這一則)。留在原地 + 底部 InfoBar 的「已儲存:標題」是可用的結果,
-    /// 而 <c>Esc</c> 本來就回得去 —— 卡片底部那行提示把這件事講出來。
-    /// </summary>
-    private CommandResult AfterSave => _note is null ? CommandResult.GoHome() : CommandResult.KeepOpen();
-
     public override CommandResult SubmitForm(string inputs)
     {
         var form = JsonNode.Parse(inputs)?.AsObject();
@@ -158,18 +142,48 @@ internal sealed partial class NoteFormContent : FormContent
             {
                 // 預填的空行不該變成筆記內容。編輯時不做這件事 —— 那些空行是使用者自己的排版。
                 _repository.Create(title, body.Trim());
-                new ToastStatusMessage(Strings.Format(Resources.NoteCreated, title)).Show();
+
+                // 上一頁不會因為導覽回來就重新取內容,所以一定要通知(見 NotePreviewContent)。
+                _onSaved?.Invoke();
+
+                // **新增這條路一定要走 toast,不能走 ToastStatusMessage。**
+                //
+                // 2026-08-23 的全量驗證抓到:這裡本來是 `ToastStatusMessage(...).Show()`
+                // 配 `GoHome()`,結果**畫面上一個字都沒有** —— 檔案確實建立了(所以 Show()
+                // 一定執行過),但 CmdPal 的 status InfoBar 綁在當下那一頁的 view model 上,
+                // `GoHome()` 導覽時連同訊息一起拆掉。Enter 之後 400 / 900 / 1500 / 2500 ms
+                // 四次截圖都沒有徽章。對照組是下面編輯那條:同樣發訊息,但回 `KeepOpen()`,
+                // 「已儲存:標題」看得見。
+                //
+                // 換成 toast 而不是想辦法留住徽章,理由是硬規則 8 的判準 ——
+                // **「使用者接下來還要不要看著這個面板」**。填完整張表單按儲存就是收工,
+                // 不需要;而 toast 是唯一能在面板消失之後還留在畫面上的通道。
+                // 快速記下(`QuickCaptureCommand`)這條姊妹路徑本來就是這樣寫的,
+                // 現在兩邊一致。`ToastArgs.Result` 是 CmdPal 顯示完提示要做的事 ——
+                // 分兩次回傳做不到,`SubmitForm` 只有一次回傳的機會。
+                return CommandResult.ShowToast(new ToastArgs
+                {
+                    Message = Strings.Format(Resources.NoteCreated, title),
+                    Result = CommandResult.GoHome(),
+                });
             }
-            else
-            {
-                _repository.Update(editing, title, body);
-                new ToastStatusMessage(Strings.Format(Resources.NoteSaved, title)).Show();
-            }
+
+            _repository.Update(editing, title, body);
+
+            // **編輯這條路相反,一個 toast 都不能發。** 卡片上還壓著使用者剛打的字,
+            // 而 toast 一搶焦點主視窗就自我隱藏(硬規則 8),那些字就跟著消失了。
+            // 這裡回 `KeepOpen()` 也是明著寫的:以前是 `CommandResult.GoBack()`,
+            // 而那個回傳值在 0.11.11762.0 安裝版上**完全不動** —— 2026-08-22 實機驗過,
+            // 存完畫面停在編輯頁,等五秒也一樣;跟 `GoToPage` 是同一類的空殼。
+            // **也不改成 `GoHome()`**:那會把使用者丟回主搜尋框,比停在原地更遠
+            // (他剛從清單裡找到這一則)。留在原地 + 底部 InfoBar 的「已儲存:標題」
+            // 是可用的結果,而 `Esc` 本來就回得去 —— 卡片底部那行提示把這件事講出來。
+            new ToastStatusMessage(Strings.Format(Resources.NoteSaved, title)).Show();
 
             // 上一頁不會因為導覽回來就重新取內容,所以一定要通知(見 NotePreviewContent)。
             _onSaved?.Invoke();
 
-            return AfterSave;
+            return CommandResult.KeepOpen();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NoteNotFoundException)
         {

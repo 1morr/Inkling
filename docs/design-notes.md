@@ -575,7 +575,8 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   CmdPal 端唯一的鍵盤提交路徑是 `ContentFormControl.OnFormKeyDown`,只認 Enter、只在單行
   輸入框裡有效,而且 0.11.11762.0 還沒有這段程式碼。真要 `Ctrl+S` 得改 PowerToys 本身。
 - **存完不會自己回上一頁 —— `CommandResult.GoBack()` 在安裝版上不動。**
-  `NoteFormContent.cs:114` 的 `AfterSave` 對編輯回傳 `GoBack()`、對新增回傳 `GoHome()`。
+  `NoteFormContent.SubmitForm` 當時有一個 `AfterSave` 屬性,對編輯回傳 `GoBack()`、
+  對新增回傳 `GoHome()`(那個屬性後來連同新增那條路一起改掉了,見下一條)。
   2026-08-22 實測:新增存完**確實**回到主頁,編輯存完**停在編輯頁不走**(等五秒也一樣),
   只有底部的 InfoBar「已儲存：<標題>」會出現。同一個 `SubmitForm`、同一個回傳路徑,
   差別只在回傳哪一種 `CommandResult` —— 所以不是我們的程式沒走到那一行,是 `GoBack`
@@ -596,6 +597,23 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   `CapturedNotePage` 失敗路徑上那個 `GoBack()` 也拿掉了 —— 那顆按鈕寫著「回上一步」
   而按下去什麼都不會發生,「唯一的重試路徑」其實從來沒通過,現在改成就地「再試一次」
   (放掉一次性旗標 + `RaiseItemsChanged`,讓 `GetContent` 重新寫一次檔)。
+- **新增與編輯的成功提示走不同通道,而且非分開不可。**
+  兩條路本來都發 `ToastStatusMessage`(底部 InfoBar + InfoBadge),編輯回 `KeepOpen()`、
+  新增回 `GoHome()`。2026-08-23 的全量驗證抓到:**新增那條完全看不到提示** ——
+  檔案確實建立了(所以 `Show()` 一定執行過),但 CmdPal 的 status InfoBar 綁在當下
+  那一頁的 view model 上,`GoHome()` 導覽時把它一起拆掉了。Enter 之後
+  400 / 900 / 1500 / 2500 ms 四次截圖都沒有徽章;編輯那條(`KeepOpen()`)則看得見。
+  也就是說**訊息發得出去,是導覽把它吃掉的**。
+
+  **處置:新增改回 `CommandResult.ShowToast`,編輯維持 `ToastStatusMessage`。**
+  判準就是 [CLAUDE.md](../CLAUDE.md) 硬規則 8 的那一句 ——
+  **「使用者接下來還要不要看著這個面板」**:填完整張表單按儲存就是收工,不需要,
+  而 toast 是唯一能在面板消失之後還留在畫面上的通道;編輯反過來,卡片上還壓著使用者
+  剛打的字,toast 一搶焦點主視窗就自我隱藏,那些字會跟著消失。
+  改完之後新增這條路跟快速記下(`QuickCaptureCommand`)完全一致 —— 那裡本來就是
+  `ShowToast` 配 `Result = GoHome()`。
+  **不要為了「留住徽章」把新增改成 `KeepOpen()`**:那會讓人存完卡在表單上,
+  而他下一步是收工,不是繼續改。
 
 <a id="edit-form-enter"></a>
 
