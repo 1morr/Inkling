@@ -260,7 +260,8 @@ $s.Aliases.PSObject.Properties | Where-Object { $_.Value.CommandId -like 'Inklin
 - [ ] 🤖 預覽頁的選單裡「在預設編輯器開啟」與「複製內文」都在,而且指的是剛記下的那則
       (這幾個命令是存檔**之後**才補上去的,靠 `PropChanged` 讓 CmdPal 重讀 ——
       沒生效的話這一頁會只剩「完成」一顆)。「複製內文」右邊寫著 **`Ctrl+Shift+C`**,
-      按下去**面板還開著、還停在這一頁**,並跳一則 `已複製:<標題>` toast
+      按下去**面板還開著、還停在這一頁**,底部跳一條 `已複製:<標題>` 的 InfoBar
+      (**不是 toast** —— 留在原地那一類走 `Feedback.Stay`,跳 toast 就是有人改成了 `Done` / `Home`)
       (曾經用 toolkit 原生 `CopyTextCommand`,它的預設 `Result` 是 `Dismiss` —— 整頁消失)
 - [ ] 🤖 底部工具列第二顆是 **編輯 Ctrl+⏎**:在這一頁按 `Ctrl+Enter` 直接進編輯表單,
       不必先繞去清單頁(順序有語意:**這一頁**的第一顆是「完成」——
