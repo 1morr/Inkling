@@ -14,9 +14,6 @@ namespace Inkling.Pages;
 /// </summary>
 internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 {
-    /// <summary>「已複製」那個標籤留多久。跟 CmdPal 自己的 toast 一樣長。</summary>
-    private static readonly TimeSpan TagDuration = TimeSpan.FromMilliseconds(2500);
-
     private readonly INoteRepository _repository;
     private readonly InklingOptions _options;
     private readonly ISourceModeStore _sourceMode;
@@ -56,23 +53,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private (Note Note, ListItem Item)[] _shown = [];
 
     /// <summary>
-    /// 「已複製」那個標籤的計時器,時間到自己把標籤收掉。
-    ///
-    /// 跟 CmdPal 自己的 toast 一樣是 2.5 秒(<c>ToastWindow.VisibleDuration</c>),
-    /// 讓兩種回饋的節奏一致。
-    /// </summary>
-    private readonly System.Threading.Timer _tagTimer;
-
-    /// <summary>目前掛著標籤的那一列,清的時候只碰它一個。</summary>
-    private ListItem? _taggedItem;
-
-    /// <summary>
-    /// 那一列在「已複製」蓋上去之前本來掛著的標籤(見 <see cref="BaseTags"/>)。
-    /// 收標籤時要回到這一份,不是清成空的 —— 否則複製一次就把衝突標記弄丟了。
-    /// </summary>
-    private ITag[] _taggedBase = [];
-
-    /// <summary>
     /// 空白狀態那一列。留著參照是為了依查詢就地換文案(見 UpdateEmptyContent)——
     /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
     /// 走這條一定收得到(<c>IDetails</c> 就不行,見 RefreshDetails)。
@@ -92,8 +72,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         _options = options;
         _newNotePage = newNotePage;
         _sourceMode = sourceMode;
-
-        _tagTimer = new System.Threading.Timer(_ => ClearTag(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
         // 切換的回呼傳 null:這一頁活得跟擴展進程一樣久,直接訂閱事件就好 ——
         // 那條路連「在預覽頁上切的」也收得到,回呼只收得到自己按的那一次。
@@ -166,9 +144,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             shown.Add((note, item));
         }
 
-        // 標籤屬於上一份清單那些項目物件,整批換掉之後就沒有意義了。
-        ClearTag();
-
         _shown = [.. shown];
         DiagnosticLog.Write($"BuildItems: query='{query}' matched {matches.Count}, listed {shown.Count}");
 
@@ -232,16 +207,20 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         // 同一個 id 出現在兩個檔案上 = 雲端硬碟的衝突副本(見 Note.HasDuplicateId)。
         // 兩列的標題與內文可能一模一樣,不標的話使用者根本不會發現多了一份。
-        // 走 Tags 而不是改副標:副標是摘要,那是使用者要讀的內容;而 Tags 這條路
-        // 跨進程是通的(見 FlashTag)。
+        // 走 Tags 而不是改副標:副標是摘要,那是使用者要讀的內容。**這條路跨進程是通的**
+        // —— 跟 ListItem.Details 相反(見 RefreshDetails):ICommandItem 在 IDL 裡就繼承
+        // INotifyPropChanged,CmdPal 對它無條件訂閱,而且安裝版的 UpdateTags /
+        // VisibleTags / TagViewModel 都掃得到。
         Tags = BaseTags(note),
     };
 
     /// <summary>
     /// 一列平常掛著的標籤。目前只有「衝突副本」一種。
     ///
-    /// 抽出來是因為 <see cref="FlashTag"/> 會暫時再掛一個「已複製」上去,
-    /// 收回來的時候要回到這一份而不是空陣列 —— 否則複製一次,衝突標記就消失了。
+    /// 這裡曾經還有第二種:複製內文之後在那一列閃一個「已複製」(<c>FlashTag</c>),
+    /// 連同一個計時器與兩個欄位。**2026-08-23 整組移除** —— 它存在的唯一理由是
+    /// 「複製完要留在畫面上,所以一個 toast 都不能發」,而那個前提量過之後是假的。
+    /// 現在三個畫面共用一則帶標題的 toast,見 <see cref="Commands.CopyNoteBodyCommand"/>。
     /// </summary>
     private static ITag[] BaseTags(Note note) =>
         note.HasDuplicateId ? [new Tag(Resources.ListPageConflictTag)] : [];
@@ -259,9 +238,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     [
         NoteCommands.Edit(_repository, note),
         _toggleSource.CreateItem(Resources.ToggleSourceSubtitle),
-        // 複製完**留在清單頁**,所以不發 toast(toast 會搶焦點,主視窗一失焦就自我隱藏)。
-        // 回饋改成在那一列打一個標籤,見 FlashTag。
-        NoteCommands.CopyBody(new CopyNoteBodyCommand(note.Body, message => FlashTag(note.FilePath, message))),
+        // 複製完留在清單頁,回饋走一則帶標題的 toast(它拿不到前景,收不掉面板)。
+        NoteCommands.CopyBody(new CopyNoteBodyCommand(note.Body, note.Title)),
         NoteCommands.OpenInEditor(note),
         NoteCommands.OpenFileLocation(note),
 
@@ -379,64 +357,6 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         DiagnosticLog.Write($"RefreshDetails: replaced Details on {shown.Length} items");
     }
 
-    /// <summary>
-    /// 在某一列右邊打一個短暫的標籤,<see cref="_tagTimer"/> 到時自己收掉。
-    ///
-    /// 這是「複製完不關面板」換來的問題的解:**不能用 toast**(它是另一個會搶焦點的視窗,
-    /// 主視窗一失焦就自我隱藏,見 <see cref="Commands.DeleteNoteCommand"/>),
-    /// 但剪貼簿看不見,完全沒有回饋又會讓人以為快速鍵壞了。
-    ///
-    /// 用 <see cref="ListItem.Tags"/> 是因為**這條路跨進程是通的** —— 跟
-    /// <see cref="ListItem.Details"/> 相反(見 <see cref="RefreshDetails"/>):
-    /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
-    /// 而且安裝版的 <c>UpdateTags</c> / <c>VisibleTags</c> / <c>TagViewModel</c> 都掃得到。
-    /// 這裡也不呼叫 <c>RaiseItemsChanged</c>:整份清單翻新一次,選中項就有機會跑掉,
-    /// 而複製完的下一秒使用者通常還想留在同一列上。
-    ///
-    /// 計時器回呼跑在執行緒集區上,所以只碰 <see cref="_taggedItem"/> 這一個參考
-    /// (用 <see cref="Interlocked"/> 換走),不去走 <see cref="_shown"/> 那個會整個被換掉的陣列。
-    /// </summary>
-    /// <param name="filePath">
-    /// 要掛在哪一列。**認路徑不認 id** —— 同一個 id 可能對到兩個檔案(衝突副本),
-    /// 用 id 找會把標籤掛到上面那一列去,而使用者複製的是下面那一列。
-    /// </param>
-    private void FlashTag(string filePath, string text)
-    {
-        ClearTag();
-
-        foreach (var (note, item) in _shown)
-        {
-            if (!string.Equals(note.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            // 疊在那一列本來就有的標籤上面,不是換掉 —— 衝突標記得留著。
-            _taggedBase = BaseTags(note);
-            item.Tags = [.. _taggedBase, new Tag(text)];
-            _taggedItem = item;
-            _tagTimer.Change(TagDuration, Timeout.InfiniteTimeSpan);
-
-            DiagnosticLog.Write($"FlashTag: '{text}' attached to {note.Id}");
-            return;
-        }
-    }
-
-    /// <summary>
-    /// 把「已複製」收掉,回到那一列平常的標籤。時間到、換一列複製、或整份清單重建時都會走到。
-    /// </summary>
-    private void ClearTag()
-    {
-        var item = Interlocked.Exchange(ref _taggedItem, null);
-
-        if (item is not null)
-        {
-            item.Tags = _taggedBase;
-        }
-
-        _taggedBase = [];
-    }
-
     private void OnRepositoryChanged(object? sender, EventArgs e)
     {
         // Version 已經讓下一次 GetItems 自己重建了;這裡的重點是主動通知 CmdPal
@@ -454,6 +374,5 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         _disposed = true;
         _repository.Changed -= OnRepositoryChanged;
         _sourceMode.ShowSourceChanged -= OnShowSourceChanged;
-        _tagTimer.Dispose();
     }
 }

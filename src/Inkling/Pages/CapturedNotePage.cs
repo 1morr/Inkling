@@ -23,15 +23,19 @@ namespace Inkling.Pages;
 /// 只讀 Id / Name / Icon,不碰 <c>GetContent</c>(查過原始碼)。內容是使用者真的按下
 /// Enter、CmdPal 建出 <c>ContentPageViewModel</c> 時才取的。
 ///
-/// <para><b>toast 的規矩在這一頁分成兩段,別把它讀成「完全不能發」。</b></para>
+/// <para><b>這一頁的規矩是「不准收面板」,不是「不准發 toast」。</b></para>
 ///
-/// toast 視窗會搶焦點,而 CmdPal 主視窗一失焦就把自己藏起來(<c>MainWindow_Activated</c>
-/// → <c>EndSession("LostFocus")</c>,沒有開關)—— 那正是「記下之後 CmdPal 整個消失」的成因。
-/// 所以**停留期間一個 toast 都不能發**:進頁、存檔那一刻、存檔失敗、複製內文,全部不行,
-/// 這一頁的存在意義就是讓使用者看一眼。
+/// ⚠ 以前這一段寫的是後者,理由是「toast 視窗會搶焦點,而 CmdPal 主視窗一失焦就把自己
+/// 藏起來(<c>MainWindow_Activated</c> → <c>EndSession("LostFocus")</c>)」。
+/// **2026-08-23 量過,那是假的** —— toast 視窗是 <c>WS_EX_TOOLWINDOW | WS_DISABLED</c>,
+/// 它拿不到前景;面板去留完全由 <c>ToastArgs.Result</c> 決定
+/// (見 docs/design-notes.md〈toast 不會把面板關掉〉)。複製內文因此已經改成發 toast 了。
 ///
-/// **但按下「完成」時相反。** 那一下的語意就是收工,面板本來就要關掉 ——
-/// toast 搶焦點造成的隱藏剛好是我們要的結果,所以它是免費的。而這裡非發不可:
+/// 真正的規矩是:**停留期間回傳的 <c>Result</c> 一律 <c>KeepOpen</c>** ——
+/// 進頁、存檔那一刻、存檔失敗、複製內文,這一頁的存在意義就是讓使用者看一眼。
+///
+/// **但按下「完成」時相反。** 那一下的語意就是收工,面板本來就要關掉,
+/// 所以那一顆明著回 <c>Dismiss</c>。而這裡非發 toast 不可:
 /// 關掉「記下後先看一眼」走的是 <see cref="Commands.QuickCaptureCommand"/>,那條路存完會
 /// 跳「已記下:標題」;開著設定卻什麼都沒有,同一個動作換個設定就少了結尾確認。
 /// 兩條路共用 <c>Resources.CaptureSaved</c>,文案因此不會漂移。見 <see cref="Capture"/>。
@@ -55,8 +59,9 @@ internal sealed partial class CapturedNotePage : ContentPage
 
     /// <summary>
     /// 複製內文。刻意用 <see cref="CopyNoteBodyCommand"/> 而不是 toolkit 原生
-    /// <see cref="CopyTextCommand"/>:後者預設回 ShowToast,而這一頁一個 toast 都不能發
-    /// (見上面的型別註解)。實例留著,重新取內容時才能改掉 <c>Text</c>。
+    /// <see cref="CopyTextCommand"/>:後者的預設收尾是 <c>Dismiss</c>,按一下複製
+    /// 這一頁就沒了(見上面的型別註解)。實例留著,重新取內容時才能改掉
+    /// <c>Text</c> 與 <c>NoteTitle</c>。
     /// </summary>
     private readonly CopyNoteBodyCommand _copyBody;
 
@@ -104,7 +109,7 @@ internal sealed partial class CapturedNotePage : ContentPage
         // 存檔成功時要就地換掉它的 Result(補上那句「已記下」),所以留著實例,見 Capture()。
         _done = NoteCommands.Done();
 
-        _copyBody = new CopyNoteBodyCommand(draft.Body);
+        _copyBody = new CopyNoteBodyCommand(draft.Body, draft.Title);
 
         // 存檔前只有這一顆:其餘幾個都要拿到存好的 Note 才建得出來(檔案路徑、id)。
         // 補齊的時機見 Capture()。
@@ -167,6 +172,7 @@ internal sealed partial class CapturedNotePage : ContentPage
 
             _note = note;
             _copyBody.Text = note.Body;
+            _copyBody.NoteTitle = note.Title;
 
             // 存好了才清搜尋框(失敗那條路刻意留著使用者打的字)。
             _onCaptured?.Invoke();
@@ -174,9 +180,8 @@ internal sealed partial class CapturedNotePage : ContentPage
             // 「完成」帶著記下的確認一起收工 —— 跟關掉「記下後先看一眼」那條路
             // (QuickCaptureCommand)講同一句話,用的也是同一個字串。
             //
-            // 這是這一頁**唯一**可以發 toast 的時機:按下去的語意就是「收工」,面板本來
-            // 就要關,所以 toast 搶焦點造成的隱藏不是代價而是目的。停留期間為什麼一個都
-            // 不能發,見型別註解。
+            // 這是這一頁**唯一**回 `Dismiss` 的時機:按下去的語意就是「收工」,面板本來
+            // 就要關。停留期間為什麼一律 `KeepOpen`,見型別註解。
             //
             // ToastArgs.Result 是 CmdPal 顯示完提示之後要做的事,維持 Dismiss ——
             // 不是 GoHome:記完這則想法就要回去做原本的事,留一個主搜尋框在畫面上

@@ -330,10 +330,10 @@
     <value>沒有可以開啟 .md 的程式 —— 到 Windows 設定挑一個預設應用程式</value>
   </data>
   <data name="CopyNoBody" xml:space="preserve">
-    <value>沒有內文</value>
+    <value>沒有內文可以複製</value>
   </data>
   <data name="CopyDone" xml:space="preserve">
-    <value>已複製</value>
+    <value>已複製：{0}</value>
   </data>
   <data name="CopyFailed" xml:space="preserve">
     <value>複製不成功</value>

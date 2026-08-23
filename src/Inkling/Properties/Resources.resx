@@ -374,14 +374,14 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
     <comment>後半句給下一步:這條路最常見的成因就是 .md 根本沒有檔案關聯。</comment>
   </data>
   <data name="CopyNoBody" xml:space="preserve">
-    <value>No body</value>
+    <value>No body to copy</value>
   </data>
   <data name="CopyDone" xml:space="preserve">
-    <value>Copied</value>
-    <comment>掛在清單那一列右邊的標籤,短一點比較好。</comment>
+    <value>Copied: {0}</value>
+    <comment>{0} 是筆記標題。三個畫面共用同一則 toast,標題是「複製到的是哪一則」的唯一線索
+             —— 清單頁以前靠那一列上的標籤講這件事,現在那條路沒有了。</comment>
   </data>
-  <!-- 同上,這也是掛在那一列上的標籤,長度要跟「已複製」一個量級。
-       塞不下下一步,而下一步就是再按一次,使用者自然會做。 -->
+  <!-- 塞不下下一步,而下一步就是再按一次,使用者自然會做。 -->
   <data name="CopyFailed" xml:space="preserve">
     <value>Copy failed</value>
   </data>

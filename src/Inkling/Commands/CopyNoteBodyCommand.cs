@@ -14,41 +14,54 @@ namespace Inkling.Commands;
 /// <c>ClipboardHelper.SetText</c> 會先 <c>EmptyClipboard()</c> 再把字串寫進去,
 /// 對一則沒有內文的筆記按下去,等於把使用者剪貼簿裡本來的東西清掉,還配一句「已複製」。
 ///
-/// <para><b>二、複製完要留在原地,所以一個 toast 都不發。</b></para>
+/// <para><b>二、三條路都發同一種 toast,而且都留在原地。</b></para>
 ///
-/// toolkit 預設回的是 <c>ShowToast</c>,而 <see cref="ToastArgs"/> 的預設收尾又是
-/// <c>Dismiss</c> —— 兩件事疊起來,複製一次面板就關一次。就算把 <c>ToastArgs.Result</c>
-/// 改成 <c>KeepOpen</c> 也救不回來:toast 是另一個會搶焦點的視窗,而 CmdPal 主視窗一失焦
-/// 就自我隱藏(同一個機制見 <see cref="DeleteNoteCommand"/>)。**想留在畫面上就一個
-/// toast 都不能發**,這條規則對複製跟對刪除一樣硬。
+/// toolkit 預設回的是 <c>ShowToast</c>,而 <see cref="ToastArgs"/> 的預設收尾是
+/// <c>Dismiss</c>(把它 new 一個出來讀到的)—— 兩件事疊起來,複製一次面板就關一次。
+/// 所以這裡**顯式**指定 <c>Result = KeepOpen()</c>,面板就留著。
 ///
-/// 所以回饋改由頁面自己給:<paramref name="report"/> 讓清單頁在那一列打一個標籤
-/// (<c>ListItem.Tags</c> 改了畫面會即時更新,那條路在安裝版上是通的)。
-/// 沒有傳 <c>report</c> 的呼叫端(預覽頁、記下並預覽頁,它們沒有清單列可以掛標籤)
-/// **成功時**就是靜靜地複製 —— 那兩頁本來就整頁顯示著剛複製的內容。
+/// ⚠ **這一段 2026-08-23 整個改寫過,前一版的理由是錯的。** 以前寫著「就算把
+/// <c>ToastArgs.Result</c> 改成 <c>KeepOpen</c> 也救不回來:toast 是另一個會搶焦點的視窗,
+/// 而 CmdPal 主視窗一失焦就自我隱藏」,結論是「想留在畫面上就一個 toast 都不能發」。
+/// **量過之後不成立** —— toast 視窗是 <c>WS_EX_TOOLWINDOW | WS_DISABLED</c> 的,
+/// 它拿不到前景,面板去留完全由 <c>ToastArgs.Result</c> 決定。實測數字與推翻的經過見
+/// [設計考證〈toast 不會把面板關掉〉](../../../docs/design-notes.md#toast-does-not-steal-focus)。
 ///
-/// <para><b>但「內文是空的」那條路不能沿用那個理由。</b></para>
+/// 那條假規則的代價不是清單頁(它靠 <c>ListItem.Tags</c> 在那一列打標籤繞過去了),
+/// 而是**預覽頁與記下並預覽頁的成功路徑整個是靜默的** —— 理由寫著「那兩頁本來就整頁
+/// 顯示著剛複製的內容」,但頁面顯示什麼跟剪貼簿有沒有寫成功無關,按下去畫面一個像素
+/// 都不變,跟快速鍵壞掉分不出來。那正是當初修「空內文」那條時用的判準,只是成功路徑被漏掉了。
 ///
-/// 空內文時什麼都沒被複製,「整頁顯示著剛複製的內容」不成立 —— 實機驗過:那兩頁按下去
-/// 畫面一點變化都沒有,跟快速鍵壞掉分不出來。所以那條路改走
-/// <see cref="ToastStatusMessage"/>:它不開視窗、不搶焦點、不收面板,而面板此時就在前景。
-/// (那個提示畫成一條橫跨底部的 InfoBar 加一個計數 InfoBadge,ListPage 與 ContentPage 都會出現 ——
-/// 前提是 <c>ExtensionHost</c> 拿得到 host,見 <see cref="InklingCommandsProvider.InitializeWithHost"/>。)
-/// 成功那條路維持靜默。
+/// 現在三個畫面走同一條:一則帶著筆記標題的 toast。標題是必要的 ——
+/// 清單頁以前靠「標籤掛在哪一列」講「複製到的是哪一則」,toast 沒有位置感,
+/// 那個資訊只能寫進訊息裡。toast 畫在面板**下方**(實測面板底邊 y=1404、toast 頂邊 y=2005),
+/// 所以它不像底部的 InfoBar 會壓在正在讀的內容上,也不再吃掉清單那一列的副標。
 /// </summary>
 internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
 {
-    private readonly Action<string>? _report;
+    /// <summary>
+    /// 要寫進提示的筆記標題。
+    ///
+    /// **跟 <see cref="CopyTextCommand.Text"/> 一樣是可變的,而且要一起換。**
+    /// 預覽頁與記下並預覽頁把這個實例留著重複用,每次取內容都重新查一次筆記
+    /// (見 <see cref="Pages.NotePreviewContent.Reload"/>)—— 使用者剛在編輯頁改過標題的話,
+    /// 只換 <c>Text</c> 會讓 toast 講出舊標題,而那比不講更糟。
+    /// </summary>
+    public string NoteTitle { get; set; }
 
     /// <param name="body">要複製的內文。</param>
-    /// <param name="report">複製完的回饋文字,由頁面決定怎麼顯示;沒有就不回報。</param>
-    public CopyNoteBodyCommand(string body, Action<string>? report = null)
+    /// <param name="noteTitle">寫進提示的標題,見 <see cref="NoteTitle"/>。</param>
+    public CopyNoteBodyCommand(string body, string noteTitle)
         : base(body)
     {
-        _report = report;
+        NoteTitle = noteTitle;
 
         Name = Resources.CommandCopyBody;
         Icon = Icons.Copy;
+
+        // 這個屬性是 toolkit 在沒有覆寫 Invoke 時用的收尾。我們每一條路都明著回傳,
+        // 所以它其實走不到 —— 留著是為了讓「這個命令不收面板」在建構時就看得出來,
+        // 而 toolkit 的預設值(ShowToast 配 Dismiss)剛好相反。
         Result = CommandResult.KeepOpen();
     }
 
@@ -57,32 +70,35 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
         if (Text.Length == 0)
         {
             // 照實講。剪貼簿看不見,不講的話按下去就是完全沒有反應,
-            // 使用者只會以為快速鍵壞了。
-            //
-            // **沒有傳 report 的呼叫端也要講。** 類別註解給那兩頁靜默的理由是
-            // 「那一頁本來就整頁顯示著剛複製的內容」—— 而空內文時什麼都沒被複製,
-            // 那個理由在這條路上不成立(實機驗過:預覽頁按下去 UIA 樹前後一字不差)。
-            // 回饋走哪一條交給 Announce 決定,兩條都不會把面板收掉。成功那條路維持靜默。
-            Announce(Resources.CopyNoBody);
-            return CommandResult.KeepOpen();
+            // 使用者只會以為快速鍵壞了。這條路**沒有動到剪貼簿**,所以不提標題:
+            // 「已複製:X」講的是「X 進了剪貼簿」,這裡什麼都沒進去。
+            return StayAndSay(Resources.CopyNoBody);
         }
 
         // base.Invoke 是同步的(ClipboardHelper 自己開一條 STA 執行緒再 Join),
         // 所以走到下一行時剪貼簿真的已經寫好了,回報不會比事實早。
-        var result = base.Invoke();
+        //
+        // **回傳值刻意丟掉。** toolkit 那一版回的是 ShowToast 配預設的 Dismiss,
+        // 拿來當結果等於複製一次面板關一次。要的只有它的副作用。
+        base.Invoke();
 
-        if (WroteToClipboard())
-        {
-            // 成功時沒有 report 的那兩頁維持靜默 —— 它們整頁顯示著剛複製的內容。
-            _report?.Invoke(Resources.CopyDone);
-        }
-        else
-        {
-            Announce(Resources.CopyFailed);
-        }
-
-        return result;
+        return WroteToClipboard()
+            ? StayAndSay(Strings.Format(Resources.CopyDone, NoteTitle))
+            : StayAndSay(Resources.CopyFailed);
     }
+
+    /// <summary>
+    /// 發一則提示,然後**留在原來那一頁**。
+    ///
+    /// <c>ToastArgs.Result</c> 一定要明著給:它的預設是 <c>Dismiss</c>,
+    /// 漏掉就是「講完話順手把面板收掉」,而三個呼叫端沒有一個想要那樣。
+    /// </summary>
+    private static CommandResult StayAndSay(string message) =>
+        CommandResult.ShowToast(new ToastArgs
+        {
+            Message = message,
+            Result = CommandResult.KeepOpen(),
+        });
 
     /// <summary>
     /// 剪貼簿裡現在真的是這段文字嗎。
@@ -106,23 +122,6 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
             // 不一致(COM、Win32、逾時),而漏接一種就等於讓一個唯讀的確認動作
             // 把整個命令弄爆。
             return false;
-        }
-    }
-
-    /// <summary>
-    /// 講一句話,而且**不管在哪一頁都要講得到**。清單頁在那一列打標籤
-    /// (<c>ListItem.Tags</c>),沒有清單列的頁面走底部的狀態訊息。
-    /// 兩條都不開視窗、不搶焦點、不收面板。
-    /// </summary>
-    private void Announce(string message)
-    {
-        if (_report is null)
-        {
-            new ToastStatusMessage(message).Show();
-        }
-        else
-        {
-            _report(message);
         }
     }
 }

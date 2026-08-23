@@ -40,7 +40,10 @@ internal static class NotePreviewContent
         // 認路徑不認 id —— 同一個 id 可能對到兩個檔案(雲端硬碟的衝突副本),見 Note.Id。
         note = repository.GetByPath(filePath) ?? note;
 
+        // **兩個都要換。** 只換 Text 的話,使用者剛在編輯頁改過標題時,
+        // 複製後那則 toast 會講出舊標題 —— 那比不講更糟。
         copyBody.Text = note.Body;
+        copyBody.NoteTitle = note.Title;
 
         if (showSource)
         {

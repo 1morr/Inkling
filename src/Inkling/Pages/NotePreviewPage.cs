@@ -60,7 +60,7 @@ internal sealed partial class NotePreviewPage : ContentPage
         Title = note.Title;
         Name = Resources.CommandPreview;
 
-        _copyBody = new CopyNoteBodyCommand(note.Body);
+        _copyBody = new CopyNoteBodyCommand(note.Body, note.Title);
 
         // 切換之後自己重新取一次內容。**這裡刻意不去訂閱 ShowSourceChanged** ——
         // 預覽頁是清單裡每個項目各建一個的短命物件,訂閱長壽事件會一路累積死掉的訂閱者
@@ -82,9 +82,10 @@ internal sealed partial class NotePreviewPage : ContentPage
 
             _toggleSource.CreateItem(Resources.ToggleSourcePageSubtitle),
 
-            // 複製完留在這一頁,而且沒有回饋 —— 這一頁沒有清單列可以掛標籤
-            // (清單頁的做法見 NoteListPage.FlashTag),而 toast 會把整個面板關掉。
-            // 可以接受:使用者正看著的就是剛複製走的那段內容。
+            // 複製完留在這一頁,並發一則帶標題的 toast。**這裡以前是完全靜默的**,
+            // 理由寫著「使用者正看著的就是剛複製走的那段內容」—— 但頁面顯示什麼跟剪貼簿
+            // 有沒有寫成功無關,按下去畫面一個像素都不變。真正的成因是當時以為
+            // 「發 toast 就會把面板關掉」,見 CopyNoteBodyCommand 的型別註解。
             NoteCommands.CopyBody(_copyBody),
             NoteCommands.OpenInEditor(note),
             NoteCommands.OpenFileLocation(note),

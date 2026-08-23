@@ -93,7 +93,7 @@ CmdPal 設定 → Extensions → Inkling → `Inkling：快速記下` → Alias 
 | Markdown 預覽 | 選中筆記按 Enter 看渲染結果。**隨手打的單一換行會照樣顯示成換行**,而磁碟上的 `.md` 一個字都不變([為什麼](docs/design-notes.md#preview-line-breaks)) |
 | 原始文字 | `Ctrl+U` 在渲染結果與原文之間切換,**狀態全域共用而且記得住**。貼進來的 HTML / SVG 渲染完會整段消失,這個模式看得到([細節](docs/design-notes.md#source-mode)) |
 | 編輯 | 表單式編輯(`Ctrl+E`),Tab 到「儲存」按 Enter;或用「在預設編輯器開啟」(`Ctrl+O`)跳出去改 |
-| 複製內文 / 開啟檔案位置 | `Ctrl+Shift+C` 複製內文(不含 front matter,**面板不會關掉** —— [為什麼這件事重要](docs/design-notes.md#copy-feedback));`Ctrl+L` 在檔案總管裡選中那個 `.md` |
+| 複製內文 / 開啟檔案位置 | `Ctrl+Shift+C` 複製內文,不含 front matter。**面板停在原地不動**,並跳一則講出筆記標題的提示 —— 剪貼簿是看不見的,什麼都不說跟快速鍵壞掉分不出來([為什麼這件事重要](docs/design-notes.md#copy-feedback))。`Ctrl+L` 在檔案總管裡選中那個 `.md` |
 | 跳出去之後 | `Ctrl+O` 與 `Ctrl+L` 跳到外部程式之後,面板只是讓開 —— 熱鍵叫回來**還停在原本那一頁**([為什麼](docs/design-notes.md#open-external-return))。**編輯表單與隨手草稿這兩頁是例外**,它們會把面板收起來:那兩頁畫面上有一份你還能按儲存的副本,留著就可能蓋掉你剛跳出去改的東西。檔案被改名、移走,或 `.md` 根本沒有預設程式時,會在底部說明原因,[不會靜靜地什麼都不做](docs/design-notes.md#open-external-silent) |
 | 隨手草稿 | `Inkling：隨手草稿` 開一塊永久的便條紙,打開就是上次留下的東西,不必取標題。**沒有自動儲存**(CmdPal 做不到,[為什麼](docs/design-notes.md#scratchpad-no-autosave)):`Tab` → `Enter` 存檔,**跳一句「已存到隨手草稿」再自己收起面板**(捨棄變更也會說一聲);`Ctrl+O` 跳到系統預設編輯器,自動儲存在那邊 |
 | 刪除 | 清單頁 `Ctrl+D`,確認後**移到資源回收筒**。網路磁碟、或沒有資源回收筒的裝置上,Windows 會直接永久刪除 ——**刪除筆記**那一頁的詳細窗格會講明白 |
