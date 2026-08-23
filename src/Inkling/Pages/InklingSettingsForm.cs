@@ -14,7 +14,9 @@ namespace Inkling.Pages;
 /// 2. **欄位名根本不會顯示。** 它把 <c>Label</c> 塞進 Adaptive Cards 的 <c>title</c>,
 ///    而 <c>Input.Text</c> 沒有那個屬性;真正會顯示的 <c>label</c> 它拿去放 <c>Description</c>。
 ///    結果就是每個欄位頭上頂著一整句說明,看不到「筆記資料夾」這種短名字。
-/// 3. **送出之後它固定 <c>GoHome</c>**,而按「瀏覽…」時我們得留在原地。
+/// 3. **送出之後它固定 <c>GoHome</c>**,而我們每一條路都得留在原地 —— 按「瀏覽…」時是
+///    因為表單還要用,存完之後則是因為 <c>GoHome</c> 會把提示連同這一頁一起拆掉
+///    (見 <see cref="SubmitForm(string, string)"/> 上那段 A/B)。
 ///
 /// 代價是存檔那條路要自己接:值交給 <see cref="SettingsManager.Apply"/>,由它存檔與通知
 /// (toolkit 的 <c>Settings.RaiseSettingsChanged()</c> 是 internal,擴展叫不動)。
@@ -95,6 +97,21 @@ internal sealed partial class InklingSettingsForm : FormContent
 
         var outcome = _settings.Apply(directory, separator, preview);
 
+        // **四條路全部 KeepOpen,沒有例外 —— 因為 `ToastStatusMessage` 配 `GoHome()` 等於不發。**
+        //
+        // 成功那兩條以前回 `GoHome()`,於是「設定已儲存」與「已儲存 —— 這個資料夾還不存在…」
+        // **一個字都沒真的出現過**。成因跟 NoteFormContent 的新增路徑是同一個(那條在
+        // 2026-08-23 修掉,見那個檔案):status 的 InfoBar 綁在當下這一頁的 view model 上,
+        // 導覽走的時候連同訊息一起拆掉。
+        //
+        // 2026-08-23 在同一頁上做過 A/B,同樣 800 毫秒取樣:填相對路徑那條(KeepOpen)
+        // 讀得到 `StatusBar` 加徽章計數 1;正常存檔那條(GoHome)整棵 UIA 樹一個字都沒有,
+        // toast 視窗也是 `可見=False`。同一個 `Show()`,差別只在回傳值。
+        //
+        // **沒有改成 toast**:那是會關面板的另一種東西,而判準(硬規則 8)是
+        // 「使用者接下來還要不要看著這個面板」—— 改設定的人常常要接著再改一項、
+        // 或是當場確認欄位真的變了,面板收掉就沒得看。留在原地 + 徽章,`Esc` 本來就退得回去,
+        // 形狀跟編輯表單存完那條一致。
         switch (outcome)
         {
             case SettingsManager.ApplyResult.RejectedRelativePath:
@@ -111,13 +128,14 @@ internal sealed partial class InklingSettingsForm : FormContent
 
             case SettingsManager.ApplyResult.AppliedToMissingFolder:
                 // 存是存了,但資料夾還不存在 —— 當場講,「打錯一個字就換了家」才不會無聲發生。
+                // **這一則尤其不能丟**:它存在的唯一理由就是那個無聲的換家。
                 new ToastStatusMessage(
                     Strings.Format(Resources.SettingsDirectoryWillBeCreated, _settings.NotesDirectory)).Show();
-                return CommandResult.GoHome();
+                return CommandResult.KeepOpen();
 
             default:
                 new ToastStatusMessage(Resources.SettingsSaved).Show();
-                return CommandResult.GoHome();
+                return CommandResult.KeepOpen();
         }
     }
 
@@ -204,6 +222,22 @@ internal sealed partial class InklingSettingsForm : FormContent
     /// 「記下後先看一眼」那個 <c>Input.Toggle</c> 不必包 <c>ColumnSet</c>:核取方塊的寬度
     /// 本來就只有方塊加標題那麼寬,撐不開版面。它的欄位名寫在 <c>title</c> 而不是
     /// <c>label</c> —— 那個控件的字本來就長在方塊旁邊,再加一個 label 會變成同一句話印兩次。
+    ///
+    /// <b>⚠ 代價是這個核取方塊在 UIA 上沒有名字,而且存過一次檔之後會撿到「瀏覽…」。</b>
+    /// 渲染器是拿 <c>label</c> 去設 <c>AutomationProperties.Name</c> 的,沒有 label 就不設 ——
+    /// 剛進頁面時 <c>Name</c> 是空的,而這一頁每次存檔都會重建卡片(<see cref="InklingSettingsPage.Refresh"/>),
+    /// 重建之後它就繼承到上面那顆「瀏覽…」按鈕的名字。**三個選項 2026-08-23 都實機量過了,
+    /// 不要再試一遍**:
+    ///
+    /// <list type="bullet">
+    /// <item>只有 <c>title</c>(現在這樣)—— 畫面對,<c>Name</c> 空的 / 重建後是「瀏覽…」。</item>
+    /// <item><c>label</c> + <c>title</c> —— <c>Name</c> 修好了,但同一句話在標題列與方塊旁邊各印一次。</item>
+    /// <item><b>只有 <c>label</c> —— 整張卡片渲染不出來,設定頁一片全白。</b>不是排版走樣,是完全空白 ——
+    ///   也就是說這個渲染器上 <c>Input.Toggle</c> 沒有 <c>title</c> 就不合法,而它不報錯也不退回預設樣子。</item>
+    /// </list>
+    ///
+    /// 也就是說能修好名字的寫法都要動到畫面,那是設計決定不是修 bug,所以現在維持原樣。
+    /// 考證與「什麼變了才該重新考慮」見 docs/design-notes.md〈評估過但沒有做〉。
     ///
     /// 說明文字擺在欄位**下面**當註腳,而不是像 toolkit 那樣頂在標籤的位置,
     /// 而且**每個欄位下面各一塊,沒有例外** —— 卡片最上面曾經另外有一行「整頁共通的提醒」,
