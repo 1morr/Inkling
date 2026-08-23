@@ -152,14 +152,29 @@ manifest 還原回舊的 CN,`makeappx pack` 與 CI **都不會報錯**,Partner C
   背景用桌布而不是漸層,是因為 Command Palette 本來就浮在桌面上,配桌布才是它真正的
   樣子;**桌布檔案不進 repo**(那是微軟的美術資源),腳本讀機器上那一份,找不到就
   自動退回漸層。要換背景給 `-Background <路徑>`。
-  來源沿用 `docs/images/` 是因為那三張已經是**英文介面**(Store listing 是英文,
-  重拍要再登出登入切一次 Windows 顯示語言)而且內容是安排過的 demo 筆記。
+  來源沿用 `docs/images/` 是因為那三張已經是**英文介面**,而且內容是安排過的 demo 筆記。
+  **三個語言的 listing 共用同一組英文截圖** —— 要拍中文介面的得登出重新登入切一次
+  Windows 顯示語言,而 listing 的正文已經寫明「介面語言跟著 Windows 走」,
+  換來的清晰度不值那個成本。
   要換內容就先重拍 `docs/images/` 再跑這支,不要另外維護一套。
-  ⚠ **輸出是 JPEG 不是 PNG,而且理由是大小**:換成照片式背景之後 PNG 一張 975 KB,
-  而 CmdPal gallery 的 `screenshots/` 上限是 **1 MB/張** —— 只剩 5% 餘裕,
-  換一張桌布就爆。JPEG 品質 95 約 195 KB,文字區塊與 PNG 的最大單通道差是 9/255
-  (平均 0.95),1:1 看不出來。真要無損就 `-Format Png`,但**輸出之後一定要對大小**
-  (腳本超過 1 MB 會自己警告)。
+  ⚠ **兩個通路要的格式不一樣,所以兩份都要產** —— 跑兩次,`assets/store/` 同時放得下:
+
+  ```powershell
+  pwsh -NoProfile -File tools\make-store-screenshots.ps1                # gallery 用的 .jpg
+  pwsh -NoProfile -File tools\make-store-screenshots.ps1 -Format Png    # Store 用的 .png
+  ```
+
+  | 通路 | 格式 | 大小 |
+  |---|---|---|
+  | Microsoft Store listing | **只收 PNG** | 上限 50 MB/張,不是問題(我們約 1 MB) |
+  | CmdPal gallery 的 `screenshots/` | JPEG(PNG 太大) | **上限 1 MB/張** |
+
+  **「Store 也收 JPEG」是錯的,2026-08-23 上傳時被擋掉才發現** —— Partner Center
+  跳一個對話框說 `The file "01-top-level-commands.jpg" is not a valid .png file`,
+  而那個欄位旁邊的說明本來就寫著 `Accepted file types: .png`。
+  gallery 那邊反過來:換成照片式背景之後 PNG 一張約 1000 KB,離 1 MB 上限只剩不到 3%,
+  換一張桌布就爆;JPEG 品質 95 約 195 KB,文字區塊與 PNG 的最大單通道差是 9/255
+  (平均 0.95),1:1 看不出來。腳本超過 1 MB 會自己警告。
   `assets/store/` **不進 MSIX**(套件圖示在 `src/Inkling/Assets/`),
   檔名前綴就是上傳順序。
 
@@ -299,20 +314,28 @@ gh run watch
 
 1. 該 app 的 Overview → **Update**。
 2. **Packages**:上傳從 GitHub Release 抓下來的 `Inkling_v<版本>.msixbundle`。
-   **每次發版一定要動這個。**
-3. **Store listing → What's new in this version**:手寫英文,從這次的 CHANGELOG 段落譯過去。
+   **每次發版一定要動這個**,而且**要先傳它** —— 底下好幾件事是套件上傳之後才長出來的
+   (見第 5、6 點),先填別的會白填一輪。
+   ⚠ **這一步自動化不了**:瀏覽器工具的檔案上傳有 10 MB 上限而 bundle 有 26 MB,
+   而且合成的點擊叫不出原生檔案對話框。自己拖進去。
+3. **Store listing → What's new in this version**:手寫,從這次的 CHANGELOG 段落譯過去。
    **每次發版一定要動這個** —— 這是使用者在 Store 上唯一看得到「這版改了什麼」的地方。
-4. **通常不用動**:描述、關鍵字、定價、分類。畫面變了才換截圖(第 8 步已經重拍好了)。
-5. **Notes for certification**(建議每次照抄同一段):說明這是 PowerToys Command Palette 的
-   擴展,exe 是**純 COM server**(`src/Inkling/Program.cs`:沒帶
-   `-RegisterProcessAsComServer` 就只印一行然後結束),manifest 刻意設 `AppListEntry="none"`,
-   所以它**不會出現在開始功能表、直接啟動也不會有任何畫面**。
+   ⚠ **listing 有三個語言**(en-US / zh-Hant / zh-Hans),所以這一欄要寫三次。
+   第一個 submission 那次留空是對的(欄位旁邊就寫著 first submission 留空)。
+4. **通常不用動**:描述、關鍵字、定價、分類。畫面變了才換截圖(第 8 步已經重拍好了,
+   **記得傳 `.png` 那一組**)。
+5. **Notes for certification** —— 欄位不在 Submission Options 頁上,那裡只有一句話
+   把你導去 **Additional Testing Information** 頁(它在左欄最下面的 Supplemental info
+   底下,而且**不屬於這次 submission,是 app 層級的**,填一次就一直在)。
+   照抄同一段:說明這是 PowerToys Command Palette 的擴展,exe 是**純 COM server**
+   (`src/Inkling/Program.cs`:沒帶 `-RegisterProcessAsComServer` 就只印一行然後結束),
+   manifest 刻意設 `AppListEntry="none"`,所以它**不會出現在開始功能表、直接啟動也不會
+   有任何畫面**,後面附四步驟的實測方法。
    ⚠ **不寫的話審查員很可能把「點了沒反應」當成 bug 退件。**
-6. **Restricted capabilities 的說明欄**:`Package.appxmanifest` 的
-   `rescap:Capability Name="runFullTrust"` 是**受限能力**,上傳之後 Partner Center 會跳出
-   「Why do you need this capability?」要你填理由,**不填就送不出去**。
-   而且它**不是只有第一次要填** —— 微軟自己的答覆是這個欄位可能在後續更新裡再次要求,
-   即使能力宣告一個字都沒變(來源:Microsoft Q&A
+6. **`runFullTrust` 的理由欄在 Submission Options 頁的〈Restricted capabilities〉**,
+   **而且要上傳套件之後才會出現**(Partner Center 掃 manifest 才知道你宣告了什麼)。
+   它是必填,不填送不出去,而且**不是只有第一次要填** —— 微軟自己的答覆是這個欄位可能在
+   後續更新裡再次要求,即使能力宣告一個字都沒變(來源:Microsoft Q&A
    [Providing "Restricted Capabilities" explanation](https://learn.microsoft.com/en-us/answers/questions/505097/providing-restricted-capabilities-explanation-via))。
    照抄同一段就好:這個套件註冊一個 **out-of-process COM server**(Packaged COM)讓
    PowerToys Command Palette 啟動它,而 Learn 的
@@ -320,10 +343,28 @@ gh run watch
    寫明「to be able to register out-of-process COM servers for inter-process
    communication (IPC), a packaged app needs runFullTrust」—— 也就是說這個宣告是這種套件
    **無法省略**的,不是我們挑的。理由寫「框架要求」被退過件,要寫成上面那樣的具體用途。
-7. 想控制風險就勾 **Roll out update gradually**,設一個初始百分比(例如 5%)。這只對 MSIX
+   ⚠ 這一節填完之後,Overview 上的 **Submission options 仍然顯示 Incomplete** ——
+   那是「受限能力還沒被核准」的意思,**不擋送審**(Submit for certification 是亮的)。
+   別為了把它變綠而去亂改別的東西。
+7. **`runFullTrust` 還會連帶逼出隱私權政策。** 上傳套件之後回頭看 Properties 頁:
+   「Does this product access, collect, or transmit personal information?」會被
+   **自動改成 Yes**,底下出現「Based on the capabilities your submission declares,
+   a privacy policy URL is required.」—— 把答案改回 No 也躲不掉,那句話看的是能力不是答案。
+   填 <https://github.com/1morr/Inkling/blob/master/PRIVACY.md>(政策本體在 repo 的
+   [`PRIVACY.md`](../PRIVACY.md),改了那個檔案 Store 上就跟著變,不用重送 submission)。
+   **Properties 因此會從 Complete 掉回 Incomplete**,這是正常的,補完 URL 再存一次就好。
+8. 想控制風險就勾 **Roll out update gradually**,設一個初始百分比(例如 5%)。這只對 MSIX
    有效。發佈後可以在 Overview 頁拉百分比或按 Halt,不用開新的 submission。
    **注意:開下一個 submission 之前必須先把這次的 rollout finalize 或 halt。**
-8. Submit to the Store。
+9. Submit to the Store。
+
+> **第一次上架比這一份多幾樣**(這些一輩子只做一次,之後的 submission 會沿用):
+> Pricing and availability(市場、可見度、排程、**售價選 `0` 就是免費**)、
+> Properties 的類別(Productivity)與 Support info、
+> Age ratings 的 IARC 問卷(App Type 選 **All Other App Types**,九題全部 No,
+> 結果是 3+ / PEGI 3 / USK 0)。⚠ **問卷最後那個「同意 IARC 使用條款、並聲明自己已達
+> 法定成年年齡」的勾選框是本人才能勾的**,而且**在按下 Save 之前答案不會存**,
+> 中途關掉分頁要整份重填。
 
 ### 18. `[人工]` 等審核
 

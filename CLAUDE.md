@@ -344,10 +344,17 @@ Version 的症狀)。
   因為它會被 UI 包進「刪除失敗：{0}」裡,而同一個位置平常裝的是 .NET 自己的英文訊息。
 - <a id="docs-language"></a>**文檔語言分層。** 判準只有一條:**讀者是不是維護者以外的人。**
   - **對外的一律英文** —— `README.md`(預設語言)、`CONTRIBUTING.md`、`SECURITY.md`、
-    `.github/ISSUE_TEMPLATE/*`、`docs/gallery/extension.json`、Store / WinGet 的欄位。
-    這幾個的讀者是陌生人,而散佈管道(CmdPal gallery、Microsoft Store、WinGet、
+    `PRIVACY.md`、`.github/ISSUE_TEMPLATE/*`、`docs/gallery/extension.json`、
+    WinGet 的欄位。這幾個的讀者是陌生人,而散佈管道(CmdPal gallery、WinGet、
     GitHub 搜尋與 og description)全部英文優先。`SECURITY.md` 特別容易被漏掉:
     GitHub 把它掛在 Security 分頁與「Report a vulnerability」流程裡,給的是**任何人**。
+  - **Microsoft Store 的 listing 是例外:三個語言各一份**(en-US / zh-Hant / zh-Hans)。
+    這一條 2026-08-23 才從「Store 欄位也一律英文」改過來 —— 套件本來就宣告了那三個語言,
+    而 Partner Center **強制每一個語言各填一份完整的 listing**(空著就 Incomplete,
+    送不出去;「移除語言」按了在重新載入之後不持久,實測兩次)。既然三個槽都得填滿,
+    填中文對中文使用者就是白賺的。**代價是每次發版的「What's new」要寫三次**,
+    描述與功能列表改動也要三份一起改 —— 跟兩份 README 同一種規矩。
+    截圖三份共用英文那一組,理由見 [`docs/release-runbook.md` 第 8 步](docs/release-runbook.md)。
   - **維護者文檔只有繁體中文,不翻** —— 這一份、`docs/*.md`、`CHANGELOG.md`、
     `.claude/skills/*`、以及所有程式碼註釋。
   - **`README` 是唯一的雙語** —— 同步規則見下面〈改了指令、設定項、資料格式或對外行為〉
@@ -361,9 +368,9 @@ Version 的症狀)。
   而且是不會報錯的那種。全部改成英文則是拿掉維護者自己最需要讀的東西,
   換來「想深入研究一個小眾 CmdPal 擴展內部考證的英文讀者」,那個人數約等於零。
 
-  **`CHANGELOG.md` 維持繁中**,對外那兩個欄位在發版時才譯(GitHub Release 正文其實不用譯,
-  `--generate-notes` 從英文 commit message 產;Store 的「What's new」要手寫英文)——
-  見 [`docs/release-checklist.md` §3](docs/release-checklist.md)。
+  **`CHANGELOG.md` 維持繁中**,對外那兩個欄位在發版時才處理(GitHub Release 正文其實不用譯,
+  `--generate-notes` 從英文 commit message 產;Store 的「What's new」要**手寫三份**,
+  英文那份從中文譯過去)—— 見 [`docs/release-checklist.md` §3](docs/release-checklist.md)。
 
   新增文檔時先問這一條,別憑檔案放在哪決定。
 - 註釋寫「為什麼」,特別是繞過 CmdPal 限制的地方 —— 這個 repo 的註釋密度刻意偏高,
@@ -379,7 +386,8 @@ Version 的症狀)。
   `[Unreleased]` —— 這一條以前漏在這份規則外,`CONTRIBUTING.md` 列了、這裡沒有,
   結果是好幾個 commit 的行為改動沒有記錄)。**README 有兩個語言版本**:`README.md` 英文是預設、
   `README.zh-Hant.md` 繁中,是同一份文檔的兩個版本 —— 章節、表格的列、截圖都要對得上,
-  改一份就改另一份(英文 pitch 以 `README.md` 為準,Store listing 與 gallery 從那裡拿)。
+  改一份就改另一份(英文 pitch 以 `README.md` 為準,gallery 與**英文那份** Store listing
+  從那裡拿;Store 的 zh-Hant listing 從 `README.zh-Hant.md` 拿,zh-Hans 再從繁中轉)。
   **文檔各有各的家,別放錯:**
 
   | 檔案 | 裝什麼 |
