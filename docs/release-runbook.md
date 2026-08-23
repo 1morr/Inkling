@@ -147,12 +147,21 @@ manifest 還原回舊的 CN,`makeappx pack` 與 CI **都不會報錯**,Partner C
   ```
 
   它把 `docs/images/` 那三張裁掉 PrintWindow 的黑邊,**原尺寸**放到 1920×1080 的畫布
-  中央再補背景與陰影,輸出到 `assets/store/`。**不放大** —— 那是文字截圖,放大就糊。
+  中央,背景鋪 Windows 自己的桌布(`%SystemRoot%\Web\Wallpaper\Windows\img0.jpg`)
+  再補陰影,輸出到 `assets/store/`。**面板不放大** —— 那是文字截圖,放大就糊。
+  背景用桌布而不是漸層,是因為 Command Palette 本來就浮在桌面上,配桌布才是它真正的
+  樣子;**桌布檔案不進 repo**(那是微軟的美術資源),腳本讀機器上那一份,找不到就
+  自動退回漸層。要換背景給 `-Background <路徑>`。
   來源沿用 `docs/images/` 是因為那三張已經是**英文介面**(Store listing 是英文,
   重拍要再登出登入切一次 Windows 顯示語言)而且內容是安排過的 demo 筆記。
   要換內容就先重拍 `docs/images/` 再跑這支,不要另外維護一套。
-  `assets/store/` **不進 MSIX**(套件圖示在 `src/Inkling/Assets/`),三張都在
-  gallery 的 1 MB/張 上限內,檔名前綴就是上傳順序。
+  ⚠ **輸出是 JPEG 不是 PNG,而且理由是大小**:換成照片式背景之後 PNG 一張 975 KB,
+  而 CmdPal gallery 的 `screenshots/` 上限是 **1 MB/張** —— 只剩 5% 餘裕,
+  換一張桌布就爆。JPEG 品質 95 約 195 KB,文字區塊與 PNG 的最大單通道差是 9/255
+  (平均 0.95),1:1 看不出來。真要無損就 `-Format Png`,但**輸出之後一定要對大小**
+  (腳本超過 1 MB 會自己警告)。
+  `assets/store/` **不進 MSIX**(套件圖示在 `src/Inkling/Assets/`),
+  檔名前綴就是上傳順序。
 
 ### 9. `[自動]` 圖示改過就重產 PNG
 
