@@ -840,8 +840,17 @@ public class FileSystemNoteRepositoryTests
             repository.Create($"標題 {i}", "內文");
         }
 
-        // 比去抖動的 250 ms 長,回音真的存在的話這段時間內一定到了。
-        await Task.Delay(TimeSpan.FromMilliseconds(800), TestContext.Current.CancellationToken);
+        // **等到「窗口過期 + 去抖動走完」之後,不是隨便等 800 ms。**
+        // 抑制窗口是從寫入當下起算的,所以窗口內到達的回音本來就該被擋下;
+        // 這條測試唯一抓得到的破口是**晚於窗口才到**的那種 —— 那時抑制已經過期,
+        // 事件會被當成外部異動,再過一次去抖動才動到 Version。等得比那短的話,
+        // 這條測試會在真的漏掉回音時報綠。(原本寫死 800 ms,而窗口當時是 500 ms。)
+        await Task.Delay(
+            TimeSpan.FromMilliseconds(
+                FileSystemNoteRepository.SelfWriteEchoWindowMs
+                    + FileSystemNoteRepository.ChangeDebounceMs
+                    + 250),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(before + 10, repository.Version);
     }
@@ -860,7 +869,12 @@ public class FileSystemNoteRepositoryTests
         using var fired = new SemaphoreSlim(0);
 
         // 等抑制過期之後才開始聽,免得收到的是自己那一次的回音。
-        await Task.Delay(TimeSpan.FromMilliseconds(900), TestContext.Current.CancellationToken);
+        // **從常數推導,不要寫死** —— 這裡原本是 900 ms,那是照當時 500 ms 的窗口調的,
+        // 窗口放寬到 1500 ms 之後那個數字會讓外部寫入落在抑制窗口裡,這條測試
+        // 確定性紅掉,而且紅的位置(「外部異動沒觸發 Changed」)跟成因對不上。
+        await Task.Delay(
+            TimeSpan.FromMilliseconds(FileSystemNoteRepository.SelfWriteEchoWindowMs + 400),
+            TestContext.Current.CancellationToken);
         repository.Changed += (_, _) => fired.Release();
 
         File.WriteAllText(note.FilePath, "---\nid: outside-1\ntitle: 別人改的\n---\n\n內文");

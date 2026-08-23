@@ -16,15 +16,29 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// <summary>
     /// OneDrive 同步下來時是一陣爆發式的寫入,一個檔案可能連續觸發好幾個事件。
     /// 通知 UI 前先靜置這麼久,把整批併成一次。
+    ///
+    /// 測試看得到它(<c>internal</c>)的理由同 <see cref="SelfWriteEchoWindowMs"/>:
+    /// 「等久到漏掉的回音一定已經到了」要從這兩個常數推導,寫死會跟著漂。
     /// </summary>
-    private const int ChangeDebounceMs = 250;
+    internal const int ChangeDebounceMs = 250;
 
     /// <summary>
     /// 自己剛寫過的檔案,在這段時間內收到的 watcher 事件當成自己的回音忽略掉。
-    /// 抓得比實際延遲寬鬆(實測是幾毫秒),但要明顯短於使用者可能在外部編輯器
-    /// 改完同一個檔案再存回來的時間。
+    ///
+    /// **窗口是從寫入當下起算的,不是從事件送達起算** —— 所以它要蓋住的不是
+    /// 「watcher 慢多久」,而是「這台機器有多忙」。閒置的開發機上實測是幾毫秒,
+    /// 但 GitHub Actions 的共用 runner 上量到過穿過去的:`ci` #32619503881 第一次跑,
+    /// <c>Version_DoesNotMoveASecondTimeFromOurOwnWrite</c> 十次自寫漏了一次
+    /// (Expected 10 / Actual 11),同一個 commit 重跑就綠。500 ms 對負載高的機器太窄。
+    ///
+    /// 上限條件是「要明顯短於使用者在外部編輯器改完同一個檔案再存回來的時間」,
+    /// 而那是**秒**的等級,1.5 秒還差得很遠。
+    ///
+    /// 測試看得到它(<c>internal</c>)是刻意的:反面那條測試要等這扇窗過期才動手,
+    /// 而它原本寫死 900 ms —— 照 500 ms 調的。窗口一放寬那條就會確定性紅掉,
+    /// 而且紅的位置跟成因對不上。從常數推導就不會再漂。
     /// </summary>
-    private const int SelfWriteEchoWindowMs = 500;
+    internal const int SelfWriteEchoWindowMs = 1500;
 
     /// <summary>
     /// 讀筆記用的解碼器:無效位元組**丟例外**,不要默默換成 U+FFFD。
@@ -47,7 +61,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// 重建兩遍,第二遍還晚 250 ms(去抖動)才到,畫面會多閃一下。
     ///
     /// **按路徑記,不是按時間段全域關掉** —— 同一段時間裡別的檔案被外部工具改了照樣要收到。
-    /// 同一個檔案在這 500 ms 內真的被外部改動則會漏掉一次通知,那是刻意的取捨:
+    /// 同一個檔案在這扇窗裡真的被外部改動則會漏掉一次通知,那是刻意的取捨:
     /// 事件本身分不出是誰寫的,而快取已經丟掉了,下一次 GetAll 讀到的仍是磁碟上的最新內容。
     ///
     /// 用 ConcurrentDictionary 而不是 _gate:這個字典會在 watcher 執行緒上讀,
