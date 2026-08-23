@@ -263,6 +263,7 @@ The in-depth docs are written in Traditional Chinese.
 | [docs/known-issues.md](docs/known-issues.md) | Defects that are known and not yet fixed, each with a reproduction |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Read before changing this repo |
+| [PRIVACY.md](PRIVACY.md) | What the app collects and sends (nothing, and nothing) |
 
 ## Contributing
 

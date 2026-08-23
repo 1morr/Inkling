@@ -245,6 +245,7 @@ Inkling 會把它搬成 `settings.json.corrupt-<時間戳>` 再從預設值開�
 | [docs/known-issues.md](docs/known-issues.md) | 已知還沒修的缺陷,每條都附重現步驟 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本紀錄 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 動手改這個 repo 之前先讀 |
+| [PRIVACY.md](PRIVACY.md) | 這個 app 收集什麼、送出什麼(都沒有) |
 
 ## 參與貢獻
 
