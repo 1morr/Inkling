@@ -1541,8 +1541,9 @@ OneDrive 產生的 `<檔名>-<電腦名>.md` 連 front matter 都一模一樣,�
 - `GetById` **從介面上拿掉了**,只留成 `FileSystemNoteRepository` 的 private ——
   它唯一的用途是 `Create` 時的 id 碰撞偵測。留在介面上遲早會有人拿它去解析編輯 /
   刪除的目標,那正是修掉的這個 bug。要重新取內容走 `GetByPath`。
-- 預覽頁、記下並預覽頁、編輯頁留的是**路徑**而不是 id;`NoteListPage.FlashTag`
-  也改成用路徑找那一列。
+- 預覽頁、記下並預覽頁、編輯頁留的是**路徑**而不是 id。(當時清單頁的 `FlashTag`
+  也跟著改成用路徑找那一列;那段程式碼 2026-08-23 已經整組移除,見
+  [〈複製完留在原地〉](#copy-feedback)。)
 
 **而且要講出來。** 兩份的標題與副標可能一模一樣,不標記的話使用者根本不會發現多了一份。
 `Load()` 掃完之後按 `id` 分組,一組多於一筆就把那幾則標上 `Note.HasDuplicateId`,

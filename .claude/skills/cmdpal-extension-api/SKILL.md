@@ -30,7 +30,8 @@ description: >-
 >      本專案的存檔提示走的就是這條(`NoteFormContent`、`InklingSettingsForm`)。
 >
 >    要「做完之後留在原地」而且**不想離開清單**,還有第三條路:`ListItem.Tags`
->    就地改一列的狀態(見 `NoteListPage.FlashTag`)。
+>    就地改一列的狀態(見 `NoteListPage.BaseTags`,本專案用它標雲端硬碟的衝突副本)。
+>    那是**持續性**的狀態;短暫的回饋用上面兩條,標籤做過一版但收掉了。
 > 2. **`ListItem.Details` 只能整個換掉,不能就地改屬性。** 下面把它寫成一般屬性,但 `IDetails`
 >    在 SDK IDL 裡沒有宣告成可觀察介面,通知跨不過 out-of-process 邊界 —— 值改了畫面不動。
 >    `Details.Size` 更只在初始化時讀一次,不明著寫就是最窄那一檔。

@@ -259,7 +259,7 @@ The in-depth docs are written in Traditional Chinese.
 | | |
 |---|---|
 | [docs/development.md](docs/development.md) | Build, deploy, project layout, troubleshooting |
-| [docs/design-notes.md](docs/design-notes.md) | The full "why" behind every decision (why quick capture is a page and not a fallback, why not a single toast may be shown, why the confirm dialog's buttons have no color…), for maintainers and other CmdPal extension authors |
+| [docs/design-notes.md](docs/design-notes.md) | The full "why" behind every decision (why quick capture is a page and not a fallback, why feedback has exactly three channels, why the confirm dialog's buttons have no color…), for maintainers and other CmdPal extension authors |
 | [docs/known-issues.md](docs/known-issues.md) | Defects that are known and not yet fixed, each with a reproduction |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Read before changing this repo |

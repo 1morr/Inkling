@@ -220,7 +220,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 這裡曾經還有第二種:複製內文之後在那一列閃一個「已複製」(<c>FlashTag</c>),
     /// 連同一個計時器與兩個欄位。**2026-08-23 整組移除** —— 它存在的唯一理由是
     /// 「複製完要留在畫面上,所以一個 toast 都不能發」,而那個前提量過之後是假的。
-    /// 現在三個畫面共用一則帶標題的 toast,見 <see cref="Commands.CopyNoteBodyCommand"/>。
+    /// 現在三個畫面共用同一則帶標題的訊息(底部的 <c>InfoBar</c>,面板留在原地),
+    /// 見 <see cref="Commands.CopyNoteBodyCommand"/>。
     /// </summary>
     private static ITag[] BaseTags(Note note) =>
         note.HasDuplicateId ? [new Tag(Resources.ListPageConflictTag)] : [];

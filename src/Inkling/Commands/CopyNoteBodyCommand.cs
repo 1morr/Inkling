@@ -14,11 +14,12 @@ namespace Inkling.Commands;
 /// <c>ClipboardHelper.SetText</c> 會先 <c>EmptyClipboard()</c> 再把字串寫進去,
 /// 對一則沒有內文的筆記按下去,等於把使用者剪貼簿裡本來的東西清掉,還配一句「已複製」。
 ///
-/// <para><b>二、三條路都發同一種 toast,而且都留在原地。</b></para>
+/// <para><b>二、三條路都講一句話,而且都留在原地。</b></para>
 ///
 /// toolkit 預設回的是 <c>ShowToast</c>,而 <see cref="ToastArgs"/> 的預設收尾是
 /// <c>Dismiss</c>(把它 new 一個出來讀到的)—— 兩件事疊起來,複製一次面板就關一次。
-/// 所以這裡**顯式**指定 <c>Result = KeepOpen()</c>,面板就留著。
+/// 所以三條路(空內文、成功、失敗)一律回 <see cref="Feedback.Stay"/>:面板留在原地,
+/// 訊息走底部的 <c>InfoBar</c>。
 ///
 /// ⚠ **這一段 2026-08-23 整個改寫過,前一版的理由是錯的。** 以前寫著「就算把
 /// <c>ToastArgs.Result</c> 改成 <c>KeepOpen</c> 也救不回來:toast 是另一個會搶焦點的視窗,
@@ -32,10 +33,15 @@ namespace Inkling.Commands;
 /// 顯示著剛複製的內容」,但頁面顯示什麼跟剪貼簿有沒有寫成功無關,按下去畫面一個像素
 /// 都不變,跟快速鍵壞掉分不出來。那正是當初修「空內文」那條時用的判準,只是成功路徑被漏掉了。
 ///
-/// 現在三個畫面走同一條:一則帶著筆記標題的 toast。標題是必要的 ——
-/// 清單頁以前靠「標籤掛在哪一列」講「複製到的是哪一則」,toast 沒有位置感,
-/// 那個資訊只能寫進訊息裡。toast 畫在面板**下方**(實測面板底邊 y=1404、toast 頂邊 y=2005),
-/// 所以它不像底部的 InfoBar 會壓在正在讀的內容上,也不再吃掉清單那一列的副標。
+/// 現在三個畫面走同一條:「已複製:&lt;筆記標題&gt;」。標題不是裝飾 ——
+/// 清單頁以前靠「標籤掛在哪一列」講「複製到的是哪一則」,底部那條訊息沒有位置感,
+/// 那個資訊只能寫進訊息裡。
+///
+/// **通道是 <c>InfoBar</c> 而不是 toast**,雖然推翻之後兩個都可用:<see cref="Feedback"/>
+/// 的分工只看面板去留,留在原地就是 <see cref="Feedback.Stay"/>,沒有例外可以挑。
+/// 中間一度改成 toast 配 <c>KeepOpen</c>,一天之內就收回來了 —— 那讓「留在原地 +
+/// 說一句話」同時有兩種寫法,分界線就講不出來。見
+/// [設計考證〈通道的分工〉](../../../docs/design-notes.md#feedback-channels)。
 /// </summary>
 internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
 {
@@ -45,7 +51,7 @@ internal sealed partial class CopyNoteBodyCommand : CopyTextCommand
     /// **跟 <see cref="CopyTextCommand.Text"/> 一樣是可變的,而且要一起換。**
     /// 預覽頁與記下並預覽頁把這個實例留著重複用,每次取內容都重新查一次筆記
     /// (見 <see cref="Pages.NotePreviewContent.Reload"/>)—— 使用者剛在編輯頁改過標題的話,
-    /// 只換 <c>Text</c> 會讓 toast 講出舊標題,而那比不講更糟。
+    /// 只換 <c>Text</c> 會讓提示講出舊標題,而那比不講更糟。
     /// </summary>
     public string NoteTitle { get; set; }
 

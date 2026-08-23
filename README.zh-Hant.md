@@ -241,7 +241,7 @@ Inkling 會把它搬成 `settings.json.corrupt-<時間戳>` 再從預設值開�
 | | |
 |---|---|
 | [docs/development.md](docs/development.md) | 建置、部署、專案結構、排錯 |
-| [docs/design-notes.md](docs/design-notes.md) | 「為什麼是這樣」的完整考證(快速記下為什麼是頁面不是 fallback、toast 為什麼一個都不能發、確認框的按鈕為什麼沒有顏色……),對象是維護者與其他 CmdPal 擴展作者 |
+| [docs/design-notes.md](docs/design-notes.md) | 「為什麼是這樣」的完整考證(快速記下為什麼是頁面不是 fallback、回饋為什麼只有三個通道、確認框的按鈕為什麼沒有顏色……),對象是維護者與其他 CmdPal 擴展作者 |
 | [docs/known-issues.md](docs/known-issues.md) | 已知還沒修的缺陷,每條都附重現步驟 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本紀錄 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 動手改這個 repo 之前先讀 |
