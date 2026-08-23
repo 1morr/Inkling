@@ -57,27 +57,39 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
             var deleted = _repository.DeleteMany(targets);
             DiagnosticLog.Write($"DeleteAllNotes: scope={_scope}, deleted {deleted}/{targets.Count}");
 
-            // **成功時一個 toast 都不發。** 這裡曾經回一個「已把 N 則移到資源回收筒」的
-            // toast 配 KeepOpen,註釋還寫著「使用者當場看到清單真的空了」—— 但 toast 是
-            // 另一個會搶焦點的視窗,主視窗一失焦就自我隱藏,實際上使用者什麼都沒看到,
-            // 面板直接消失(同一個機制見 docs/design-notes.md〈記下之後要不要先看一眼〉)。
-            // 清單當場變成「沒有筆記可以刪除」本來就是最好的回饋。
+            // **成功時一個 toast 都不發 —— 現在這是選擇,不再是被迫。**
+            // 舊註解把「面板消失」歸因於 toast 搶焦點,那個歸因 2026-08-23 量過是錯的
+            // (見 DeleteNoteCommand 同一段與 docs/design-notes.md〈toast 不會把面板關掉〉)。
+            // 不發的理由是清單當場變成「沒有筆記可以刪除」,那本來就是最好的回饋。
             if (deleted == targets.Count)
             {
                 return CommandResult.KeepOpen();
             }
 
             // 有漏網的就非講不可 —— 使用者按下刪除之後看到清單還剩東西,
-            // 要能立刻知道那不是沒生效,是那幾個檔案刪不掉。這是例外路徑,
-            // 面板被 toast 關掉也比默默少刪好。
-            return CommandResult.ShowToast(
-                Strings.Format(Resources.DeletePartialFailure, deleted, targets.Count - deleted));
+            // 要能立刻知道那不是沒生效,是那幾個檔案刪不掉。
+            //
+            // **所以 `Result` 非 `KeepOpen` 不可,而這裡以前是反的。** 這條路以前用
+            // `ShowToast(字串)` 那個簡寫,而它的預設收尾是 `Dismiss` —— 面板關掉,
+            // 上面那句「要能立刻知道清單還剩東西」就自相矛盾了:看不到清單。
+            // 當時以為 toast 必然關面板(假規則,見 docs/design-notes.md
+            // 〈toast 不會把面板關掉〉),所以沒發現這個矛盾。
+            return CommandResult.ShowToast(new ToastArgs
+            {
+                Message = Strings.Format(Resources.DeletePartialFailure, deleted, targets.Count - deleted),
+                Result = CommandResult.KeepOpen(),
+            });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             DiagnosticLog.Failure($"DeleteAllNotes failed ({ex.GetType().Name})", ex.ToString());
 
-            return CommandResult.ShowToast(Strings.Format(Resources.DeleteFailed, ex.Message));
+            // Result 明著給,理由同上面那條部分失敗。
+            return CommandResult.ShowToast(new ToastArgs
+            {
+                Message = Strings.Format(Resources.DeleteFailed, ex.Message),
+                Result = CommandResult.KeepOpen(),
+            });
         }
     }
 }
