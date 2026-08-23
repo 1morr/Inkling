@@ -49,13 +49,23 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 存好了才清搜尋框 —— 失敗那條路刻意保留使用者打的字(見下面的 catch)。
             OnCaptured?.Invoke();
 
-            // 記完就離開快速記下頁,否則搜尋框還留著剛打的字,想記下一則得先自己清掉。
             // Toast 帶著後續動作一起送:ToastArgs.Result 就是 CmdPal 顯示完提示要做的事 ——
             // 分兩次回傳做不到,Invoke 只有一次回傳的機會。
+            //
+            // **`Dismiss()` 而不是 `GoHome()`**:記完這則想法就是回去做原本的事,
+            // 留一個主搜尋框在畫面上只是多一次 Esc(跟記下並預覽頁的「完成」、
+            // 隨手草稿的存檔同一個判準,見設計考證〈記下之後要不要先看一眼〉)。
+            //
+            // 這裡以前是 `GoHome()`,註解寫著「否則搜尋框還留著剛打的字」——
+            // **那句話把兩個機制講混了**。清空快速記下頁的搜尋框是上面那行
+            // `OnCaptured`(接到 `QuickCapturePage.ClearQuery`)做的,跟回傳值無關。
+            // 2026-08-23 實測兩者在畫面上分不出來:toast 一搶焦點主視窗就自我隱藏,
+            // 之後按熱鍵兩種都回到主頁、主搜尋框的字也都留著。既然沒有差別,
+            // 就選講得出意圖的那一個。
             return CommandResult.ShowToast(new ToastArgs
             {
                 Message = Strings.Format(Resources.CaptureSaved, note.Title),
-                Result = CommandResult.GoHome(),
+                Result = CommandResult.Dismiss(),
             });
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

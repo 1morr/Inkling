@@ -610,10 +610,19 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   **「使用者接下來還要不要看著這個面板」**:填完整張表單按儲存就是收工,不需要,
   而 toast 是唯一能在面板消失之後還留在畫面上的通道;編輯反過來,卡片上還壓著使用者
   剛打的字,toast 一搶焦點主視窗就自我隱藏,那些字會跟著消失。
-  改完之後新增這條路跟快速記下(`QuickCaptureCommand`)完全一致 —— 那裡本來就是
-  `ShowToast` 配 `Result = GoHome()`。
   **不要為了「留住徽章」把新增改成 `KeepOpen()`**:那會讓人存完卡在表單上,
   而他下一步是收工,不是繼續改。
+- **收工那幾條的 `ToastArgs.Result` 全部是 `Dismiss()`,沒有例外。**
+  同一輪順手把 `QuickCaptureCommand` 從 `GoHome()` 一起改過來 —— 它本來是唯一的例外,
+  而那正是新增這條路照抄錯的來源。**兩者在畫面上分不出來**(2026-08-23 實測:
+  toast 一搶焦點主視窗就自我隱藏,之後按熱鍵兩種都回到主頁、主搜尋框的字也都留著),
+  所以選講得出意圖的那一個 —— 存完就是回去做原本的事,留一個主搜尋框只是多一次 Esc。
+
+  `QuickCaptureCommand` 舊註解寫著 `GoHome()` 是為了「離開快速記下頁,否則搜尋框
+  還留著剛打的字」,**那句話把兩個機制講混了**:清空那個搜尋框的是
+  `OnCaptured`(接到 `QuickCapturePage.ClearQuery`),跟回傳值無關。
+  現在四條收工路徑(新增表單、快速記下、記下並預覽頁的「完成」、隨手草稿的存檔與
+  捨棄變更)一致回 `Dismiss()`,不再有例外可以照抄錯。
 
 <a id="edit-form-enter"></a>
 

@@ -158,13 +158,17 @@ internal sealed partial class NoteFormContent : FormContent
                 // 換成 toast 而不是想辦法留住徽章,理由是硬規則 8 的判準 ——
                 // **「使用者接下來還要不要看著這個面板」**。填完整張表單按儲存就是收工,
                 // 不需要;而 toast 是唯一能在面板消失之後還留在畫面上的通道。
-                // 快速記下(`QuickCaptureCommand`)這條姊妹路徑本來就是這樣寫的,
-                // 現在兩邊一致。`ToastArgs.Result` 是 CmdPal 顯示完提示要做的事 ——
+                // `ToastArgs.Result` 是 CmdPal 顯示完提示要做的事 ——
                 // 分兩次回傳做不到,`SubmitForm` 只有一次回傳的機會。
+                //
+                // **`Dismiss()` 而不是 `GoHome()`**:同一個判準的下半句 ——
+                // 存完就是回去做原本的事,留一個主搜尋框只是多一次 Esc。
+                // 收工的四條路(這裡、快速記下、記下並預覽頁的「完成」、隨手草稿的存檔
+                // 與捨棄)因此全部回 `Dismiss()`,不再有例外可以照抄錯。
                 return CommandResult.ShowToast(new ToastArgs
                 {
                     Message = Strings.Format(Resources.NoteCreated, title),
-                    Result = CommandResult.GoHome(),
+                    Result = CommandResult.Dismiss(),
                 });
             }
 
