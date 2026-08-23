@@ -72,8 +72,8 @@ internal sealed partial class ScratchpadPage : ContentPage
         // toast 是一瞥的東西。要保住的區分由「這次的」帶(丟掉的是這一次的編輯,
         // 不是檔案裡的草稿)。
         //
-        // 面板本來就要關,所以 toast 搶焦點不是代價(同一個判斷見 ScratchpadFormContent
-        // 的存檔路徑與 CapturedNotePage 的「完成」)。
+        // 面板本來就要關,所以下面明著回 `Dismiss()`,而 toast 在面板收掉之後還留得住
+        // (同一個判斷見 ScratchpadFormContent 的存檔路徑與 CapturedNotePage 的「完成」)。
         Result = CommandResult.ShowToast(new ToastArgs
         {
             Message = Resources.ScratchpadDiscarded,

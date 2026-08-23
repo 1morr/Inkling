@@ -79,7 +79,8 @@ internal sealed partial class ScratchpadFormContent : FormContent
             // 兩者名字很像但畫在完全不同的地方:InfoBadge 畫在面板的底部命令列上,
             // 面板都收了就看不見,發了只是白費(這裡曾經因為這個理由什麼都不發,
             // 而「面板消失」單獨拿來當回饋,說不出存進去的是什麼)。
-            // toast 是獨立視窗,它搶焦點造成的隱藏在這條路上剛好就是我們要的結果。
+            // toast 是獨立視窗,面板收掉之後它還留在畫面上 —— 那正是這條路要的。
+            // (收面板的是下面那個 `Result = Dismiss()`,不是 toast 本身。)
             //
             // 存檔失敗相反,見下面那個 catch:那條路刻意留在原地,所以只能用 InfoBadge。
             return CommandResult.ShowToast(new ToastArgs

@@ -29,8 +29,8 @@ namespace Inkling.Pages;
 /// 或使用者自己丟進資料夾的,誤刪的代價跟自己記的筆記不一樣,不給它「跳過確認」這個選項。
 ///
 /// 刪完的回饋不靠 toast,靠那一列當場從清單上消失 —— 理由見
-/// <see cref="DeleteNoteCommand"/>(簡單說:toast 會搶焦點,而主視窗一失焦就自我隱藏,
-/// 發一個 toast 等於刪一則就把面板關掉一次)。
+/// <see cref="DeleteNoteCommand"/>(簡單說:那一列消失已經把事情講完了,
+/// 再疊一則 toast 是重複。**不是因為 toast 會收面板** —— 那條舊理由是假的)。
 /// </summary>
 internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 {

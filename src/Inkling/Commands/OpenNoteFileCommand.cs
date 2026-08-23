@@ -25,9 +25,11 @@ namespace Inkling.Commands;
 ///
 /// <para><b>失敗時為什麼可以發提示。</b></para>
 ///
-/// 用的是 <see cref="ToastStatusMessage"/>(底部命令列的 InfoBadge)而不是
-/// <c>CommandResult.ShowToast</c> —— 後者會開一個搶焦點的視窗,主視窗一失焦就自我隱藏,
-/// 見 <see href="../../../docs/design-notes.md">設計考證</see>〈記下之後要不要先看一眼〉。
+/// 用的是 <see cref="ToastStatusMessage"/>(底部命令列的 InfoBadge)。
+/// <c>CommandResult.ShowToast</c> 配 <c>KeepOpen</c> 在這裡**也行得通**
+/// (toast 拿不到前景、收不掉面板,見<see href="../../../docs/design-notes.md">設計考證</see>
+/// 〈toast 不會把面板關掉〉;這一段以前寫著「後者會開一個搶焦點的視窗」,那是錯的)——
+/// 維持 InfoBadge 只是因為這條路的訊息屬於「面板裡發生的事」,而面板此時就在前景。
 ///
 /// 而這條路正好是整個擴展裡少數「提示看得到」的地方:**失敗的定義就是沒有任何外部視窗
 /// 跳出來**,面板因此還在前景,InfoBadge 看得見也留得住。成功那條路相反 —— 編輯器一起來

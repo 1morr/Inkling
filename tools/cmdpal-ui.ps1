@@ -798,6 +798,21 @@ function Save-CmdPalScreenshot {
     預期會跳的路徑要對的正是後者(例如記下那句要跟關掉「記下後先看一眼」時一模一樣)。
     toast 只活約 2.5 秒,所以這一步要緊接在動作之後,中間的 wait 不要超過 1 秒。
 #>
+function Get-WindowSizeText {
+    param([IntPtr]$Handle)
+
+    $r = New-Object CmdPalNative+RECT
+    if (-not [CmdPalNative]::GetWindowRect($Handle, [ref]$r)) { return '' }
+
+    # ⚠ **這是視窗管理員的座標,不是螢幕像素。** PowerShell 預設 DPI-unaware,
+    # 在這台 150% 的機器上 GetWindowRect 回的是被虛擬化過的邏輯座標,而
+    # Graphics.CopyFromScreen 抓的是實體像素 —— 拿這裡的數字去裁桌面截圖會裁到
+    # 完全不相干的位置(實測邏輯 1212,1337 對到實體 1818,2005,查了很久)。
+    # 要圖就對 HWND 走 PrintWindow,或先呼叫 SetProcessDPIAware()。
+    # 這裡只拿來比對兩個視窗的相對位置,兩邊都出自同一個 API,所以是可比的。
+    "位置=$($r.Left),$($r.Top) 大小=$($r.Right - $r.Left)x$($r.Bottom - $r.Top)"
+}
+
 function Write-ToastState {
     $targetPid = Get-CmdPalPid
     if (-not $targetPid) { Write-Output '  !! CmdPal 沒在跑'; return }
@@ -807,9 +822,23 @@ function Write-ToastState {
         Write-Output '  toast 視窗:不存在'
         return
     }
+    # **前景歸誰要跟「可見」一起印。** 2026-08-23 之前這裡只印可見與否,而 repo 裡
+    # 有一條硬規則說「toast 一搶焦點主面板就自我隱藏」—— 那條規則的成因是看到面板關掉
+    # 就回頭推論焦點被搶走,從來沒有量過。實際量下去 toast 是 WS_DISABLED 的,
+    # 它拿不到前景;面板去留是 ToastArgs.Result 決定的。少印這一欄就等於讓下一個人
+    # 再推論一次同樣的錯。
+    $fg = [CmdPalNative]::GetForegroundWindow()
+    $panel = Find-CmdPalPanel
+
     $visible = [CmdPalNative]::IsWindowVisible($toast)
-    $mainVisible = (Find-CmdPalPanel) -ne [IntPtr]::Zero
-    Write-Output "  toast 視窗:HWND=$toast 可見=$visible / 主視窗還在=$mainVisible"
+    Write-Output "  toast 視窗:HWND=$toast 可見=$visible 前景=$($fg -eq $toast) $(Get-WindowSizeText $toast)"
+
+    if ($panel -eq [IntPtr]::Zero) {
+        Write-Output '  主面板  :找不到(已經收起來了)'
+    } else {
+        Write-Output "  主面板  :HWND=$panel 可見=$([CmdPalNative]::IsWindowVisible($panel)) 前景=$($fg -eq $panel) $(Get-WindowSizeText $panel)"
+    }
+
     if (-not $visible) { return }
 
     # 這個視窗跟主面板是分開的,所以讀它不受「主面板不在前景」那道守門影響。

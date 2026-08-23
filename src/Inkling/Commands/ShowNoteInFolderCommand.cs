@@ -16,8 +16,8 @@ namespace Inkling.Commands;
 /// 「面板關掉了,檔案總管沒開」,而且沒有任何訊息可以解釋。
 ///
 /// 這裡改成先自己檢查,失敗發一則 <see cref="ToastStatusMessage"/> 並留在原地 ——
-/// 那是底部命令列的 InfoBadge,不開視窗、不搶焦點(對照 <c>CommandResult.ShowToast</c>,
-/// 見 <see cref="OpenNoteFileCommand"/> 上那段說明)。**失敗時面板沒有失焦**,所以這則
+/// 那是底部命令列的 InfoBadge(對照 <c>CommandResult.ShowToast</c>,見
+/// <see cref="OpenNoteFileCommand"/> 上那段說明)。**失敗時面板還在前景**,所以這則
 /// 訊息真的看得到。
 ///
 /// <para><b>二、<c>Result</c> 顯式指定成 <c>KeepOpen</c>。</b></para>

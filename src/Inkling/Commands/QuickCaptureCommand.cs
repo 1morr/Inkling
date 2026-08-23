@@ -59,9 +59,13 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 這裡以前是 `GoHome()`,註解寫著「否則搜尋框還留著剛打的字」——
             // **那句話把兩個機制講混了**。清空快速記下頁的搜尋框是上面那行
             // `OnCaptured`(接到 `QuickCapturePage.ClearQuery`)做的,跟回傳值無關。
-            // 2026-08-23 實測兩者在畫面上分不出來:toast 一搶焦點主視窗就自我隱藏,
-            // 之後按熱鍵兩種都回到主頁、主搜尋框的字也都留著。既然沒有差別,
-            // 就選講得出意圖的那一個。
+            //
+            // ⚠ 曾經量到「`Dismiss` 與 `GoHome` 在畫面上分不出來」,解釋是「toast 一搶焦點
+            // 主視窗就自我隱藏」。**那個解釋 2026-08-23 被推翻了**(toast 拿不到前景,
+            // 面板去留完全由 `Result` 決定,見 docs/design-notes.md〈toast 不會把面板關掉〉),
+            // 而在設定頁上 `GoHome` 明確是「面板留著、切回主頁」。也就是說那個「分不出來」
+            // 跟現在的模型對不起來,**還沒重測**。`Dismiss()` 本身不受影響:
+            // 這條路要的就是把面板收掉,它是直接講出那件事的那一個。
             return CommandResult.ShowToast(new ToastArgs
             {
                 Message = Strings.Format(Resources.CaptureSaved, note.Title),
@@ -78,13 +82,16 @@ internal sealed partial class QuickCaptureCommand : InvokableCommand
             // 那條路,在正式版反而什麼都查不到。
             DiagnosticLog.Failure($"QuickCapture failed ({ex.GetType().Name})", ex.ToString());
 
-            // **這條路一個 toast 都不能發,也不能 Dismiss。** 搜尋框裡那句話是使用者
-            // 剛打的、還沒存下來的東西:toast 視窗一搶焦點主視窗就自我隱藏(第 8 條那個
-            // 機制),Dismiss 又會主動收起 —— 兩條路疊起來,失敗當下那句話就跟著消失,
-            // 只能憑記憶重打。對照 CapturedNotePage 的失敗處理(原文整段留在畫面上)。
-            //
-            // 所以走 InfoBadge(不開視窗、不關面板)+ KeepOpen:那句話留在搜尋框裡,
+            // **這條路絕對不能收面板。** 搜尋框裡那句話是使用者剛打的、還沒存下來的東西,
+            // 面板一收就跟著消失,只能憑記憶重打。對照 CapturedNotePage 的失敗處理
+            // (原文整段留在畫面上)。所以回傳 KeepOpen,那句話留在搜尋框裡,
             // 修好問題之後直接再按一次 Enter 就是重試。
+            //
+            // 訊息走 InfoBadge。以前寫的理由是「toast 一搶焦點主視窗就自我隱藏,
+            // 輸入跟著丟」—— **那是假的**(toast 拿不到前景,見 docs/design-notes.md
+            // 〈toast 不會把面板關掉〉),`ShowToast` 配 `KeepOpen` 同樣留得住那些字。
+            // 維持 InfoBadge 是因為訊息與那句還在搜尋框裡的字是同一件事,
+            // 放在同一個面板裡讀比較連貫;真正非顧不可的是 `Result`,不是通道。
             new ToastStatusMessage(Strings.Format(Resources.SaveFailed, ex.Message)).Show();
             return CommandResult.KeepOpen();
         }

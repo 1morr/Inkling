@@ -174,8 +174,11 @@ internal sealed partial class NoteFormContent : FormContent
 
             _repository.Update(editing, title, body);
 
-            // **編輯這條路相反,一個 toast 都不能發。** 卡片上還壓著使用者剛打的字,
-            // 而 toast 一搶焦點主視窗就自我隱藏(硬規則 8),那些字就跟著消失了。
+            // **編輯這條路相反,絕對不能收面板。** 卡片上還壓著使用者剛打的字。
+            // (以前這裡寫的是「一個 toast 都不能發,toast 一搶焦點主視窗就自我隱藏」——
+            // 那個理由是假的,見 docs/design-notes.md〈toast 不會把面板關掉〉;
+            // 真正要顧的是 `Result`,`ShowToast` 配 `KeepOpen` 同樣留得住那些字。
+            // 維持 InfoBadge 是因為訊息與卡片是同一件事,讀起來連貫。)
             // 這裡回 `KeepOpen()` 也是明著寫的:以前是 `CommandResult.GoBack()`,
             // 而那個回傳值在 0.11.11762.0 安裝版上**完全不動** —— 2026-08-22 實機驗過,
             // 存完畫面停在編輯頁,等五秒也一樣;跟 `GoToPage` 是同一類的空殼。

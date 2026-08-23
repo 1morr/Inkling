@@ -217,29 +217,31 @@ Version 的症狀)。
    (代價是那顆按鈕的圖示固定是套件的 Square44x44Logo —— 工作列按鈕的圖示擴展改不了)。
    另外 CmdPal 主視窗一失焦就自己隱藏(沒有開關),所以對話框選完的結果要**當場存**,
    不能指望使用者回到表單再按儲存。
-8. **想讓使用者「做完之後留在畫面上看」,就一個 toast 都不能發。**
-   ⚠ **這一條的前提 2026-08-23 被部分推翻了,讀下去之前先看這一段。**
-   原本寫的是「toast 是另一個會搶焦點的視窗,主視窗一失焦就自我隱藏(第 7 條那個機制),
-   所以 `ToastArgs.Result = KeepOpen` 救不回來」。**在設定頁上量到的不是這樣**:
-   那個 toast 視窗是 `WS_EX_TOOLWINDOW | WS_DISABLED`,**它拿不到前景**
-   (存檔當下同時量:`toast 可見=True 前景=False` / `主面板 可見=True 前景=True`),
-   面板去留是 **`ToastArgs.Result`** 決定的 —— `KeepOpen` 留在原頁、`GoHome` 切回主頁
-   且面板還開著、只有 `Dismiss` 才收起來。設定頁的存檔因此是 **toast + `GoHome()`**,
-   兩件事同時成立。
-   **但別急著把整個 repo 翻案**:這一條的原始證據來自**清單頁**的刪除路徑
-   (2026-08-13 `0bb731a`,當時確實是 `ShowToast` 配 `KeepOpen()` 而面板每刪一則就關一次),
-   **那條路還沒重測**,所以下面幾句在清單頁上暫時照舊。要翻案就照
-   [設計考證〈toast 不會把面板關掉〉](docs/design-notes.md#toast-does-not-steal-focus)
-   那節寫的步驟量一次,那是一次跨檔案的取捨變更,不要順手做。
-   另外 toolkit 有幾個現成命令(例如 `CopyTextCommand`)預設就回 `ShowToast`,而
-   `ToastArgs` 的預設 `Result` 是 `Dismiss` —— **那一種面板真的會關**,拿來用要記得改掉。
-   **反過來,收工那一下 toast 是免費的,而且該發。** 判準不是「這裡會不會關面板」,
-   而是**「使用者接下來還要不要看著這個面板」**:不要的話,toast 是唯一能在面板消失之後
-   還留在畫面上的通道(InfoBadge 畫在面板上,面板收了就跟著沒了)。記下並預覽頁的「完成」、
+8. **關面板的是 `ToastArgs.Result`,不是 toast —— 而它的預設是 `Dismiss`。**
+   `CommandResult.ShowToast("訊息")` 那個字串簡寫吃的就是預設值,所以它**看起來只是
+   發個提示,實際上附帶收面板**。要留在原地就寫完整的
+   `new ToastArgs { Message = …, Result = CommandResult.KeepOpen() }`。
+   toolkit 幾個現成命令(例如 `CopyTextCommand`)的預設 `Result` 也是這一種。
+   ⚠ **這一條 2026-08-23 整個改寫過,舊版是錯的。** 它以前寫著「想讓使用者做完之後留在
+   畫面上看,就一個 toast 都不能發」,理由是「toast 是另一個會搶焦點的視窗,主視窗一失焦
+   就自我隱藏(第 7 條那個機制)」。**量過之後不成立**:toast 視窗是
+   `WS_EX_TOOLWINDOW | WS_DISABLED`,**它拿不到前景**。三條路各量一次
+   (設定頁 `ContentPage`、清單頁的複製與刪除,後者還過確認框),結論一致:
+   `toast 前景=False` / `主面板 可見=True 前景=True`,面板去留完全看 `Result` ——
+   `KeepOpen` 留在原頁、`GoHome` 切回主頁且面板還開著、只有 `Dismiss` 才收起來。
+   連原始證據那條路(2026-08-13 `0bb731a` 的清單頁刪除)都重測過了,CmdPal 版本沒變。
+   那條假規則長出過 `FlashTag`、兩個 `ContentPage` 的靜默成功路徑、三條「失敗時順手把
+   面板收掉」,**現在全部改掉了**。方法論教訓見
+   [設計考證〈toast 不會把面板關掉〉](docs/design-notes.md#toast-does-not-steal-focus)。
+   **toast 畫在面板外面的下方**(量到:面板底邊 y=1404、toast 頂邊 y=2005,重疊為零),
+   所以它不像 `ToastStatusMessage` 的 InfoBar 會壓住內容 —— 選通道時這是個真的差別。
+   **收工那一下該發 toast,而且要配 `Dismiss()`。** 判準是**「使用者接下來還要不要看著
+   這個面板」**:不要的話,toast 是唯一能在面板消失之後還留在畫面上的通道
+   (InfoBadge 畫在面板上,面板收了就跟著沒了)。記下並預覽頁的「完成」、
    隨手草稿的存檔與「捨棄變更」都走這條 —— 記下並預覽頁那一顆跟關掉「記下後先看一眼」
    那條路共用 `Resources.CaptureSaved`,少了它同一個動作換個設定就沒有結尾確認。
    **唯一的例外是跳到外部程式那幾條**(第 11 條):那時焦點剛給了編輯器或檔案總管,
-   toast 比它晚出現會把它壓下去,所以成功路徑一個字都不說。
+   toast 比它晚出現會蓋在它上面,所以成功路徑一個字都不說。
    **這一條專指 `CommandResult.ShowToast`。`ToastStatusMessage` 名字很像但不是同一件事** ——
    它呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 畫成一條橫跨面板底部的 `InfoBar`
    加一個計數 `InfoBadge`,不開視窗、不關面板,存檔提示用的就是它。
@@ -247,7 +249,9 @@ Version 的症狀)。
    `CommandProvider.InitializeWithHost` 裡呼叫 `ExtensionHost.Initialize(host)` 的話,
    `Show()` 靜靜地什麼都不做 —— 這條路曾經整個是死的,而文檔一直寫成通的。
    見 [設計考證〈`ToastStatusMessage` 不是那個 toast〉](docs/design-notes.md#toast-status-message)。
-   需要回饋又要留在原地時走 `ListItem.Tags`(見〈查證 CmdPal 的行為〉最後那段)。
+   需要回饋又要留在原地,就是 toast 配 `KeepOpen()`(複製內文那三條走這個),
+   或者底部的 `ToastStatusMessage`。`ListItem.Tags` 那條路仍然通(見〈查證 CmdPal 的行為〉
+   最後那段),但它現在只用在「衝突副本」那種**持續性**的狀態上,不再是短暫回饋的答案。
    而**導頁也不能靠回傳值**:`CommandResult.GoToPage` 是空殼,SDK 有型別但
    `ShellViewModel.UnsafeHandleCommandResult` 的 switch 裡沒有那個 case(安裝版沒有,
    `main` 也沒有)。**`CommandResult.GoBack()` 在安裝版上同樣不動** —— 2026-08-22 實測:
@@ -494,10 +498,13 @@ $bytes = [System.IO.File]::ReadAllBytes("$d\resources.pri")
 `get_WrapWords` / `PlainTextTemplate` 在 `Microsoft.CmdPal.UI.exe`(UTF-8),
 `PlainTextContentTemplate` 與那個檢視器的右鍵選單字串在 `resources.pri`(UTF-16)。
 `ListItem.Tags` 改了畫面會即時更新這條路,安裝版也是有的
-(`UpdateTags` / `VisibleTags` / `HasTags` / `TagViewModel` 都掃得到)—— 刪除頁的多選
-曾經靠它做出來過(後來整個移除,見 [設計考證〈為什麼沒有多選〉](docs/design-notes.md#no-multiselect)),而**現在真的在用它**:
-複製內文之後那一列右邊的「已複製」標籤就是這條路(`NoteListPage.FlashTag`)——
-需要「不關面板、不重整清單、就地改一列的狀態」時就用它,別再想 toast。
+(`UpdateTags` / `VisibleTags` / `HasTags` / `TagViewModel` 都掃得到)。
+**現在用它的只有一個地方:標出雲端硬碟的衝突副本**(`NoteListPage.BaseTags`)——
+那是持續性的狀態,不是回饋。刪除頁的多選曾經靠它做出來過(後來整個移除,見
+[設計考證〈為什麼沒有多選〉](docs/design-notes.md#no-multiselect));複製內文之後在那一列閃「已複製」
+也走過這條(`FlashTag`,2026-08-23 移除 —— 它存在的唯一理由是「複製完不能發 toast」,
+而那條規則是假的,見第 8 條)。需要「不關面板、不重整清單、就地改一列的狀態」時
+它仍然是答案,只是**短暫的回饋現在該用 toast 配 `KeepOpen()`**。
 byte-scan 不是只拿來否定,拿來確認一樣有用。
 
 `CommandContextItem.IsCritical`(把 `Ctrl+K` 選單那一列變紅,IDL 的註解就寫著

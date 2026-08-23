@@ -2,7 +2,10 @@
 
 這份文檔收的是「為什麼」—— 每一個看起來繞路的設計背後的查證過程與取捨。
 讀者是**未來的維護者**(包括半年後的自己)與**其他 CmdPal 擴展作者**:很多結論
-(fallback 的空標題過濾、`IDetails` 的通知斷線、toast 搶焦點)對任何 CmdPal 擴展都成立。
+(fallback 的空標題過濾、`IDetails` 的通知斷線、`ToastArgs.Result` 的預設是 `Dismiss`)
+對任何 CmdPal 擴展都成立。**也包括推翻掉的那幾條** —— 那些留著不刪,它們是這份文檔
+最有用的部分:[toast 不會搶焦點](#toast-does-not-steal-focus)、
+[確認框的預設按鈕是有作用的](#confirm-dialog-colors)。
 
 使用者文檔在 [README](../README.md);這裡的每一節 README 都只留兩三行結論加連結。
 
@@ -128,18 +131,21 @@ toast「已記下：標題」→ Command Palette 消失。
 
 實作上有三件事是被 CmdPal 逼出來的:
 
-**1. 停留期間不能發 toast,離開那一下可以 —— 分清楚這兩段。** toast 是另一個會搶焦點的
+**1. 停留期間 `Result` 一律 `KeepOpen`,離開那一下才 `Dismiss` —— 分清楚這兩段。**
+
+⚠ 這一點以前寫的是「停留期間**一個 toast 都不能發**」,理由是「toast 是另一個會搶焦點的
 視窗,而 CmdPal 主視窗一失焦就把自己藏起來(`MainWindow_Activated` →
-`EndSession("LostFocus")`,沒有開關)。「記下之後 Command Palette 整個消失」其實是 toast
-造成的,不是 `GoHome()` —— 後者的語意明明白白是「回主頁但**保持開著**」。
+`EndSession("LostFocus")`)」。**那個理由是假的**,量測見
+[〈toast 不會把面板關掉〉](#toast-does-not-steal-focus) —— toast 拿不到前景,
+關面板的是 `ToastArgs.Result`(而它的預設剛好是 `Dismiss`,所以現象對得上、歸因錯了)。
+複製內文因此已經改成發 toast 配 `KeepOpen`。
 
-所以**停留期間一個都不能發**:進頁、存檔那一刻、複製內文、存檔失敗,全部走別的路
-(存檔失敗的訊息直接畫在頁面上;記完就收那條路的存檔失敗走 `ToastStatusMessage`
-= 底部 InfoBadge,不開視窗,配 `KeepOpen`,搜尋框裡那句話留著,修好問題再按一次 Enter
-就是重試)。
+真正的規矩是**停留期間的收尾一律 `KeepOpen`**:進頁、存檔那一刻、存檔失敗、複製內文。
+存檔失敗的訊息直接畫在頁面上;記完就收那條路的存檔失敗走 `ToastStatusMessage`
+= 底部 InfoBadge,配 `KeepOpen`,搜尋框裡那句話留著,修好問題再按一次 Enter 就是重試。
 
-**「完成」那一下剛好相反,而且 toast 在那裡是免費的**:按下去的語意就是收工,面板本來
-就要關,搶焦點造成的隱藏不是代價而是目的。判斷一條路能不能發 toast,問的不是
+**「完成」那一下剛好相反**:按下去的語意就是收工,面板本來就要關,所以明著回 `Dismiss`,
+而 toast 在面板收掉之後還留得住。判斷一條路怎麼收尾,問的不是
 「這裡會不會關面板」,而是**「使用者接下來還要不要看著這個面板」** —— 要,就一個都不能發;
 不要,那 toast 反而是唯一能在面板消失之後還留在畫面上的通道(InfoBadge 畫在面板上,
 面板收了就跟著沒了)。同一個判斷套在隨手草稿的存檔與「捨棄變更」上,結論一樣。
@@ -609,14 +615,21 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   判準就是 [CLAUDE.md](../CLAUDE.md) 硬規則 8 的那一句 ——
   **「使用者接下來還要不要看著這個面板」**:填完整張表單按儲存就是收工,不需要,
   而 toast 是唯一能在面板消失之後還留在畫面上的通道;編輯反過來,卡片上還壓著使用者
-  剛打的字,toast 一搶焦點主視窗就自我隱藏,那些字會跟著消失。
+  剛打的字,而收工那條路的 `Dismiss()` 會把它們連同面板一起收掉。
+  (這裡以前寫的是「toast 一搶焦點主視窗就自我隱藏」—— 假的,見
+  [〈toast 不會把面板關掉〉](#toast-does-not-steal-focus);要顧的是 `Result`,不是通道。)
   **不要為了「留住徽章」把新增改成 `KeepOpen()`**:那會讓人存完卡在表單上,
   而他下一步是收工,不是繼續改。
 - **收工那幾條的 `ToastArgs.Result` 全部是 `Dismiss()`,沒有例外。**
   同一輪順手把 `QuickCaptureCommand` 從 `GoHome()` 一起改過來 —— 它本來是唯一的例外,
-  而那正是新增這條路照抄錯的來源。**兩者在畫面上分不出來**(2026-08-23 實測:
-  toast 一搶焦點主視窗就自我隱藏,之後按熱鍵兩種都回到主頁、主搜尋框的字也都留著),
-  所以選講得出意圖的那一個 —— 存完就是回去做原本的事,留一個主搜尋框只是多一次 Esc。
+  而那正是新增這條路照抄錯的來源。選 `Dismiss()` 的理由是它講得出意圖 ——
+  存完就是回去做原本的事,留一個主搜尋框只是多一次 Esc。
+
+  ⚠ 當時還量到「`Dismiss` 與 `GoHome` 在畫面上分不出來」,解釋是「toast 一搶焦點主視窗
+  就自我隱藏」。**那個解釋後來被推翻了**([〈toast 不會把面板關掉〉](#toast-does-not-steal-focus)),
+  而在設定頁上 `GoHome` 明確是「面板留著、切回主頁」——
+  也就是說那個「分不出來」跟現在的模型對不起來,**還沒重測**。
+  結論(收工一律 `Dismiss()`)不依賴它,所以沒有跟著改。
 
   `QuickCaptureCommand` 舊註解寫著 `GoHome()` 是為了「離開快速記下頁,否則搜尋框
   還留著剛打的字」,**那句話把兩個機制講混了**:清空那個搜尋框的是
@@ -824,43 +837,62 @@ InfoBar 綁在當下這一頁的 view model 上,`GoHome()` 導覽走的時候會
 
 <a id="toast-does-not-steal-focus"></a>
 
-#### ⚠ 而 toast **不會**把面板關掉 —— 硬規則 8 的前提在這一頁上不成立
+#### toast **不會**把面板關掉 —— 硬規則 8 的前提是假的
 
 `CommandResult.ShowToast` 一直被當成「會關面板的那一種」,理由是「toast 搶焦點 →
-CmdPal 主視窗一失焦就自我隱藏」。**2026-08-23 在設定頁上量到的不是這樣。**
+CmdPal 主視窗一失焦就自我隱藏」。**那個理由是錯的**,而且錯了將近十天,期間長出了
+一整套繞路的設計。2026-08-23 分兩輪量掉:先是設定頁,再是清單頁的複製與刪除。
 
-存檔當下同時量兩個視窗(`GetForegroundWindow` + `IsWindowVisible`,行程先
+發出提示的當下同時量兩個視窗(`GetForegroundWindow` + `IsWindowVisible`,行程先
 `SetProcessDPIAware()`,否則座標會差一個縮放倍率):
 
-```
-toast   可見=True  前景=False  204x75      ← 拿不到前景
-主面板  可見=True  前景=True   1200x720    ← 還開著,而且是前景
-```
+| 量的路徑 | 頁面型別 | toast | 主面板 | 收尾 |
+|---|---|---|---|---|
+| 設定頁存檔 | `ContentPage` | 可見、**前景=False** | 可見、前景、切到主頁 | `GoHome()` |
+| 清單頁 複製內文 | `ListPage` | 可見、**前景=False** | 可見、前景、**停在清單頁** | `KeepOpen()` |
+| 清單頁 刪除單則(過確認框) | `ListPage` | 可見、**前景=False** | 可見、前景、**停在清單頁** | `KeepOpen()` |
 
 toast 那個視窗是 `WS_EX_TOOLWINDOW | WS_DISABLED`(`WS_DISABLED` 代表它不收輸入),
-**它從頭到尾沒有拿到前景**。對它 `PrintWindow` 印得出「設定已儲存」那張圖,所以也不是
-「有視窗但沒畫」。
+**它從頭到尾拿不到前景**。對它 `PrintWindow` 印得出訊息那張圖,所以也不是「有視窗但沒畫」。
 
-決定面板去留的是 **`ToastArgs.Result`**,不是 toast 本身。三種都跟 toast 併得起來:
+決定面板去留的是 **`ToastArgs.Result`**,不是 toast 本身:
 
 | `Result` | 面板 | 停在哪 |
 |---|---|---|
-| `KeepOpen()` | 開著、前景 | 原本那一頁(當場量過:還在設定頁) |
-| `GoHome()` | 開著、前景 | 主搜尋框(當場量過) |
+| `KeepOpen()` | 開著、前景 | 原本那一頁 |
+| `GoHome()` | 開著、前景 | 主搜尋框 |
 | `Dismiss()` | 收起來 | 下次叫出來是主頁 |
 
-**⚠ 但不要把這句話推廣到整個 repo。** 硬規則 8 的原始證據來自**清單頁**的刪除路徑 ——
-2026-08-13 的 `0bb731a`(`fix: stop the palette from closing after a delete`),當時的程式碼
-**確實**是 `ShowToast` 配 `Result = KeepOpen()`,而觀察到的現象是每刪一則面板就關一次。
-那條路**還沒有重測**,所以現在能講的只有「設定頁這個 `ContentPage` 上不成立」。
-`CopyNoteBodyCommand` 那一條則本來就跟焦點無關 —— toolkit 的預設 `ToastArgs.Result`
-是 `Dismiss`,面板是被那個收掉的。
+**`ToastArgs` 的預設 `Result` 是 `Dismiss`** —— 把它 `new` 一個出來讀屬性讀到的
+(`Result.Kind = Dismiss`)。所以 `CommandResult.ShowToast("訊息")` 那個字串簡寫
+**是會收面板的**,而它看起來完全不像。這是這一節裡最容易再踩一次的地雷。
 
-**什麼變了才該重新考慮**:把清單頁的刪除成功路徑臨時改成 `ShowToast` + `KeepOpen()`
-量一次。量出來面板照樣留著的話,硬規則 8 與底下這幾處都要改寫 ——
-`DeleteNoteCommand`、`ConfirmedDeleteAllNotesCommand`、`CopyNoteBodyCommand`、
-`CapturedNotePage`、[〈刪除成功時一個 toast 都不發〉](#delete-no-toast)。
-那是一次跨檔案的取捨翻案,**不要順手做**。
+**toast 畫在面板外面,而且在下方。** 同一次量到的幾何:面板 `1320,684` 起 `1200x720`
+(底邊 y=1404),toast `1818,2005` 起 `204x75`。**重疊為零** —— 這一點跟底部的
+`ToastStatusMessage`(InfoBar 橫在面板底部,會壓住內容)剛好相反,選通道時是個真的差別。
+
+##### 原始證據怎麼會是反的
+
+硬規則 8 的來源是 2026-08-13 的 `0bb731a`(`fix: stop the palette from closing after a delete`)。
+翻出那個 commit 的 diff:當時**確實**是 `ShowToast` 配 `Result = KeepOpen()`,
+而 commit message 寫著每刪一則面板就關一次。**同一條路 2026-08-23 重測,面板穩穩留著**,
+而且 `Microsoft.CommandPalette` 的版本一個字都沒變(前後都是 `0.11.11762.0`)。
+
+也就是說當年那次不是版本差異,是**看到面板關掉就回頭推論「焦點被搶走」** ——
+推論沒有量過,而錯的推論被寫成了硬規則,再從硬規則長出 `FlashTag`、
+兩個 `ContentPage` 的靜默成功路徑,以及三條「失敗時順手把面板收掉」。
+真正的成因至今不明(最可能是當時某處用了字串簡寫、吃到預設的 `Dismiss`,
+但那個版本的程式碼已經證實不是,所以只能存疑)。
+
+**方法論上的教訓跟〈已知落差〉那條 `set_DefaultButton` 是同一個**:
+從現象反推機制,推出來的東西要當成待驗證的假說,不能直接寫成規則。
+差別是那一條的誤判來自 byte-scan 的證否,這一條來自肉眼觀察的歸因 ——
+兩個都便宜、都看起來很有說服力、都錯了。
+
+**什麼變了才該重新考慮**:CmdPal 換版本之後,toast 視窗的樣式位元(`WS_DISABLED`)
+可能會變 —— 那是整個結論的支點。重驗一次只要
+`pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "...|toast"`,那個動作現在會把
+兩個視窗的可見、前景與幾何一起印出來。
 
 <a id="settings-no-separator"></a>
 
@@ -1055,15 +1087,25 @@ CmdPal **沒有多選**:SDK 的 `IListItem` 沒有任何選取狀態的屬性
 
 ### 刪除成功時一個 toast 都不發
 
-三個刪除命令(單則、批次、刪除全部)原本都是回 `ShowToast` 配 `KeepOpen`,註釋還寫著
-「留在清單頁,使用者當場看到清單真的空了」。**那兩件事湊不到一起**:toast 是另一個會搶焦點
-的視窗,而 CmdPal 主視窗一失焦就自我隱藏(同一個機制見〈記下之後要不要先看一眼〉)——
-寫著「留在清單頁」的程式碼,實際效果是刪一則就把整個面板關掉一次。
+**成功不發,失敗發了但留著面板。** 兩半的理由不一樣,而且都被改寫過一次。
 
-現在成功時直接回 `KeepOpen`,不發任何 toast。回饋本來就不需要它:那一列(或那一批)
-當場從清單上消失,比什麼訊息都直接。**只有例外路徑還發** —— 部分檔案刪不掉、或整個
-操作丟例外的時候,使用者看到清單還剩東西,要能立刻知道那不是沒生效;那種時候面板被
-toast 關掉,也比默默少刪好。
+三個刪除命令(單則、批次、刪除全部)原本都是回 `ShowToast` 配 `KeepOpen`,註釋寫著
+「留在清單頁,使用者當場看到清單真的空了」,而 2026-08-13 觀察到的是刪一則面板就關一次
+(`0bb731a`)。當時的結論是「那兩件事湊不到一起,toast 會搶焦點」——
+**那個歸因是假的,2026-08-23 在同一條路上量掉了**,見
+[〈toast 不會把面板關掉〉](#toast-does-not-steal-focus)。
+
+成功時仍然不發 toast,但理由換成它本來就該有的那一個:**那一列(或那一批)當場從清單上
+消失,比什麼訊息都直接**,再疊一則提示只是重複講同一件事。這是選擇,不是被迫。
+
+**失敗那三條路則改了行為。** 部分檔案刪不掉、或整個操作丟例外時,以前用
+`CommandResult.ShowToast("訊息")` 那個字串簡寫 —— 而它吃的是 `ToastArgs` 的預設
+`Result`,也就是 `Dismiss`。於是「使用者看到清單還剩東西,要能立刻知道那不是沒生效」
+這句寫在註解裡的目的**自相矛盾**:面板關了,清單根本看不到。當時以為別無選擇,
+所以沒發現。現在三條都明著給 `Result = KeepOpen()`。
+
+⚠ **`CommandResult.ShowToast(字串)` 是這一節的地雷**:它看起來只是「發個提示」,
+實際上附帶收面板。要留在原地就得寫成完整的 `new ToastArgs { …, Result = KeepOpen() }`。
 
 <a id="toast-status-message"></a>
 
@@ -1073,9 +1115,13 @@ toast 關掉,也比默默少刪好。
 
 | 用法 | 實際發生什麼 | 面板 |
 |---|---|---|
-| `CommandResult.ShowToast(…)` | 送出 `ShowToastMessage`,CmdPal 開一個獨立的 `ToastWindow` | **會關掉** |
-| `CopyTextCommand` 的預設 `Result` | 就是上面那個 | **會關掉** |
+| `CommandResult.ShowToast(字串)` | 送出 `ShowToastMessage`,CmdPal 開一個獨立的 `ToastWindow`,收尾吃 `ToastArgs` 的**預設 `Dismiss`** | **會關掉** |
+| `CommandResult.ShowToast(new ToastArgs { Result = KeepOpen() })` | 同一個視窗,收尾自己指定 | **不會** |
+| `CopyTextCommand` 的預設 `Result` | 就是第一種 | **會關掉** |
 | `new ToastStatusMessage(…).Show()` | 呼叫 `IExtensionHost.ShowStatus`,由 CmdPal 收進 `StatusMessages` | 不會 |
+
+**關面板的是 `Result`,不是 toast。**「`ShowToast` 會關掉面板」這句話只對字串那個簡寫成立,
+而它剛好是最順手的寫法 —— 詳見[〈toast 不會把面板關掉〉](#toast-does-not-steal-focus)。
 
 `ToastStatusMessage.Show()` 在 toolkit 裡做的事只有一件:
 `ExtensionHost.ShowStatus(Message, StatusContext.Extension)`,然後隔 2500 ms 再 `HideStatus`
@@ -1118,29 +1164,44 @@ toast 關掉,也比默默少刪好。
 
 ## 複製
 
-### 複製完留在原地,回饋是那一列上的標籤
+### 複製完留在原地,回饋是一則帶標題的 toast
 
-「複製完不要關掉面板」跟刪除踩的是同一顆地雷,但難一點:刪除的回饋是那一列消失,
-**複製沒有任何看得見的結果** —— 剪貼簿是隱形的。
+刪除的回饋是那一列消失,**複製沒有任何看得見的結果** —— 剪貼簿是隱形的,
+所以這條路非講一句話不可。
 
-toolkit 的 `CopyTextCommand` 預設回 `ShowToast`,而 `ToastArgs.Result` 的預設又是
-`Dismiss`,兩件事疊起來就是「複製一次關一次」。而且**光把 `ToastArgs.Result` 改成
-`KeepOpen` 沒有用**:toast 是另一個會搶焦點的視窗,主視窗一失焦就自我隱藏。
-想留在畫面上,就一個 toast 都不能發。
+三個畫面(清單頁、預覽頁、記下並預覽頁)現在走同一條:`CommandResult.ShowToast`
+配 `Result = KeepOpen()`,訊息是 **「已複製:<筆記標題>」**。
+`ToastArgs.Result` 一定要明著給 —— toolkit 的 `CopyTextCommand` 預設回的是字串簡寫,
+收尾吃預設的 `Dismiss`,那才是「複製一次關一次」的成因。
 
-所以回饋改成在那一列右邊打一個 **`已複製`** 的標籤,2.5 秒後自己收掉
-(跟 CmdPal 自己的 toast 同一個時長,`ToastWindow.VisibleDuration`)。沒有內文的筆記
-打的是 `沒有內文`,而且**不碰剪貼簿** —— `ClipboardHelper.SetText` 會先 `EmptyClipboard()`,
-對空筆記按下去等於把使用者剛複製的東西清掉。
+**標題不是裝飾。** 清單頁以前靠「標籤掛在哪一列」講「複製到的是哪一則」,
+toast 沒有位置感,那個資訊只能寫進訊息裡。
 
-走 `ListItem.Tags` 是因為**這條路跨進程是通的**,跟 `Details` 正好相反(見
-〈為什麼不是就地改 `Details.Body`〉):`ICommandItem` 在 IDL 裡就繼承 `INotifyPropChanged`,
-CmdPal 對它無條件訂閱,而且安裝版的 `UpdateTags` / `VisibleTags` / `TagViewModel` 都掃得到。
-這裡也刻意不呼叫 `RaiseItemsChanged`:整份清單翻新一次選中項就有機會跑掉,而剛複製完
-使用者通常還想留在同一列上。
+沒有內文的筆記講的是「沒有內文可以複製」,而且**不碰剪貼簿** ——
+`ClipboardHelper.SetText` 會先 `EmptyClipboard()`,對空筆記按下去等於把使用者剛複製的
+東西清掉。那條路不提標題:「已複製:X」講的是「X 進了剪貼簿」,而這裡什麼都沒進去。
 
-預覽頁沒有清單列可以掛標籤,所以那裡的複製是**靜靜完成**的 —— 那一頁整頁顯示的就是
-剛複製走的內容,自己會說話。
+#### 這一節整個改寫過,舊版是繞路
+
+原本的做法是在清單那一列右邊打一個 `已複製` 的標籤(`FlashTag`),2.5 秒後自己收掉,
+連著一個計時器與兩個欄位;**而預覽頁與記下並預覽頁的成功路徑是完全靜默的**,
+理由寫著「那一頁整頁顯示的就是剛複製走的內容,自己會說話」。
+
+兩件事都建立在同一條假規則上:「想留在畫面上就一個 toast 都不能發」
+(見[〈toast 不會把面板關掉〉](#toast-does-not-steal-focus))。規則倒了之後兩件事都站不住:
+
+- **靜默那兩頁是真的缺陷。** 頁面顯示什麼跟剪貼簿有沒有寫成功無關 —— 按下去畫面一個像素
+  都不變,跟快速鍵壞掉分不出來。那正是當初修「空內文」那條時用的判準,只是成功路徑被漏掉了。
+- **標籤本身沒壞,但代價比看起來高。** 實測它佔掉那一列約四分之一的寬度:`rime` 那一列的
+  副標從「當前我認為Rime(ht…」被吃到「當前我認為…」。標題不受影響,而詳細窗格照樣顯示
+  全文,所以不算嚴重 —— 但它換來的東西(位置感)toast 用標題就補得回來,
+  而且 toast 畫在**面板外面的下方**,重疊為零。
+
+移除 `FlashTag` 之後,`ListItem.Tags` 在這個 repo 裡只剩一個用途:標出雲端硬碟的衝突副本。
+那條路跨進程是通的(跟 `Details` 正好相反,見〈為什麼不是就地改 `Details.Body`〉),
+`ICommandItem` 在 IDL 裡就繼承 `INotifyPropChanged`,CmdPal 對它無條件訂閱,
+安裝版的 `UpdateTags` / `VisibleTags` / `TagViewModel` 也都掃得到 —— **這個知識沒有作廢**,
+下一次需要「不關面板、不重整清單、就地改一列的狀態」時它仍然是答案。
 
 <a id="confirm-dialog-colors"></a>
 
