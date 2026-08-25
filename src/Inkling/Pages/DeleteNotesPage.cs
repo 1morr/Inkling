@@ -207,6 +207,8 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     ///
     /// 少設任何一項的症狀都是同一種:那一列顯示甲、命令卻還綁著乙,而且靜悄悄的 ——
     /// 在一個**刪檔案**的頁面上,那是這份程式碼裡最貴的一種 bug。
+    ///
+    /// **同一則筆記的內容變了不會走到這裡**,<see cref="NoteItemSlots"/> 會給它一列全新的。
     /// </summary>
     private void ApplyNote(ListItem item, Note note, bool showSource)
     {

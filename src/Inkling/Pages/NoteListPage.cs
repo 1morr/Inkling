@@ -246,12 +246,9 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// 按下去做什麼」**每一項都要設一遍**,不能假設誰沒變:漏掉一項的症狀是
     /// 那一列顯示甲、命令卻還綁著乙,而且靜悄悄的。
     ///
-    /// 就地改這幾個屬性跨進程是通的:<c>ICommandItem</c> 在 IDL 裡就繼承
-    /// <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,而 <c>Command</c> 與
-    /// <c>MoreCommands</c> 在它的 <c>CommandItemViewModel.FetchProperty</c> 裡
-    /// 各有一條重建路徑(<c>ReplaceCommand</c> / <c>BuildAndInitMoreCommands</c>,
-    /// 安裝版都掃得到)。<c>Details</c> 是唯一的例外,**只能整個換掉**
-    /// (理由見 <see cref="RefreshDetails"/>)—— 而這裡本來就是整個換。
+    /// **同一則筆記的內容變了不會走到這裡** —— <see cref="NoteItemSlots"/> 會給它一列
+    /// 全新的。就地改一個 CmdPal 已經建好 view model 的清單項會打壞使用者當下看的畫面,
+    /// 而「內容變了」最常見的來源正是他在編輯那一則;理由與實測寫在那個類別上。
     /// </summary>
     private void ApplyNote(ListItem item, Note note)
     {

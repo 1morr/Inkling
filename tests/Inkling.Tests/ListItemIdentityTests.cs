@@ -11,7 +11,11 @@ namespace Inkling.Tests;
 /// CmdPal 用參考相等去查它自己的 view model 快取,再問一句「當下選中的那個還在不在
 /// 新集合裡」——在就不動,不在就選第一列。所以每次重建清單都給一批全新的
 /// <c>ListItem</c>,等於每次都宣告「整份清單換人了」。這裡釘住的就是
-/// <see cref="NoteItemSlots"/> 的兩條分配規則,以及兩個清單頁真的有走它。
+/// <see cref="NoteItemSlots"/> 的三條分配規則,以及兩個清單頁真的有走它。
+///
+/// 第三條(內容變了就給一列全新的)看起來像是把前兩條的好處丟掉,**但它是必要的**:
+/// 就地改一個 CmdPal 已經建好 view model 的清單項,會把那一列渲染到使用者當下看的
+/// 頁面上。見 <see cref="ChangedContent_GetsAFreshItem"/>。
 ///
 /// 配套的另一半(<c>RaiseItemsChanged</c> 要帶 <see cref="CmdPalRefresh.KeepSelection"/>)
 /// 這一層測不到 —— 那是 CmdPal 收到之後自己的判斷,只能在真機上驗,
@@ -121,6 +125,41 @@ public class ListItemIdentityTests
     }
 
     [Fact]
+    public void ChangedContent_GetsAFreshItem()
+    {
+        // **這一條是拿畫面壞掉換來的,別為了「省一次配置」把它改成就地更新。**
+        // 就地改一個 CmdPal 已經建好 view model 的清單項,CmdPal 會立刻把那一列
+        // 渲染出來 —— 而「內容變了」最常見的來源就是使用者正在編輯那一則,人不在清單頁上。
+        // 實測畫面:編輯表單旁邊多出一塊筆記預覽,底部工具列變成清單那一列的「預覽 / 編輯」。
+        var slots = new NoteItemSlots();
+
+        var first = slots.Assign([Note("A"), Note("B")], Create, Apply);
+        var second = slots.Assign([Note("A"), Note("B", body: "改過了")], Create, Apply);
+
+        Assert.Same(first[0], second[0]);
+        Assert.NotSame(first[1], second[1]);
+    }
+
+    [Fact]
+    public void UnchangedNotes_AreNotReboundAtAll()
+    {
+        // 沿用的那一列連一個屬性都不該被設 —— 每一次設值都是一趟跨進程通知,
+        // 而且正是上面那條會打壞畫面的路。
+        var slots = new NoteItemSlots();
+        var notes = new[] { Note("A"), Note("B") };
+        var rebinds = 0;
+
+        slots.Assign(notes, Create, Apply);
+        slots.Assign(notes, Create, (item, note) =>
+        {
+            rebinds++;
+            Apply(item, note);
+        });
+
+        Assert.Equal(0, rebinds);
+    }
+
+    [Fact]
     public void EmptyingTheList_ThenRefilling_StartsFresh()
     {
         var slots = new NoteItemSlots();
@@ -227,11 +266,11 @@ public class ListItemIdentityTests
         Assert.NotEqual(title, after.Title);
     }
 
-    private static Note Note(string name) => new()
+    private static Note Note(string name, string body = "") => new()
     {
         Id = name,
         Title = name,
-        Body = string.Empty,
+        Body = body,
         Created = DateTimeOffset.UnixEpoch,
         Updated = DateTimeOffset.UnixEpoch,
         FilePath = $@"C:\notes\{name}.md",

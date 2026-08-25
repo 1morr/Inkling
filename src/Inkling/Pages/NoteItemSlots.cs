@@ -20,22 +20,32 @@ namespace Inkling.Pages;
 /// 的真正成因**,跟刪除本身無關:別台機器同步下來一則、或使用者拿別的編輯器改了任何一則,
 /// 一樣會把選取踢走(真機實測過)。
 ///
-/// <para><b>分配規則:身分優先,只有被移除的那一格讓位。</b></para>
+/// <para><b>三條規則。第三條是拿命換來的,別拆。</b></para>
 ///
 /// <list type="number">
-/// <item>還在清單裡的筆記**沿用自己上一輪的槽**。新增、修改、重新排序時,使用者選著的
-/// 那一則因此原地不動 —— 選取跟著**筆記**走。</item>
-/// <item>從清單上消失的筆記,把自己的槽**讓給後繼者**(上一輪排在它後面、這一輪還在的
-/// 第一則;只少一則時才允許往前找,理由見 <see cref="Successor"/>)。
-/// 後繼者原本那個槽變成孤兒,不再回傳。
-/// 於是使用者選著的那一列即使被刪掉,那個槽仍然在集合裡 —— 選取因此留在**原位置**,
-/// 顯示的是下一則,跟檔案總管刪檔案的手感一致。</item>
+/// <item><b>還在、而且內容一個字都沒變的筆記 → 沿用自己的槽,而且完全不碰它。</b>
+/// 呼叫端的 <c>rebind</c> 不會被呼叫。新增、刪除別則、重新排序時,使用者選著的那一列
+/// 因此原地不動 —— 選取跟著**筆記**走。</item>
+/// <item><b>從清單上消失的筆記 → 把自己的槽讓給後繼者</b>(上一輪排在它後面、這一輪還在的
+/// 第一則;只少一則時才允許往前找,見 <see cref="Successor"/>)。後繼者原本那個槽變成孤兒。
+/// 這一條讓「刪掉選中那一列」之後選取留在**原位置**、顯示下一則,跟檔案總管同一個手感。
+/// 換人坐了,所以 <c>rebind</c> 一定會被呼叫。</item>
+/// <item><b>還在、但內容變了的筆記 → 給它一個全新的槽</b>(<c>create</c>),舊的丟掉。</item>
 /// </list>
 ///
-/// 兩條規則各自對應一種期待,而且不會互相干擾:刪除走第 2 條(位置語意),
-/// 其餘所有變動走第 1 條(身分語意)。只走第 1 條的話刪除仍會跳第一列;
-/// 只走第 2 條(單純按索引重用)的話,外部同步進來一則排在前面的筆記,
-/// 使用者正在看的那一列會**默默換成別則筆記** —— 兩條都試過,這是實測出來的組合。
+/// <para><b>第三條為什麼不是「沿用舊槽、就地把新內容寫進去」。</b></para>
+///
+/// 因為那樣會**打壞使用者當下正在看的畫面**。就地改一個 CmdPal 已經建好 view model 的
+/// 清單項(<c>Command</c> / <c>MoreCommands</c> / <c>Details</c> 任一個都算),CmdPal 會
+/// 立刻把那一列重新渲染出來 —— 而使用者這時候多半**不在清單頁上**:內容會變,
+/// 最常見的原因就是他正在編輯那一則。實測到的畫面是編輯表單旁邊多出一塊筆記預覽、
+/// 底部工具列變成清單那一列的「預覽 / 編輯」,而人明明還在編輯頁。
+/// (三個屬性一個一個關掉測出來的,而且**跟更新的時機無關** ——
+/// 先自己重建再通知 CmdPal 也一樣。)
+///
+/// 代價很誠實:剛編輯過的那一則會失去物件識別,回到清單頁時選取可能不在它身上。
+/// 那是這個類別出現**之前**的既有行為,不是新的退步;而換來的是「內容沒變的列
+/// 一個屬性都不設」,連跨進程通知都省下來了。
 ///
 /// <para><b>身分認的是 <see cref="Note.FilePath"/>,不是 <c>Id</c>。</b></para>
 ///
@@ -57,20 +67,25 @@ internal sealed class NoteItemSlots
     private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
 
     /// <summary>
-    /// 上一輪的佈局。鍵與項目包成同一個不可變物件整個換掉,理由與
+    /// 上一輪的佈局。鍵、筆記與項目包成同一個不可變物件整個換掉,理由與
     /// <see cref="VersionedItemsCache{TKey}"/> 那個 snapshot 一樣:建清單是跨進程呼叫,
-    /// 可能落在不同執行緒上,分成兩個欄位各寫各的會讀到「新鍵配舊槽」。
+    /// 可能落在不同執行緒上,分成幾個欄位各寫各的會讀到「新鍵配舊槽」。
     /// </summary>
     private Layout? _previous;
 
     /// <summary>
-    /// 依上面那兩條規則分配槽位。<paramref name="update"/> 是「把這一則筆記的內容
-    /// 就地寫進這個槽」,<paramref name="create"/> 只在沒有槽可用時才會被呼叫。
+    /// 依上面那三條規則分配槽位。
     /// </summary>
+    /// <param name="create">做一列新的出來。內容變了的筆記也走這裡(規則三)。</param>
+    /// <param name="rebind">
+    /// 把一則筆記完整寫進一個**別人讓出來的**槽 —— 命令、標題、副標、圖示、詳細窗格、
+    /// 選單、標籤,**每一項都要設**,因為那個物件上一輪坐的是另一則筆記。
+    /// 只有規則二會呼叫它。
+    /// </param>
     public ListItem[] Assign(
         IReadOnlyList<Note> notes,
         Func<Note, ListItem> create,
-        Action<ListItem, Note> update)
+        Action<ListItem, Note> rebind)
     {
         var keys = new string[notes.Count];
 
@@ -84,27 +99,63 @@ internal sealed class NoteItemSlots
 
         for (var i = 0; i < notes.Count; i++)
         {
-            if (reusable.TryGetValue(keys[i], out var slot))
-            {
-                update(slot, notes[i]);
-                items[i] = slot;
-            }
-            else
-            {
-                items[i] = create(notes[i]);
-            }
+            items[i] = Resolve(reusable, notes[i], keys[i], create, rebind);
         }
 
-        Volatile.Write(ref _previous, new Layout(keys, items));
+        Volatile.Write(ref _previous, new Layout(keys, [.. notes], items));
         return items;
     }
 
-    /// <summary>
-    /// 這一輪每一則筆記可以沿用哪一個槽。沒有出現在回傳值裡的筆記就是要新建的。
-    /// </summary>
-    private static Dictionary<string, ListItem> Reusable(Layout? previous, string[] keys)
+    private static ListItem Resolve(
+        Dictionary<string, Reuse> reusable,
+        Note note,
+        string key,
+        Func<Note, ListItem> create,
+        Action<ListItem, Note> rebind)
     {
-        var reusable = new Dictionary<string, ListItem>(PathComparer);
+        if (!reusable.TryGetValue(key, out var reuse))
+        {
+            return create(note);
+        }
+
+        // 規則二:這個槽是別人讓出來的,整列重綁。
+        if (reuse.TookOver)
+        {
+            rebind(reuse.Item, note);
+            return reuse.Item;
+        }
+
+        // 規則一:同一則筆記,內容也沒變 —— 一個屬性都不要碰。
+        if (SameContent(reuse.Note, note))
+        {
+            return reuse.Item;
+        }
+
+        // 規則三:內容變了。就地改會打到使用者當下看的畫面(見類別註解),所以換新的。
+        return create(note);
+    }
+
+    /// <summary>
+    /// 這一列畫出來、以及按下去會做什麼,有沒有變。
+    ///
+    /// 比的是**兩個清單頁真正用到的欄位**:標題與內文(標題列、摘要、詳細窗格、
+    /// 複製內文、刪除確認框的描述都從這兩個來)、外來旗標(圖示)、衝突副本旗標(標籤)。
+    /// <c>Updated</c> 這種只影響排序、畫面上看不到的欄位刻意不比 ——
+    /// 比了只會讓「外部 touch 一下檔案」平白換掉一列的物件。
+    /// </summary>
+    private static bool SameContent(Note previous, Note current) =>
+        string.Equals(previous.Title, current.Title, StringComparison.Ordinal)
+        && string.Equals(previous.Body, current.Body, StringComparison.Ordinal)
+        && previous.IsExternal == current.IsExternal
+        && previous.HasDuplicateId == current.HasDuplicateId;
+
+    /// <summary>
+    /// 這一輪每一則筆記可以沿用哪一個槽,以及那個槽是不是別人讓出來的。
+    /// 沒有出現在回傳值裡的筆記就是要新建的。
+    /// </summary>
+    private static Dictionary<string, Reuse> Reusable(Layout? previous, string[] keys)
+    {
+        var reusable = new Dictionary<string, Reuse>(PathComparer);
 
         if (previous is null)
         {
@@ -119,7 +170,7 @@ internal sealed class NoteItemSlots
         {
             if (wanted.Contains(previous.Keys[i]))
             {
-                reusable[previous.Keys[i]] = previous.Items[i];
+                reusable[previous.Keys[i]] = new Reuse(previous.Items[i], previous.Notes[i], TookOver: false);
             }
             else
             {
@@ -145,7 +196,7 @@ internal sealed class NoteItemSlots
                 continue;
             }
 
-            reusable[successor] = previous.Items[i];
+            reusable[successor] = new Reuse(previous.Items[i], previous.Notes[i], TookOver: true);
             handedOver.Add(successor);
         }
 
@@ -200,5 +251,11 @@ internal sealed class NoteItemSlots
         return null;
     }
 
-    private sealed record Layout(string[] Keys, ListItem[] Items);
+    private sealed record Layout(string[] Keys, Note[] Notes, ListItem[] Items);
+
+    /// <summary>
+    /// 一個可以沿用的槽,連同它上一輪坐的是哪一則筆記。
+    /// <paramref name="TookOver"/> 為真代表它是**別則筆記讓出來的**,那一列真的換人坐了。
+    /// </summary>
+    private readonly record struct Reuse(ListItem Item, Note Note, bool TookOver);
 }
