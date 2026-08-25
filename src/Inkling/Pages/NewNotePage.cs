@@ -6,7 +6,7 @@ using Inkling.Properties;
 namespace Inkling.Pages;
 
 /// <summary>
-/// 新增筆記的表單頁。快速新增只能記一行字,這裡給的是「一開始就想寫長一點」的入口。
+/// 新增筆記的表單頁。快速新增只能記一行字，這裡給的是「一開始就想寫長一點」的入口。
 /// </summary>
 internal sealed partial class NewNotePage : ContentPage
 {

@@ -1,26 +1,26 @@
-# 換行契約。repo 現況是全樹 LF,這份規則刻意不強迫工作區換行 ——
-# text=auto 讓 Git 在提交時統一存 LF,checkout 時照各機器的 core.autocrlf 走,
-# 所以導入這份檔案不需要全樹 renormalize,外部貢獻者與 CI 也不會製造整檔換行 diff。
+# 換行契約。repo 現況是全樹 LF，這份規則刻意不強迫工作區換行 ——
+# text=auto 讓 Git 在提交時統一存 LF,checkout 時照各機器的 core.autocrlf 走，
+# 所以導入這份檔案不需要全樹 renormalize，外部貢獻者與 CI 也不會製造整檔換行 diff。
 
 * text=auto
 
-# PowerShell 對換行敏感(這台機器的 core.autocrlf=true,工作區本來就是 CRLF)。
+# PowerShell 對換行敏感(這台機器的 core.autocrlf=true，工作區本來就是 CRLF)。
 *.ps1 text eol=crlf
 *.psm1 text eol=crlf
 
-# SVG 是 tools/render-icons.ps1 的輸入,固定 LF,避免不同機器 checkout 後算出的 PNG 不一致。
+# SVG 是 tools/render-icons.ps1 的輸入，固定 LF，避免不同機器 checkout 後算出的 PNG 不一致。
 *.svg text eol=lf
 
-# 明確宣告二進位,不讓任何 text 屬性覆蓋污染圖示資產。
+# 明確宣告二進位，不讓任何 text 屬性覆蓋污染圖示資產。
 *.png binary
 *.gif binary
 
-# 這些 PNG 是 tools/render-icons.ps1 從 assets/icon/*.svg 產出來的,不是手寫的。
+# 這些 PNG 是 tools/render-icons.ps1 從 assets/icon/*.svg 產出來的，不是手寫的。
 # 標成 generated 之後 GitHub 的語言統計與 diff 會把它們摺起來 —— 手改它們沒有意義
-# (下一次跑腳本就被蓋掉),也就不該在 review 裡佔版面。
+# (下一次跑腳本就被蓋掉)，也就不該在 review 裡佔版面。
 src/Inkling/Assets/*.png linguist-generated=true
 assets/gallery/icon.png linguist-generated=true
 assets/social-preview.png linguist-generated=true
 
-# resx 是 XML 文字,走 text=auto 的預設即可,這行只是把意圖寫明白。
+# resx 是 XML 文字，走 text=auto 的預設即可，這行只是把意圖寫明白。
 *.resx text

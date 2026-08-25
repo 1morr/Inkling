@@ -9,8 +9,8 @@ charset = utf-8
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-# 換行跟 .gitattributes 同一套契約(那邊是 * text=auto,提交一律存 LF)——
-# 兩份檔案講的是同一件事,改一邊記得改另一邊。
+# 換行跟 .gitattributes 同一套契約(那邊是 * text=auto，提交一律存 LF)——
+# 兩份檔案講的是同一件事，改一邊記得改另一邊。
 end_of_line = lf
 
 [*.{csproj,props,targets,resx,pubxml,appxmanifest,manifest,slnx,config}]
@@ -25,11 +25,11 @@ indent_style = space
 indent_size = 4
 indent_style = space
 
-# PowerShell 走 CRLF,與 .gitattributes 的 *.ps1 text eol=crlf 一致。
+# PowerShell 走 CRLF，與 .gitattributes 的 *.ps1 text eol=crlf 一致。
 end_of_line = crlf
 
 [*.md]
-# Markdown 的行尾雙空格是語義(換行),不能修掉。
+# Markdown 的行尾雙空格是語義(換行)，不能修掉。
 trim_trailing_whitespace = false
 
 [*.cs]
@@ -51,11 +51,11 @@ csharp_new_line_before_finally = true
 csharp_new_line_before_members_in_object_initializers = true
 csharp_new_line_before_members_in_anonymous_types = true
 
-# var:現有程式碼型別明顯時用 var,這裡只寬鬆建議,不擋 build。
+# var:現有程式碼型別明顯時用 var，這裡只寬鬆建議，不擋 build。
 csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_for_built_in_types = true:suggestion
 
-# 修飾詞與可讀性的基本要求,與現有程式碼一致。
+# 修飾詞與可讀性的基本要求，與現有程式碼一致。
 dotnet_style_require_accessibility_modifiers = always:warning
 csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:warning
 dotnet_style_readonly_field = true:warning

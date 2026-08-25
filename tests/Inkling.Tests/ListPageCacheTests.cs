@@ -8,7 +8,7 @@ namespace Inkling.Tests;
 /// <summary>
 /// 三個清單頁的項目快取。規則只有一條 —— **鍵要帶 repository 的 Version,
 /// 以及每一個會影響內容的設定值** —— 而漏掉的症狀全部是「事件收到了、拿到的還是舊結果」,
-/// 沒有例外、沒有錯誤訊息。最出名的一次是「筆記明明存好了,清單卻說還沒有」。
+/// 沒有例外、沒有錯誤訊息。最出名的一次是「筆記明明存好了，清單卻說還沒有」。
 /// </summary>
 public class ListPageCacheTests
 {
@@ -28,7 +28,7 @@ public class ListPageCacheTests
     [Fact]
     public void ListPage_TruncatesAtMaxResultsAndSaysSo()
     {
-        // MaxResults 是 design-notes〈效能上的規矩〉列的承諾:每一項都要跨進程封送,
+        // MaxResults 是 design-notes〈效能上的規矩〉列的承諾:每一項都要跨進程封送，
         // 而清單每按一個鍵就重建一次。被截掉時最後一列要明講還有幾則。
         var (repository, settings) = Fixture(notes: 0);
         for (var i = 0; i < 7; i++)
@@ -47,7 +47,7 @@ public class ListPageCacheTests
     [Fact]
     public void QuickCapturePage_RebuildsWhenTheSeparatorChanges()
     {
-        // 同一句話換個分隔符,切出來的標題與內文完全不同 —— 少了它,設定改了等於沒改。
+        // 同一句話換個分隔符，切出來的標題與內文完全不同 —— 少了它，設定改了等於沒改。
         var (repository, settings) = Fixture(notes: 0);
         using var page = new QuickCapturePage(repository, settings, settings, settings);
         page.UpdateSearchText(string.Empty, "標題;;內文");
@@ -62,7 +62,7 @@ public class ListPageCacheTests
     [Fact]
     public void QuickCapturePage_RebuildsWhenTheRepositoryChanges()
     {
-        // 底下那幾列是「標題相近的既有筆記」,它們跟著 repository 走。
+        // 底下那幾列是「標題相近的既有筆記」，它們跟著 repository 走。
         var (repository, settings) = Fixture(notes: 0);
         using var page = new QuickCapturePage(repository, settings, settings, settings);
         page.UpdateSearchText(string.Empty, "咖啡");
@@ -73,7 +73,7 @@ public class ListPageCacheTests
 
         Assert.True(
             page.GetItems().Length > before,
-            "存了一則標題相近的筆記,快速記下頁底下卻沒有多一列 —— 快取鍵漏了 Version?");
+            "存了一則標題相近的筆記，快速記下頁底下卻沒有多一列 —— 快取鍵漏了 Version?");
     }
 
     [Fact]

@@ -109,7 +109,7 @@ public class NoteSearchTests
     [Fact]
     public void SplitsOnIdeographicSpace()
     {
-        // 中文輸入法常常打出全形空白,使用者不會意識到自己打的不是半形。
+        // 中文輸入法常常打出全形空白，使用者不會意識到自己打的不是半形。
         var notes = new[]
         {
             MakeNote("咖啡機", body: "預算五千"),

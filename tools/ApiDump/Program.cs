@@ -3,11 +3,11 @@ using Microsoft.CommandPalette.Extensions.Toolkit;
 
 // 把 Command Palette Toolkit 某個型別的實際公開成員印出來。
 //
-// 存在的理由:Microsoft Learn 上的 API 參考頁面有些是 2025 年初寫的,跟 0.11 版的
+// 存在的理由:Microsoft Learn 上的 API 參考頁面有些是 2025 年初寫的，跟 0.11 版的
 // 實際簽章對不上。開發時至少踩到兩次:
-//   FallbackCommandItem  文檔寫 (ICommand),實際是 (ICommand, string displayTitle, string id)
-//   KeyChordHelpers.FromModifiers  文檔寫 4 個參數,實際是 6 個
-// 與其靠編譯錯誤一次次試,不如直接問組件本身。
+//   FallbackCommandItem  文檔寫 (ICommand)，實際是 (ICommand, string displayTitle, string id)
+//   KeyChordHelpers.FromModifiers  文檔寫 4 個參數，實際是 6 個
+// 與其靠編譯錯誤一次次試，不如直接問組件本身。
 //
 // 用法:
 //   dotnet run --project tools\ApiDump -- FallbackCommandItem CommandResult
@@ -42,7 +42,7 @@ foreach (var name in wanted)
         Console.WriteLine($"    .ctor({Parameters(ctor)})");
     }
 
-    // 連 protected 一起印:我們是在「繼承」這些型別,刷新 UI 的鉤子
+    // 連 protected 一起印:我們是在「繼承」這些型別，刷新 UI 的鉤子
     // (RaiseItemsChanged / OnPropertyChanged 之類)通常都是 protected,
     // 只看 public 的話會以為根本沒有辦法通知 UI 更新。
     const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic
@@ -69,7 +69,7 @@ foreach (var name in wanted)
     Console.WriteLine();
 }
 
-// private 的東西對子類別沒意義,只留 public 與 protected。
+// private 的東西對子類別沒意義，只留 public 與 protected。
 static bool IsVisible(MethodBase? method) =>
     method is not null && (method.IsPublic || method.IsFamily || method.IsFamilyOrAssembly);
 

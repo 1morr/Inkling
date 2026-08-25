@@ -7,27 +7,27 @@ description: >-
   Covers ToggleSetting, TextSetting, ChoiceSetSetting, and persistence.
 ---
 
-> **這份是 CmdPal 官方擴展模板附的 skill,正文原封不動搬進來。**
+> **這份是 CmdPal 官方擴展模板附的 skill，正文原封不動搬進來。**
 >
-> **本專案的設定頁沒有照它做,而且不能照它改回去:**
+> **本專案的設定頁沒有照它做，而且不能照它改回去:**
 >
-> 1. **表單不是 toolkit 的 `Settings.ToContent()`,是自己畫的卡片**(`InklingSettingsForm`)。
->    toolkit 那張卡片放不下「瀏覽…」按鈕,而且它把 `Label` 塞進 `Input.Text` 沒有的 `title` 屬性,
+> 1. **表單不是 toolkit 的 `Settings.ToContent()`，是自己畫的卡片**(`InklingSettingsForm`)。
+>    toolkit 那張卡片放不下「瀏覽…」按鈕，而且它把 `Label` 塞進 `Input.Text` 沒有的 `title` 屬性，
 >    欄位名等於不會顯示。[設計考證〈表單也是自己的〉](../../../docs/design-notes.md#settings-form-custom)。
 > 2. **`Settings.SettingsChanged` 擴展發不出來** —— `RaiseSettingsChanged()` 是 internal,
 >    唯一的呼叫者是 toolkit 自己的 `SettingsForm`。存檔走 `SettingsManager.Apply`,
 >    它自己發 `Applied` 事件。
-> 3. **設定頁有兩個入口,後者 CmdPal 只初始化一次**(CmdPal 設定 → Extensions → Inkling)。
->    所以我們自己實作了 `ICommandSettings`,而且**送出表單後一定要 `InklingSettingsPage.Refresh()`**
->    —— 漏掉的話卡片永遠停在啟動時的值,**而且下一次送出會把那個過期值當成使用者輸入寫回設定**。
->    設定頁因此也不能跟著 `ProviderState` 重建。[設計考證〈設定頁有兩個入口,而且只有一個會自己更新〉](../../../docs/design-notes.md#settings-two-entries)。
+> 3. **設定頁有兩個入口，後者 CmdPal 只初始化一次**(CmdPal 設定 → Extensions → Inkling)。
+>    所以我們自己實作了 `ICommandSettings`，而且**送出表單後一定要 `InklingSettingsPage.Refresh()`**
+>    —— 漏掉的話卡片永遠停在啟動時的值，**而且下一次送出會把那個過期值當成使用者輸入寫回設定**。
+>    設定頁因此也不能跟著 `ProviderState` 重建。[設計考證〈設定頁有兩個入口，而且只有一個會自己更新〉](../../../docs/design-notes.md#settings-two-entries)。
 > 4. **「Settings are automatically persisted by the CmdPal host」不準。** 我們用
 >    `JsonSettingsManager` 存在自己的 `LocalState\settings.json`。載入是「一項爆掉、
->    後面全部不載入」,所以布林那一項刻意排最後。
+>    後面全部不載入」，所以布林那一項刻意排最後。
 > 5. **其他設定不能靠重建 `ProviderState` 生效** —— CmdPal 握著的是使用者當下開著的頁面實例。
 >    要讓現有頁面自己響應:窄介面 + 事件(`ICaptureSeparatorStore` 就是這個形狀),
 >    而且頁面上快取的鍵要帶上那個設定值。
-> 6. **加新設定項時,標籤與說明要同步三份 `.resx`**,並且到 `docs/manual-test-checklist.md`
+> 6. **加新設定項時，標籤與說明要同步三份 `.resx`**，並且到 `docs/manual-test-checklist.md`
 >    第 8 節補一條。
 
 # Add Extension Settings

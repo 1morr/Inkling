@@ -4,8 +4,8 @@ on:
   push:
     tags: ['v*']
   # 打真的 tag 之前先試跑一次。打包這一段(stage 佈局 → makeappx pack → bundle)
-  # 在 tag 出現之前沒有任何機會被執行過,而它壞掉的代價是「tag 已經推上去了,
-  # 重跑還得先把 tag 刪掉」。dispatch 跑完整條路,只跳過最後建 Release 那一步。
+  # 在 tag 出現之前沒有任何機會被執行過，而它壞掉的代價是「tag 已經推上去了，
+  # 重跑還得先把 tag 刪掉」。dispatch 跑完整條路，只跳過最後建 Release 那一步。
   workflow_dispatch:
     inputs:
       dry_run_version:
@@ -13,8 +13,8 @@ on:
         required: false
         default: '0.0.0'
 
-# 預設唯讀,寫入權限只給真的要建 Release 的那個 job —— build job 會跑
-# dotnet publish 與 makeappx,不需要能改這個 repo。
+# 預設唯讀，寫入權限只給真的要建 Release 的那個 job —— build job 會跑
+# dotnet publish 與 makeappx，不需要能改這個 repo。
 permissions:
   contents: read
 
@@ -29,14 +29,14 @@ jobs:
           - { arch: x64, platform: x64, profile: win-x64 }
           - { arch: arm64, platform: ARM64, profile: win-arm64 }
     env:
-      # 簽章佔位:走自購 OV 憑證路線時,把 PFX 以 base64 存進 repo secret
-      # SIGNING_CERT_BASE64、密碼存進 SIGNING_CERT_PASSWORD,下面的簽章步驟就會啟用。
+      # 簽章佔位:走自購 OV 憑證路線時，把 PFX 以 base64 存進 repo secret
+      # SIGNING_CERT_BASE64、密碼存進 SIGNING_CERT_PASSWORD，下面的簽章步驟就會啟用。
       # 走 Store 代簽路線則不需要 —— 直接拿這裡產出的未簽章 bundle 上傳 Partner Center。
       #
-      # 這裡**只放一個布林旗標,不放憑證本身**:job 層的 env 每一個步驟都讀得到,
+      # 這裡**只放一個布林旗標，不放憑證本身**:job 層的 env 每一個步驟都讀得到，
       # 包含 dotnet publish 與 makeappx —— 那些步驟會跑到第三方的 MSBuild 目標與
-      # 還原下來的套件,沒有理由讓它們看得到私鑰。憑證只掛在真的要簽的那一步。
-      # 旗標非用 job 層 env 不可:GitHub 明講 `secrets` 在步驟的 `if:` 裡讀不到,
+      # 還原下來的套件，沒有理由讓它們看得到私鑰。憑證只掛在真的要簽的那一步。
+      # 旗標非用 job 層 env 不可:GitHub 明講 `secrets` 在步驟的 `if:` 裡讀不到，
       # 官方給的解法就是先映射成 job 層的 env 再比對。
       HAS_SIGNING_CERT: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
     steps:
@@ -51,28 +51,28 @@ jobs:
         shell: pwsh
         env:
           # **不要把 ${{ }} 直接內插進 PowerShell 原始碼。** 這兩個值一個來自 ref 名、
-          # 一個來自手動輸入,而內插是在 shell 看到腳本之前就做完的字串替換 ——
-          # 值裡有引號就改變了程式的結構。經由 env 傳進去,PowerShell 只當它是資料。
-          # (tag 那條路格式下面還會驗一次,這裡是不讓它有機會先變成程式碼。)
+          # 一個來自手動輸入，而內插是在 shell 看到腳本之前就做完的字串替換 ——
+          # 值裡有引號就改變了程式的結構。經由 env 傳進去，PowerShell 只當它是資料。
+          # (tag 那條路格式下面還會驗一次，這裡是不讓它有機會先變成程式碼。)
           REF_NAME: ${{ github.ref_name }}
           DRY_RUN_VERSION: ${{ inputs.dry_run_version }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          # workflow_dispatch 時 ref 名是分支名,不是 tag —— 改用輸入的版本。
+          # workflow_dispatch 時 ref 名是分支名，不是 tag —— 改用輸入的版本。
           $tag = if ($env:EVENT_NAME -eq 'workflow_dispatch') {
             $env:DRY_RUN_VERSION
           } else {
             $env:REF_NAME -replace '^v', ''
           }
           # **第一段不能是 0。** Microsoft Learn〈App package requirements for MSIX app〉
-          # 寫明版本各段是 0..65535,而第一段例外:it cannot be 0。舊的 regex 放行 0.2.0,
+          # 寫明版本各段是 0..65535，而第一段例外:it cannot be 0。舊的 regex 放行 0.2.0,
           # makeappx 也照打 —— 失敗會發生在最貴的時機:CI 全綠、資產都在、上傳
-          # Partner Center 才被退,而 tag 已經推上去、那個版本號在 Store 端也被佔掉了。
+          # Partner Center 才被退，而 tag 已經推上去、那個版本號在 Store 端也被佔掉了。
           # 第一個公開版本從 v1.0.0 起。
           if ($tag -notmatch '^[1-9]\d*\.\d+\.\d+$') {
-            throw "版本必須是 <major>.<minor>.<patch>,而且 major 不能是 0(Store 的規定)。實際是 '$tag'"
+            throw "版本必須是 <major>.<minor>.<patch>，而且 major 不能是 0(Store 的規定)。實際是 '$tag'"
           }
-          # MSIX 版本是四段,而且第四段必須是 0(Store 的規定)。
+          # MSIX 版本是四段，而且第四段必須是 0(Store 的規定)。
           "appx_version=$tag.0" >> $env:GITHUB_OUTPUT
           # 資產檔名用得到:tag 那條路是 v1.0.0,dispatch 那條路是輸入的版本。
           "tag_name=v$tag" >> $env:GITHUB_OUTPUT
@@ -81,21 +81,21 @@ jobs:
         shell: pwsh
         run: |
           # -p:AppxPackageVersion 對這套單專案 MSIX 目標沒有作用(本機實測:產生的
-          # AppxManifest.xml 仍是 manifest 裡的 0.1.0.0),所以直接改 manifest 的
+          # AppxManifest.xml 仍是 manifest 裡的 0.1.0.0)，所以直接改 manifest 的
           # Version 屬性。身分欄位(Name / Publisher)不碰 —— 見 docs/release-checklist.md。
-          # 這個改動只發生在 CI 的 checkout 上,不會 commit 回去。
+          # 這個改動只發生在 CI 的 checkout 上，不會 commit 回去。
           $path = 'src/Inkling/Package.appxmanifest'
           [xml]$m = Get-Content $path
           $m.Package.Identity.Version = '${{ steps.ver.outputs.appx_version }}'
           $m.Save((Resolve-Path $path).Path)
 
       # tag 可能打在沒跑過 ci.yml 的 commit 上(或 ci 之後又推了東西),
-      # 所以發版這條路自己再驗一次 —— Core 的測試三秒跑完,比事後撤回一個版本便宜。
+      # 所以發版這條路自己再驗一次 —— Core 的測試三秒跑完，比事後撤回一個版本便宜。
       - name: Test
         run: dotnet test --nologo
 
-      # 擴展層的測試專案**刻意不在 Inkling.slnx 裡**:它引用 MSIX 專案,所以必須是
-      # x64 且 self-contained,而方案層級走 AnyCPU —— 加進去只會讓每次 dotnet test
+      # 擴展層的測試專案**刻意不在 Inkling.slnx 裡**:它引用 MSIX 專案，所以必須是
+      # x64 且 self-contained，而方案層級走 AnyCPU —— 加進去只會讓每次 dotnet test
       # 都印一個 NETSDK1150。要跑它就指定專案。
       - name: Test extension layer
         run: dotnet test tests/Inkling.Tests/Inkling.Tests.csproj -p:Platform=x64 --nologo
@@ -106,8 +106,8 @@ jobs:
       - name: Stage package layout
         shell: pwsh
         run: |
-          # 佈局邏輯與 tools/deploy.ps1 共用同一支腳本 —— 以前兩邊各寫一份,
-          # 而這條路在打 tag 之前不會被執行,漂掉了也沒人會發現。
+          # 佈局邏輯與 tools/deploy.ps1 共用同一支腳本 —— 以前兩邊各寫一份，
+          # 而這條路在打 tag 之前不會被執行，漂掉了也沒人會發現。
           $tfm = 'net10.0-windows10.0.26100.0'
           ./tools/stage-layout.ps1 `
             -PublishDir "src/Inkling/bin/Release/$tfm/win-${{ matrix.arch }}/publish" `
@@ -121,7 +121,7 @@ jobs:
             Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
           if (-not $makeappx) { throw '在 Windows Kits 底下找不到 makeappx.exe' }
           New-Item -ItemType Directory -Force -Path artifacts/out | Out-Null
-          # 不加 /nv:讓 makeappx 做完整的套件驗證,清單或資產有問題在這裡就擋下。
+          # 不加 /nv:讓 makeappx 做完整的套件驗證，清單或資產有問題在這裡就擋下。
           & $makeappx pack /o `
             /d "artifacts/stage-${{ matrix.arch }}" `
             /p "artifacts/out/Inkling_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
@@ -129,11 +129,11 @@ jobs:
 
       - name: Sign .msix
         # 需要憑證:目前還沒有公開信任的程式碼簽章憑證(決策見 docs/release-checklist.md)。
-        # 未設定 secret 時這一步整個跳過,產出的是未簽章套件 —— 只能拿去 Store 送審
-        # (Store 會代簽),不能給一般使用者側載(Windows 會以 0x800B0109 擋下)。
+        # 未設定 secret 時這一步整個跳過，產出的是未簽章套件 —— 只能拿去 Store 送審
+        # (Store 會代簽)，不能給一般使用者側載(Windows 會以 0x800B0109 擋下)。
         if: env.HAS_SIGNING_CERT == 'true'
         shell: pwsh
-        # 憑證只在這一步存在,不放 job 層 —— job 層的 env 連 dotnet publish 都讀得到。
+        # 憑證只在這一步存在，不放 job 層 —— job 層的 env 連 dotnet publish 都讀得到。
         env:
           SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
           SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
@@ -164,9 +164,9 @@ jobs:
     permissions:
       contents: write
     env:
-      # 與 build job 同一組 secret:bundle 也要簽,否則 Release 上掛的是
-      # 「裡面每個 .msix 都簽好、外面那層沒簽」的東西,側載照樣被 Windows 擋下。
-      # 同樣只放旗標,憑證掛在簽章那一步自己的 env。
+      # 與 build job 同一組 secret:bundle 也要簽，否則 Release 上掛的是
+      # 「裡面每個 .msix 都簽好、外面那層沒簽」的東西，側載照樣被 Windows 擋下。
+      # 同樣只放旗標，憑證掛在簽章那一步自己的 env。
       HAS_SIGNING_CERT: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
     steps:
       - uses: actions/download-artifact@v8
@@ -180,14 +180,14 @@ jobs:
         shell: pwsh
         env:
           # **不要把 ${{ }} 直接內插進 PowerShell 原始碼。** 這兩個值一個來自 ref 名、
-          # 一個來自手動輸入,而內插是在 shell 看到腳本之前就做完的字串替換 ——
-          # 值裡有引號就改變了程式的結構。經由 env 傳進去,PowerShell 只當它是資料。
-          # (tag 那條路格式下面還會驗一次,這裡是不讓它有機會先變成程式碼。)
+          # 一個來自手動輸入，而內插是在 shell 看到腳本之前就做完的字串替換 ——
+          # 值裡有引號就改變了程式的結構。經由 env 傳進去，PowerShell 只當它是資料。
+          # (tag 那條路格式下面還會驗一次，這裡是不讓它有機會先變成程式碼。)
           REF_NAME: ${{ github.ref_name }}
           DRY_RUN_VERSION: ${{ inputs.dry_run_version }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          # 格式已經在 build job 驗過(這個 job needs: build),這裡只還原同一個值。
+          # 格式已經在 build job 驗過(這個 job needs: build)，這裡只還原同一個值。
           $tag = if ($env:EVENT_NAME -eq 'workflow_dispatch') {
             $env:DRY_RUN_VERSION
           } else {
@@ -201,15 +201,15 @@ jobs:
         run: |
           $makeappx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
             Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-          # /bv 不能省:makeappx 自己的說明寫著「沒指定或設成 0.0.0.0 時,bundle 版本
-          # 會用打包當下的日期時間」(<年>.<月日>.<時分>.<秒毫秒>),於是同一個 tag
-          # 每次重跑都產出不同版本,而且跟 .msix 裡的版本對不上。
+          # /bv 不能省:makeappx 自己的說明寫著「沒指定或設成 0.0.0.0 時，bundle 版本
+          # 會用打包當下的日期時間」(<年>.<月日>.<時分>.<秒毫秒>)，於是同一個 tag
+          # 每次重跑都產出不同版本，而且跟 .msix 裡的版本對不上。
           & $makeappx bundle /o /bv ${{ steps.ver.outputs.appx_version }} `
             /d artifacts/msix /p "artifacts/Inkling_${{ steps.ver.outputs.tag_name }}.msixbundle"
           if ($LASTEXITCODE -ne 0) { throw "makeappx bundle 失敗($LASTEXITCODE)" }
 
       - name: Sign .msixbundle
-        # 跟 build job 的 Sign 同一個條件:沒有憑證就整步跳過,產出未簽章的 bundle
+        # 跟 build job 的 Sign 同一個條件:沒有憑證就整步跳過，產出未簽章的 bundle
         # (只能送 Store 代簽)。有憑證的話這一步是必要的 —— 簽章不會從裡面的 .msix
         # 傳遞到外層 bundle。
         if: env.HAS_SIGNING_CERT == 'true'
@@ -233,30 +233,30 @@ jobs:
           }
 
       - name: Create GitHub Release
-        # 試跑到這裡就停:前面已經把 stage → pack → bundle 整條路跑過一遍,那才是要驗的。
+        # 試跑到這裡就停:前面已經把 stage → pack → bundle 整條路跑過一遍，那才是要驗的。
         if: github.event_name != 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # gh 解析 repo 的環境變數**只有 GH_REPO**,它不會回落到 Actions 內建的
+          # gh 解析 repo 的環境變數**只有 GH_REPO**，它不會回落到 Actions 內建的
           # GITHUB_REPOSITORY;而這個 job 沒有 checkout,gh 也就找不到 git remote 可問。
-          # 少了這一行,前面全部成功之後最後一步會死在
-          # 「failed to run git: fatal: not a git repository」——tag 已經推上去了,
+          # 少了這一行，前面全部成功之後最後一步會死在
+          # 「failed to run git: fatal: not a git repository」——tag 已經推上去了，
           # 重跑還得先把 tag 刪掉。
           GH_REPO: ${{ github.repository }}
         run: |
-          # PowerShell 不會對原生指令展開萬用字元,資產路徑要自己展開再傳。
+          # PowerShell 不會對原生指令展開萬用字元，資產路徑要自己展開再傳。
           $assets = Get-ChildItem artifacts/msix/*.msix | ForEach-Object FullName
           $bundle = (Resolve-Path "artifacts/Inkling_${{ steps.ver.outputs.tag_name }}.msixbundle").Path
 
           $extra = @()
           if ($env:HAS_SIGNING_CERT -ne 'true') {
             # **未簽章的資產不能長得像「下載下來就能裝」。**
-            # 使用者雙擊會拿到 0x800B0109,而 --generate-notes 的正文是從 commit message
-            # 產的,不會提這件事 —— 唯一寫著這件事的地方是 README 的安裝章節與一行 YAML
-            # 註解,沒有人會看到。對一個首次公開發佈,那是最差的第一印象。
+            # 使用者雙擊會拿到 0x800B0109，而 --generate-notes 的正文是從 commit message
+            # 產的，不會提這件事 —— 唯一寫著這件事的地方是 README 的安裝章節與一行 YAML
+            # 註解，沒有人會看到。對一個首次公開發佈，那是最差的第一印象。
             #
-            # 所以改成 prerelease,而且用顯式的 --notes 講清楚這些資產是什麼。
+            # 所以改成 prerelease，而且用顯式的 --notes 講清楚這些資產是什麼。
             # 有憑證時走原本那條:正式 release + --generate-notes。
             $notes = @(
               '> [!WARNING]'

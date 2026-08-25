@@ -29,14 +29,14 @@ public class FileSystemNoteRepositoryTests
 
         Assert.Equal("import os", note.Title);
 
-        // 唯一一行內容已經被拿去當標題,副標就該留空,而不是重複一次。
+        // 唯一一行內容已經被拿去當標題，副標就該留空，而不是重複一次。
         Assert.Equal(string.Empty, note.Summary);
     }
 
     [Fact]
     public void GetAll_ExternalFile_TitleAndSummaryAreNotTheSameLine()
     {
-        // DeriveTitle 取第一行當標題,Summary 若也取第一行,清單上同一句話會出現兩次。
+        // DeriveTitle 取第一行當標題，Summary 若也取第一行，清單上同一句話會出現兩次。
         using var temp = new TempDirectory();
         temp.WriteFile("external-plain.md", "# 外來標題\n\n這是別的工具寫的檔案。");
 
@@ -51,7 +51,7 @@ public class FileSystemNoteRepositoryTests
     [SupportedOSPlatform("windows")] // ACL 是 Windows-only API;這個 repo 本來就只跑 Windows
     public void GetAll_InaccessibleSubdirectory_StillReturnsOtherNotes()
     {
-        // 筆記資料夾指到 Documents 之類的位置時,底下很可能有進不去的子目錄
+        // 筆記資料夾指到 Documents 之類的位置時，底下很可能有進不去的子目錄
         // (deny-read 的 junction、權限不對的資料夾)。一個進不去不該讓整份清單全滅。
         using var temp = new TempDirectory();
         temp.WriteFile("正常.md", "---\nid: ok\ntitle: 正常筆記\n---\n\n內文");
@@ -59,8 +59,8 @@ public class FileSystemNoteRepositoryTests
             Path.Combine("進不去", "藏起來.md"),
             "---\nid: hidden\ntitle: 藏起來\n---\n\n內文");
 
-        // 只 deny 列目錄(ReadData),留著 ReadAttributes,Directory.Exists 才還是 true,
-        // 這樣走的是「枚舉途中被拒」那條路,而不是「目錄不存在」。
+        // 只 deny 列目錄(ReadData)，留著 ReadAttributes,Directory.Exists 才還是 true,
+        // 這樣走的是「枚舉途中被拒」那條路，而不是「目錄不存在」。
         var subdir = new DirectoryInfo(Path.GetDirectoryName(hidden)!);
         var acl = subdir.GetAccessControl();
         using var identity = WindowsIdentity.GetCurrent();
@@ -77,7 +77,7 @@ public class FileSystemNoteRepositoryTests
         }
         finally
         {
-            // 不把 Deny 拿掉的話,TempDirectory 收尾會刪不掉這個子目錄。
+            // 不把 Deny 拿掉的話，TempDirectory 收尾會刪不掉這個子目錄。
             acl.RemoveAccessRuleSpecific(deny);
             subdir.SetAccessControl(acl);
         }
@@ -87,8 +87,8 @@ public class FileSystemNoteRepositoryTests
     [SupportedOSPlatform("windows")] // ACL 是 Windows-only API;這個 repo 本來就只跑 Windows
     public void GetAll_UnreadableNotesDirectory_ReturnsEmptyInsteadOfThrowing()
     {
-        // 設定頁允許填任意路徑,「整個資料夾列不出來」是使用者自己製造得出來的狀態。
-        // 那該退化成空清單,而不是讓例外一路穿出頁面的 GetItems。
+        // 設定頁允許填任意路徑，「整個資料夾列不出來」是使用者自己製造得出來的狀態。
+        // 那該退化成空清單，而不是讓例外一路穿出頁面的 GetItems。
         using var temp = new TempDirectory();
 
         var dir = new DirectoryInfo(temp.Path);
@@ -113,8 +113,8 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public async Task Changed_FiresAgain_AfterDirectoryIsDeletedAndRecreated()
     {
-        // OneDrive 重新佈建、或使用者自己砍掉再建資料夾之後,舊 watcher 監看的是
-        // 已經消失的目錄,永遠不會再發事件 —— 不拆掉的話,之後所有外部異動都無聲消失。
+        // OneDrive 重新佈建、或使用者自己砍掉再建資料夾之後，舊 watcher 監看的是
+        // 已經消失的目錄，永遠不會再發事件 —— 不拆掉的話，之後所有外部異動都無聲消失。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
@@ -122,18 +122,18 @@ public class FileSystemNoteRepositoryTests
 
         Directory.Delete(temp.Path, recursive: true);
         repository.Invalidate();
-        Assert.Empty(repository.GetAll()); // 目錄不在:回傳空,同時該把死掉的 watcher 拆掉
+        Assert.Empty(repository.GetAll()); // 目錄不在:回傳空，同時該把死掉的 watcher 拆掉
 
         Directory.CreateDirectory(temp.Path);
-        repository.GetAll(); // 目錄回來了,這裡要重新掛上 watcher
+        repository.GetAll(); // 目錄回來了，這裡要重新掛上 watcher
 
-        // 刪除那陣事件的去抖動通知可能還在排隊(去抖動是 250ms),等它過去再訂閱,
+        // 刪除那陣事件的去抖動通知可能還在排隊(去抖動是 250ms)，等它過去再訂閱，
         // 免得把舊事件誤當成後面那個檔案觸發的。
         await Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
 
-        // 上限不能設 1。watcher 對同一次異動常常發不只一個事件,第二次 Release()
-        // 會丟 SemaphoreFullException —— 那個例外在事件的回呼執行緒上,
-        // 直接讓整個測試進程收掉,而不是讓這一條測試紅。
+        // 上限不能設 1。watcher 對同一次異動常常發不只一個事件，第二次 Release()
+        // 會丟 SemaphoreFullException —— 那個例外在事件的回呼執行緒上，
+        // 直接讓整個測試進程收掉，而不是讓這一條測試紅。
         using var fired = new SemaphoreSlim(0);
         repository.Changed += (_, _) => fired.Release();
 
@@ -141,7 +141,7 @@ public class FileSystemNoteRepositoryTests
 
         Assert.True(
             await fired.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken),
-            "資料夾刪除再重建之後,外部新增檔案沒有收到 Changed 事件");
+            "資料夾刪除再重建之後，外部新增檔案沒有收到 Changed 事件");
     }
 
     [Fact]
@@ -164,8 +164,8 @@ public class FileSystemNoteRepositoryTests
 
         var note = repository.Create("新筆記", string.Empty);
 
-        // 釘的是行為,不是重抽了幾次:「撞到就換一個」跟「一次只換一個」是兩件事,
-        // 後者是實作細節,寫死之後任何改法都得回來改測試。
+        // 釘的是行為，不是重抽了幾次:「撞到就換一個」跟「一次只換一個」是兩件事，
+        // 後者是實作細節，寫死之後任何改法都得回來改測試。
         Assert.True(attempts >= 2, "撞到既有 id 之後沒有重抽");
         Assert.Equal("fresh-id", note.Id);
         Assert.Equal(2, repository.GetAll().Count);
@@ -205,7 +205,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void Create_QuickCaptureWithEmptyBody()
     {
-        // 最常見的一種筆記:只有一句話,沒有內文。
+        // 最常見的一種筆記:只有一句話，沒有內文。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
@@ -225,7 +225,7 @@ public class FileSystemNoteRepositoryTests
         var original = repository.Create("原標題", "原內文");
 
         // 模擬使用者在別的編輯器(例如 Obsidian)手動加了欄位。
-        // 錨點是 front matter 的收尾分隔線(開頭那條前面沒有換行,不會誤中)。
+        // 錨點是 front matter 的收尾分隔線(開頭那條前面沒有換行，不會誤中)。
         var onDisk = File.ReadAllText(original.FilePath)
             .Replace("\r\n---\r\n", "\r\ncssclass: reading\r\naliases:\r\n  - 別名\r\n---\r\n", StringComparison.Ordinal);
         File.WriteAllText(original.FilePath, onDisk);
@@ -249,7 +249,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void Update_DoesNotRenameTheFile()
     {
-        // 改標題就重新命名檔案,在雲端同步資料夾裡是製造重複檔與衝突檔的頭號原因。
+        // 改標題就重新命名檔案，在雲端同步資料夾裡是製造重複檔與衝突檔的頭號原因。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
@@ -264,7 +264,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void Update_MissingFile_Throws()
     {
-        // 使用者按下儲存的那一刻,檔案剛好被別的程式移走 / 別台機器先刪掉了。
+        // 使用者按下儲存的那一刻，檔案剛好被別的程式移走 / 別台機器先刪掉了。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
@@ -307,7 +307,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void Delete_BumpsVersionSoCachesRefresh()
     {
-        // 清單頁的項目快取以 Version 為鍵。刪完不動 Version 的話,畫面上那一則會留著,
+        // 清單頁的項目快取以 Version 為鍵。刪完不動 Version 的話，畫面上那一則會留著，
         // 點下去才發現檔案已經不在了。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
@@ -336,7 +336,7 @@ public class FileSystemNoteRepositoryTests
 
         Assert.Equal([note.FilePath], deleter.Deleted);
 
-        // 這個 deleter 什麼都沒做,檔案應該還在 —— 證明刪除確實只走它那條路。
+        // 這個 deleter 什麼都沒做，檔案應該還在 —— 證明刪除確實只走它那條路。
         Assert.True(File.Exists(note.FilePath));
     }
 
@@ -388,7 +388,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void DeleteMany_DeletingNothingDoesNotBumpVersion()
     {
-        // 版本一動,正開著的頁面就會重建一次項目。什麼都沒刪掉還讓它重建是白做工。
+        // 版本一動，正開著的頁面就會重建一次項目。什麼都沒刪掉還讓它重建是白做工。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
@@ -402,7 +402,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void DeleteMany_KeepsGoingWhenOneFileCannotBeDeleted()
     {
-        // 一個檔案被鎖住不該讓其餘的留在原地 —— 使用者按下「刪除全部」就是要清空,
+        // 一個檔案被鎖住不該讓其餘的留在原地 —— 使用者按下「刪除全部」就是要清空，
         // 半途中止只會留下一個說不清楚的狀態。
         using var temp = new TempDirectory();
 
@@ -416,7 +416,7 @@ public class FileSystemNoteRepositoryTests
 
         var deleted = repository.DeleteMany(repository.GetAll());
 
-        // 三則都試過,回報的是真正成功的那兩則。
+        // 三則都試過，回報的是真正成功的那兩則。
         Assert.Equal(2, deleted);
         Assert.Equal(3, deleter.Attempted.Count);
     }
@@ -427,7 +427,7 @@ public class FileSystemNoteRepositoryTests
 
         public List<string> Attempted { get; } = [];
 
-        /// <summary>路徑含有這段字的就丟 IOException,用來模擬「檔案被鎖住」。</summary>
+        /// <summary>路徑含有這段字的就丟 IOException，用來模擬「檔案被鎖住」。</summary>
         public string? FailOnPathContaining { get; init; }
 
         public void Delete(string path)
@@ -472,7 +472,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void GetAll_IncludesPlainMarkdownDroppedInByOtherTools()
     {
-        // 使用者把既有的 .md 丟進資料夾。它沒有 front matter,但照樣要出現在清單裡,
+        // 使用者把既有的 .md 丟進資料夾。它沒有 front matter，但照樣要出現在清單裡，
         // 而不是無聲消失。
         using var temp = new TempDirectory();
         temp.WriteFile("外來筆記.md", "# 外面來的標題\n\n一些內文。");
@@ -488,13 +488,13 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void GetAll_CountsFilesItCouldNotRead()
     {
-        // 讀不出來的檔案會從清單上消失,而使用者不會知道為什麼 —— 清單頁靠這個數字
-        // 多掛一列說明。以前這個數字算完沒有任何消費者,也沒有測試碰過遞增那條路。
+        // 讀不出來的檔案會從清單上消失，而使用者不會知道為什麼 —— 清單頁靠這個數字
+        // 多掛一列說明。以前這個數字算完沒有任何消費者，也沒有測試碰過遞增那條路。
         using var temp = new TempDirectory();
         temp.WriteFile("讀得到.md", "---\nid: ok-1\ntitle: 讀得到\n---\n\n內文");
         var locked = temp.WriteFile("被鎖住.md", "---\nid: locked-1\ntitle: 被鎖住\n---\n\n內文");
 
-        // FileShare.None:別的程序連讀都不行,正是「被編輯器或同步程式佔著」的形狀。
+        // FileShare.None:別的程序連讀都不行，正是「被編輯器或同步程式佔著」的形狀。
         using (File.Open(locked, FileMode.Open, FileAccess.Read, FileShare.None))
         {
             using var repository = CreateRepository(temp, out _);
@@ -508,7 +508,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void GetAll_MarksFilesNotWrittenByInklingAsExternal()
     {
-        // 批次刪除靠這個旗標決定範圍,認錯就是刪掉別人的檔案。
+        // 批次刪除靠這個旗標決定範圍，認錯就是刪掉別人的檔案。
         using var temp = new TempDirectory();
         temp.WriteFile("沒有 front matter.md", "# 外面來的");
         temp.WriteFile("有別人的 front matter.md", "---\ntitle: Obsidian 寫的\ntags: [a]\n---\n\n內文");
@@ -522,16 +522,16 @@ public class FileSystemNoteRepositoryTests
         Assert.False(Assert.Single(notes, n => n.Title == "Inkling 自己建的").IsExternal);
         Assert.True(Assert.Single(notes, n => n.Title == "外面來的").IsExternal);
 
-        // front matter 有沒有不是重點,有沒有 Inkling 的 id 才是 —— 別的工具也會寫 front matter。
+        // front matter 有沒有不是重點，有沒有 Inkling 的 id 才是 —— 別的工具也會寫 front matter。
         Assert.True(Assert.Single(notes, n => n.Title == "Obsidian 寫的").IsExternal);
     }
 
     [Fact]
     public void Update_MakesAnExternalNoteOurs()
     {
-        // 編輯外來檔案會替它補上 Inkling 的 front matter(含 id),那之後它就不算外來的了。
+        // 編輯外來檔案會替它補上 Inkling 的 front matter(含 id)，那之後它就不算外來的了。
         // 這條記下來是因為它決定「只刪 Inkling 建立的」會不會把它掃進去 ——
-        // 會,而且合理:那個檔案確實是我們寫過的。
+        // 會，而且合理:那個檔案確實是我們寫過的。
         using var temp = new TempDirectory();
         temp.WriteFile("外來.md", "# 外面來的");
 
@@ -547,7 +547,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void GetAll_DerivedIdIsStableAcrossReloads()
     {
-        // 外來檔案的 id 是從路徑推導出來的。不穩定的話,預覽頁與編輯頁
+        // 外來檔案的 id 是從路徑推導出來的。不穩定的話，預覽頁與編輯頁
         // 在重新載入之後就會找不到同一則筆記。
         using var temp = new TempDirectory();
         temp.WriteFile("外來筆記.md", "沒有 front matter");
@@ -577,7 +577,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void GetAll_ExcludesTheScratchpad()
     {
-        // 隨手草稿存在筆記資料夾裡(才跟得上雲端同步),但它不是筆記 —— 沒有標題也沒有 id,
+        // 隨手草稿存在筆記資料夾裡(才跟得上雲端同步)，但它不是筆記 —— 沒有標題也沒有 id,
         // 列進來清單就會永遠多一列標題在跳動的半成品。
         using var temp = new TempDirectory();
         temp.WriteFile(ScratchpadStore.FileName, "還沒想清楚的東西");
@@ -588,16 +588,16 @@ public class FileSystemNoteRepositoryTests
 
         Assert.Equal("真的筆記", note.Title);
 
-        // 它不是「壞到讀不出來的檔案」,是我們自己決定不列的 —— 混進這個數字會讓
-        // 清單頁跳出「有幾個檔案讀不出來」的提示,而使用者根本沒有壞檔。
+        // 它不是「壞到讀不出來的檔案」，是我們自己決定不列的 —— 混進這個數字會讓
+        // 清單頁跳出「有幾個檔案讀不出來」的提示，而使用者根本沒有壞檔。
         Assert.Equal(0, repository.SkippedFileCount);
     }
 
     [Fact]
     public void GetAll_ScratchpadInASubdirectoryIsStillANote()
     {
-        // 排除規則只認最上層那一個。子資料夾裡剛好同名的檔案是使用者自己的筆記,
-        // 照常列出來 —— 規則要講得出口,不然就成了無聲吃掉檔案的黑魔法。
+        // 排除規則只認最上層那一個。子資料夾裡剛好同名的檔案是使用者自己的筆記，
+        // 照常列出來 —— 規則要講得出口，不然就成了無聲吃掉檔案的黑魔法。
         using var temp = new TempDirectory();
         temp.WriteFile("專案A/" + ScratchpadStore.FileName, "# 這是一則筆記\n\n內文");
 
@@ -669,16 +669,16 @@ public class FileSystemNoteRepositoryTests
     public async Task Changed_FiresWhenAFileAppearsFromOutside()
     {
         // 這條就是多端同步在 UI 上的體現:別台機器記下的想法經 OneDrive 同步到這個
-        // 資料夾時,清單頁要能自己更新,不必手動重新整理。
+        // 資料夾時，清單頁要能自己更新，不必手動重新整理。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
-        // 先讀一次,資料夾監看是在這時候才掛上去的。
+        // 先讀一次，資料夾監看是在這時候才掛上去的。
         repository.GetAll();
 
-        // 上限不能設 1。watcher 對同一次異動常常發不只一個事件,第二次 Release()
-        // 會丟 SemaphoreFullException —— 那個例外在事件的回呼執行緒上,
-        // 直接讓整個測試進程收掉,而不是讓這一條測試紅。
+        // 上限不能設 1。watcher 對同一次異動常常發不只一個事件，第二次 Release()
+        // 會丟 SemaphoreFullException —— 那個例外在事件的回呼執行緒上，
+        // 直接讓整個測試進程收掉，而不是讓這一條測試紅。
         using var fired = new SemaphoreSlim(0);
         repository.Changed += (_, _) => fired.Release();
 
@@ -694,7 +694,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void Changed_FiresSynchronouslyOnOurOwnWrites()
     {
-        // 使用者剛按下儲存,畫面就該跟上 —— 這一條不能走去抖動的 250 毫秒。
+        // 使用者剛按下儲存，畫面就該跟上 —— 這一條不能走去抖動的 250 毫秒。
         // (去抖動是給 OneDrive 那種爆發式外部寫入用的。)
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
@@ -714,7 +714,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public async Task Changed_IsDebouncedAcrossABurstOfWrites()
     {
-        // OneDrive 同步是一陣爆發式的寫入。每個檔案都通知一次的話,
+        // OneDrive 同步是一陣爆發式的寫入。每個檔案都通知一次的話，
         // 清單頁會在同步期間被重建幾十次。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
@@ -731,12 +731,12 @@ public class FileSystemNoteRepositoryTests
         await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         // 上界刻意留餘裕:去抖動是「每來一個事件就把觸發時間往後推 250 ms」,
-        // 機器一忙(CI 是共用的),那 20 次寫入本身就可能橫跨好幾個 250 ms 視窗,
-        // 於是合法地通知好幾次。要擋的是「完全沒有合併」,不是「剛好合併成一次」——
-        // 卡在 3 只會換來隨機紅掉的測試,而紅的時候程式並沒有壞。
+        // 機器一忙(CI 是共用的)，那 20 次寫入本身就可能橫跨好幾個 250 ms 視窗，
+        // 於是合法地通知好幾次。要擋的是「完全沒有合併」，不是「剛好合併成一次」——
+        // 卡在 3 只會換來隨機紅掉的測試，而紅的時候程式並沒有壞。
         Assert.True(
             count is > 0 and <= 5,
-            $"20 次寫入觸發了 {count} 次 Changed,去抖動沒有生效");
+            $"20 次寫入觸發了 {count} 次 Changed，去抖動沒有生效");
         Assert.Equal(20, repository.GetAll().Count);
     }
 
@@ -744,7 +744,7 @@ public class FileSystemNoteRepositoryTests
     public void GetAll_ReflectsCreate_WhenDirectoryDidNotExistInitially()
     {
         // 第一次用 Inkling 的實際情境:筆記資料夾要等第一則筆記才會被建出來。
-        // 先讀一次(空的)再新增,第二次讀必須看得到那則筆記。
+        // 先讀一次(空的)再新增，第二次讀必須看得到那則筆記。
         var directory = Path.Combine(Path.GetTempPath(), "inkling-tests", Guid.NewGuid().ToString("n"));
         var options = new InklingOptions { NotesDirectory = directory };
 
@@ -770,7 +770,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void GetAll_DoesNotCacheEmptyResult_WhileDirectoryIsMissing()
     {
-        // 資料夾不存在時把空結果快取起來,之後資料夾出現(別台機器同步下來、
+        // 資料夾不存在時把空結果快取起來，之後資料夾出現(別台機器同步下來、
         // 或使用者自己建的)就永遠不會被發現 —— 而那時候還沒有 watcher 能通知我們。
         var directory = Path.Combine(Path.GetTempPath(), "inkling-tests", Guid.NewGuid().ToString("n"));
         var options = new InklingOptions { NotesDirectory = directory };
@@ -798,7 +798,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public void Version_ChangesWheneverContentMayHaveChanged()
     {
-        // UI 層靠這個號碼判斷自己的項目快取還新不新。少了它,清單頁會一直拿著
+        // UI 層靠這個號碼判斷自己的項目快取還新不新。少了它，清單頁會一直拿著
         // 舊的結果 —— 這正是「筆記存好了但清單顯示還沒有任何筆記」的成因。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
@@ -821,18 +821,18 @@ public class FileSystemNoteRepositoryTests
     public async Task Version_DoesNotMoveASecondTimeFromOurOwnWrite()
     {
         // 自己的寫入在當下就 Invalidate 過了(丟快取、進版本、發 Changed)。
-        // watcher 幾毫秒後為同一個檔案再發一次事件的話,同一次存檔會讓正開著的頁面
-        // 重建兩遍,而第二遍還晚 250 ms(去抖動)才到 —— 畫面會多閃一下。
+        // watcher 幾毫秒後為同一個檔案再發一次事件的話，同一次存檔會讓正開著的頁面
+        // 重建兩遍，而第二遍還晚 250 ms(去抖動)才到 —— 畫面會多閃一下。
         // 這一條也是兩條 Version 測試偶發紅掉的成因。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
 
-        // 先讀一次,資料夾監看是在這時候才掛上去的。
+        // 先讀一次，資料夾監看是在這時候才掛上去的。
         repository.GetAll();
 
-        // **一次存十則,不是一則。** 實測回音只有三成左右的機率出現(同一支測試在
-        // 修正前跑八次紅三次)—— 只存一則的話這條測試有六成機率在壞掉的程式碼上變綠,
-        // 那種守門等於沒有。十則把漏網率壓到 1% 以下,而且只等一次。
+        // **一次存十則，不是一則。** 實測回音只有三成左右的機率出現(同一支測試在
+        // 修正前跑八次紅三次)—— 只存一則的話這條測試有六成機率在壞掉的程式碼上變綠，
+        // 那種守門等於沒有。十則把漏網率壓到 1% 以下，而且只等一次。
         var before = repository.Version;
 
         for (var i = 0; i < 10; i++)
@@ -840,11 +840,11 @@ public class FileSystemNoteRepositoryTests
             repository.Create($"標題 {i}", "內文");
         }
 
-        // **等到「窗口過期 + 去抖動走完」之後,不是隨便等 800 ms。**
-        // 抑制窗口是從寫入當下起算的,所以窗口內到達的回音本來就該被擋下;
-        // 這條測試唯一抓得到的破口是**晚於窗口才到**的那種 —— 那時抑制已經過期,
-        // 事件會被當成外部異動,再過一次去抖動才動到 Version。等得比那短的話,
-        // 這條測試會在真的漏掉回音時報綠。(原本寫死 800 ms,而窗口當時是 500 ms。)
+        // **等到「窗口過期 + 去抖動走完」之後，不是隨便等 800 ms。**
+        // 抑制窗口是從寫入當下起算的，所以窗口內到達的回音本來就該被擋下;
+        // 這條測試唯一抓得到的破口是**晚於窗口才到**的那種 —— 那時抑制已經過期，
+        // 事件會被當成外部異動，再過一次去抖動才動到 Version。等得比那短的話，
+        // 這條測試會在真的漏掉回音時報綠。(原本寫死 800 ms，而窗口當時是 500 ms。)
         await Task.Delay(
             TimeSpan.FromMilliseconds(
                 FileSystemNoteRepository.SelfWriteEchoWindowMs
@@ -858,7 +858,7 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public async Task Version_StillMovesWhenTheSameFileIsTouchedFromOutsideLater()
     {
-        // 上一條的反面:抑制是有時效的。過了那扇窗,同一個檔案被外部工具改動照樣要收到 ——
+        // 上一條的反面:抑制是有時效的。過了那扇窗，同一個檔案被外部工具改動照樣要收到 ——
         // 否則「別台機器同步下來的修改」會在剛存過的那則筆記上永久失聯。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
@@ -868,10 +868,10 @@ public class FileSystemNoteRepositoryTests
 
         using var fired = new SemaphoreSlim(0);
 
-        // 等抑制過期之後才開始聽,免得收到的是自己那一次的回音。
-        // **從常數推導,不要寫死** —— 這裡原本是 900 ms,那是照當時 500 ms 的窗口調的,
-        // 窗口放寬到 1500 ms 之後那個數字會讓外部寫入落在抑制窗口裡,這條測試
-        // 確定性紅掉,而且紅的位置(「外部異動沒觸發 Changed」)跟成因對不上。
+        // 等抑制過期之後才開始聽，免得收到的是自己那一次的回音。
+        // **從常數推導，不要寫死** —— 這裡原本是 900 ms，那是照當時 500 ms 的窗口調的，
+        // 窗口放寬到 1500 ms 之後那個數字會讓外部寫入落在抑制窗口裡，這條測試
+        // 確定性紅掉，而且紅的位置(「外部異動沒觸發 Changed」)跟成因對不上。
         await Task.Delay(
             TimeSpan.FromMilliseconds(FileSystemNoteRepository.SelfWriteEchoWindowMs + 400),
             TestContext.Current.CancellationToken);
@@ -881,18 +881,18 @@ public class FileSystemNoteRepositoryTests
 
         Assert.True(
             await fired.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken),
-            "抑制過期之後,同一個檔案的外部異動仍然沒有觸發 Changed");
+            "抑制過期之後，同一個檔案的外部異動仍然沒有觸發 Changed");
     }
 
     [Fact]
     public async Task Changed_FiresWhenASubfolderOfNotesIsRenamed()
     {
-        // watcher 以前設了 Filter="*.md",而那個過濾器連資料夾事件一起濾掉了 ——
+        // watcher 以前設了 Filter="*.md"，而那個過濾器連資料夾事件一起濾掉了 ——
         // 於是同一個 watcher 上的 NotifyFilters.DirectoryName 設了等於沒設。
-        // 使用者在檔案總管把裝著筆記的子資料夾改名,清單完全不動(要重進頁面才會更新)。
+        // 使用者在檔案總管把裝著筆記的子資料夾改名，清單完全不動(要重進頁面才會更新)。
         //
         // 這一條釘的是「資料夾改名收得到」:Directory.Move **不會**替裡面每個 .md
-        // 各發一次事件,所以只靠副檔名過濾的話,那件事在外面看起來就是沒發生過。
+        // 各發一次事件，所以只靠副檔名過濾的話，那件事在外面看起來就是沒發生過。
         using var temp = new TempDirectory();
 
         var sub = Path.Combine(temp.Path, "sub");
@@ -922,8 +922,8 @@ public class FileSystemNoteRepositoryTests
     [Fact]
     public async Task Changed_DoesNotFireForFilesThatAreNotNotes()
     {
-        // 拿掉 Filter 的代價是事件量變大,所以過濾改在 handler 裡做 ——
-        // 這一條釘住那個過濾真的在做事,否則資料夾裡任何一個無關檔案(編輯器的暫存檔、
+        // 拿掉 Filter 的代價是事件量變大，所以過濾改在 handler 裡做 ——
+        // 這一條釘住那個過濾真的在做事，否則資料夾裡任何一個無關檔案(編輯器的暫存檔、
         // OneDrive 的中繼檔)都會讓每一個開著的清單頁重掃一遍。
         using var temp = new TempDirectory();
         using var repository = CreateRepository(temp, out _);
@@ -935,7 +935,7 @@ public class FileSystemNoteRepositoryTests
         File.WriteAllText(Path.Combine(temp.Path, "note.txt"), "不是筆記");
         File.WriteAllText(Path.Combine(temp.Path, "note.md.tmp"), "也不是");
 
-        // 比去抖動的 250 ms 長,真的有觸發的話這段時間內一定到了。
+        // 比去抖動的 250 ms 長，真的有觸發的話這段時間內一定到了。
         Assert.False(
             await fired.WaitAsync(TimeSpan.FromMilliseconds(800), TestContext.Current.CancellationToken),
             "無關的檔案觸發了 Changed");

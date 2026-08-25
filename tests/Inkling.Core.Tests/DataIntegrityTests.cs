@@ -4,9 +4,9 @@ using Xunit;
 namespace Inkling.Core.Tests;
 
 /// <summary>
-/// 首次公開發佈前那一輪總體檢裡,在真機上重現過的資料完整性缺陷。
+/// 首次公開發佈前那一輪總體檢裡，在真機上重現過的資料完整性缺陷。
 ///
-/// 每一條都對應一個實際會弄丟使用者資料的情境,所以測試釘的是**行為**而不是實作:
+/// 每一條都對應一個實際會弄丟使用者資料的情境，所以測試釘的是**行為**而不是實作:
 /// 「編輯乙那一列不會寫進甲的檔案」「Big5 的檔案不會被改寫成亂碼」這種。
 /// </summary>
 [Collection(DiskBoundTests.Name)]
@@ -19,8 +19,8 @@ public class DataIntegrityTests
 
     /// <summary>
     /// OneDrive 的衝突副本是**整檔複製**,front matter 一模一樣 —— 同一個 id 因此會
-    /// 出現在兩個檔案上。以前 Update / Delete 都用 id 解析目標,兩列都指向同一份檔案:
-    /// 選第二列按編輯,存檔寫進第一份,第二份一個位元組都沒動。
+    /// 出現在兩個檔案上。以前 Update / Delete 都用 id 解析目標，兩列都指向同一份檔案:
+    /// 選第二列按編輯，存檔寫進第一份，第二份一個位元組都沒動。
     /// </summary>
     [Fact]
     public void Update_TwoFilesShareAnId_WritesToTheOneYouPicked()
@@ -62,7 +62,7 @@ public class DataIntegrityTests
     }
 
     /// <summary>
-    /// 兩列長得幾乎一樣,不標出來使用者根本不會發現多了一份 —— 清單頁靠這個旗標打標籤。
+    /// 兩列長得幾乎一樣，不標出來使用者根本不會發現多了一份 —— 清單頁靠這個旗標打標籤。
     /// </summary>
     [Fact]
     public void GetAll_DuplicateId_BothSidesAreFlagged()
@@ -82,9 +82,9 @@ public class DataIntegrityTests
     }
 
     /// <summary>
-    /// 非 UTF-8 的外來檔案以前會被讀成一串 U+FFFD,而使用者一旦在 Inkling 裡編輯它,
-    /// 那些 � 就被寫回檔案 —— 原始位元組永久消失,沒有備份、沒有提示。
-    /// 現在整個檔案讀不出來,改由「有 N 個檔案讀不出來」那一列講。
+    /// 非 UTF-8 的外來檔案以前會被讀成一串 U+FFFD，而使用者一旦在 Inkling 裡編輯它，
+    /// 那些 � 就被寫回檔案 —— 原始位元組永久消失，沒有備份、沒有提示。
+    /// 現在整個檔案讀不出來，改由「有 N 個檔案讀不出來」那一列講。
     /// </summary>
     [Fact]
     public void GetAll_NonUtf8File_IsSkippedInsteadOfMangled()
@@ -94,7 +94,7 @@ public class DataIntegrityTests
         var path = Path.Combine(temp.Path, "big5.md");
 
         // 「# 」加上 Big5 的「好」(0xA6 0x6E)。直接寫位元組而不是用 Encoding.GetEncoding(950):
-        // 那個編碼要另外掛 System.Text.Encoding.CodePages,而這裡要的只是
+        // 那個編碼要另外掛 System.Text.Encoding.CodePages，而這裡要的只是
         // 「一段不是合法 UTF-8 的位元組」。0xA6 當開頭在 UTF-8 裡是非法的續行位元組。
         var before = new byte[] { 0x23, 0x20, 0xA6, 0x6E };
         File.WriteAllBytes(path, before);
@@ -133,7 +133,7 @@ public class DataIntegrityTests
 
     /// <summary>
     /// <c>id:</c> 在 Obsidian / Zettelkasten / Hugo 生態裡極常見。判準要是「有沒有 id」,
-    /// 「只刪 Inkling 建立的」那顆按鈕就會刪掉使用者自己的 vault 檔,
+    /// 「只刪 Inkling 建立的」那顆按鈕就會刪掉使用者自己的 vault 檔，
     /// 而畫面上那句「保留 N 則不是 Inkling 建立的」是假的。
     /// </summary>
     [Theory]
@@ -152,8 +152,8 @@ public class DataIntegrityTests
     }
 
     /// <summary>
-    /// 讀不懂的日期以前會被靜靜丟掉、改用檔案系統時間,而且下一次編輯就把原字串永久覆蓋。
-    /// 原始那一行既不在認得的欄位裡,也進不了 <see cref="Note.ExtraFrontMatter"/> ——
+    /// 讀不懂的日期以前會被靜靜丟掉、改用檔案系統時間，而且下一次編輯就把原字串永久覆蓋。
+    /// 原始那一行既不在認得的欄位裡，也進不了 <see cref="Note.ExtraFrontMatter"/> ——
     /// 它在 switch 分支裡就被消化掉了。
     /// </summary>
     [Theory]
@@ -175,8 +175,8 @@ public class DataIntegrityTests
     }
 
     /// <summary>
-    /// <c>05/01/2024</c> 在 InvariantCulture 下會被讀成 **5 月 1 日**,而那串字在多數
-    /// 非美式工具裡是 1 月 5 日。猜錯不會有任何徵兆,所以乾脆不猜。
+    /// <c>05/01/2024</c> 在 InvariantCulture 下會被讀成 **5 月 1 日**，而那串字在多數
+    /// 非美式工具裡是 1 月 5 日。猜錯不會有任何徵兆，所以乾脆不猜。
     /// </summary>
     [Fact]
     public void Parse_AmbiguousDate_IsNotGuessed()
@@ -187,7 +187,7 @@ public class DataIntegrityTests
         Assert.Equal("created: 05/01/2024", parsed.CreatedRaw);
     }
 
-    /// <summary>ISO 8601 起手式的照樣讀得懂,這條擋的是「保守過頭連自己寫的都不認」。</summary>
+    /// <summary>ISO 8601 起手式的照樣讀得懂，這條擋的是「保守過頭連自己寫的都不認」。</summary>
     [Theory]
     [InlineData("2024-01-05")]
     [InlineData("2024-01-05T10:30:00+08:00")]
@@ -201,9 +201,9 @@ public class DataIntegrityTests
     }
 
     /// <summary>
-    /// 摘要與推導標題的 120 字截斷是裸索引切割,第 120 個位置落在代理對中間時
-    /// (emoji、擴充區漢字)尾端會留下落單的 high surrogate,畫面上是 �。
-    /// 檔名那條路早就修過而且有測試,摘要這條漏了。
+    /// 摘要與推導標題的 120 字截斷是裸索引切割，第 120 個位置落在代理對中間時
+    /// (emoji、擴充區漢字)尾端會留下落單的 high surrogate，畫面上是 �。
+    /// 檔名那條路早就修過而且有測試，摘要這條漏了。
     /// </summary>
     [Fact]
     public void Summary_TruncationDoesNotSplitSurrogatePairs()

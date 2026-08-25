@@ -5,8 +5,8 @@ using System.Text;
 namespace Inkling.Core;
 
 /// <summary>
-/// 把筆記存成資料夾裡的 Markdown 檔。同步完全交給雲端硬碟客戶端(OneDrive)處理,
-/// 這一層對「同步」一無所知,只管檔案。
+/// 把筆記存成資料夾裡的 Markdown 檔。同步完全交給雲端硬碟客戶端(OneDrive)處理，
+/// 這一層對「同步」一無所知，只管檔案。
 /// </summary>
 public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 {
@@ -14,35 +14,35 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     private const int ReadRetryDelayMs = 20;
 
     /// <summary>
-    /// OneDrive 同步下來時是一陣爆發式的寫入,一個檔案可能連續觸發好幾個事件。
-    /// 通知 UI 前先靜置這麼久,把整批併成一次。
+    /// OneDrive 同步下來時是一陣爆發式的寫入，一個檔案可能連續觸發好幾個事件。
+    /// 通知 UI 前先靜置這麼久，把整批併成一次。
     ///
     /// 測試看得到它(<c>internal</c>)的理由同 <see cref="SelfWriteEchoWindowMs"/>:
-    /// 「等久到漏掉的回音一定已經到了」要從這兩個常數推導,寫死會跟著漂。
+    /// 「等久到漏掉的回音一定已經到了」要從這兩個常數推導，寫死會跟著漂。
     /// </summary>
     internal const int ChangeDebounceMs = 250;
 
     /// <summary>
-    /// 自己剛寫過的檔案,在這段時間內收到的 watcher 事件當成自己的回音忽略掉。
+    /// 自己剛寫過的檔案，在這段時間內收到的 watcher 事件當成自己的回音忽略掉。
     ///
-    /// **窗口是從寫入當下起算的,不是從事件送達起算** —— 所以它要蓋住的不是
-    /// 「watcher 慢多久」,而是「這台機器有多忙」。閒置的開發機上實測是幾毫秒,
-    /// 但 GitHub Actions 的共用 runner 上量到過穿過去的:`ci` #32619503881 第一次跑,
+    /// **窗口是從寫入當下起算的，不是從事件送達起算** —— 所以它要蓋住的不是
+    /// 「watcher 慢多久」，而是「這台機器有多忙」。閒置的開發機上實測是幾毫秒，
+    /// 但 GitHub Actions 的共用 runner 上量到過穿過去的:`ci` #32619503881 第一次跑，
     /// <c>Version_DoesNotMoveASecondTimeFromOurOwnWrite</c> 十次自寫漏了一次
-    /// (Expected 10 / Actual 11),同一個 commit 重跑就綠。500 ms 對負載高的機器太窄。
+    /// (Expected 10 / Actual 11)，同一個 commit 重跑就綠。500 ms 對負載高的機器太窄。
     ///
     /// 上限條件是「要明顯短於使用者在外部編輯器改完同一個檔案再存回來的時間」,
-    /// 而那是**秒**的等級,1.5 秒還差得很遠。
+    /// 而那是**秒**的等級，1.5 秒還差得很遠。
     ///
-    /// 測試看得到它(<c>internal</c>)是刻意的:反面那條測試要等這扇窗過期才動手,
-    /// 而它原本寫死 900 ms —— 照 500 ms 調的。窗口一放寬那條就會確定性紅掉,
+    /// 測試看得到它(<c>internal</c>)是刻意的:反面那條測試要等這扇窗過期才動手，
+    /// 而它原本寫死 900 ms —— 照 500 ms 調的。窗口一放寬那條就會確定性紅掉，
     /// 而且紅的位置跟成因對不上。從常數推導就不會再漂。
     /// </summary>
     internal const int SelfWriteEchoWindowMs = 1500;
 
     /// <summary>
-    /// 讀筆記用的解碼器:無效位元組**丟例外**,不要默默換成 U+FFFD。
-    /// 為什麼非這樣不可,見 <see cref="TryReadAllText"/>。
+    /// 讀筆記用的解碼器:無效位元組**丟例外**，不要默默換成 U+FFFD。
+    /// 為什麼非這樣不可，見 <see cref="TryReadAllText"/>。
     /// </summary>
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
@@ -57,15 +57,15 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// Inkling 自己剛寫過(或剛刪掉)的路徑 → 忽略到什麼時候(<see cref="Environment.TickCount64"/>)。
     ///
     /// 自己的寫入在當下就 <see cref="Invalidate"/> 過了 —— 丟快取、進版本、發 Changed 一次做完。
-    /// 但 watcher 幾毫秒後會為同一個檔案再發一次事件,於是同一次存檔讓正開著的頁面
-    /// 重建兩遍,第二遍還晚 250 ms(去抖動)才到,畫面會多閃一下。
+    /// 但 watcher 幾毫秒後會為同一個檔案再發一次事件，於是同一次存檔讓正開著的頁面
+    /// 重建兩遍，第二遍還晚 250 ms(去抖動)才到，畫面會多閃一下。
     ///
-    /// **按路徑記,不是按時間段全域關掉** —— 同一段時間裡別的檔案被外部工具改了照樣要收到。
-    /// 同一個檔案在這扇窗裡真的被外部改動則會漏掉一次通知,那是刻意的取捨:
-    /// 事件本身分不出是誰寫的,而快取已經丟掉了,下一次 GetAll 讀到的仍是磁碟上的最新內容。
+    /// **按路徑記，不是按時間段全域關掉** —— 同一段時間裡別的檔案被外部工具改了照樣要收到。
+    /// 同一個檔案在這扇窗裡真的被外部改動則會漏掉一次通知，那是刻意的取捨:
+    /// 事件本身分不出是誰寫的，而快取已經丟掉了，下一次 GetAll 讀到的仍是磁碟上的最新內容。
     ///
-    /// 用 ConcurrentDictionary 而不是 _gate:這個字典會在 watcher 執行緒上讀,
-    /// 而 _gate 在整個資料夾掃描期間都被持有 —— 讓 watcher 的回呼卡在那個鎖上,
+    /// 用 ConcurrentDictionary 而不是 _gate:這個字典會在 watcher 執行緒上讀，
+    /// 而 _gate 在整個資料夾掃描期間都被持有 —— 讓 watcher 的回呼卡在那個鎖上，
     /// 它的事件緩衝區會溢位(那正是 OnWatcherError 要處理的災難)。
     /// </summary>
     private readonly ConcurrentDictionary<string, long> _selfWrites = new(StringComparer.OrdinalIgnoreCase);
@@ -76,7 +76,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     private int _version;
 
     /// <param name="idGenerator">
-    /// 產生筆記 id 的方法,預設是 <see cref="NoteFileName.CreateId"/>。
+    /// 產生筆記 id 的方法，預設是 <see cref="NoteFileName.CreateId"/>。
     /// 是測試用的接縫:碰撞重抽的迴圈要有辦法確定性地製造碰撞才測得到。
     /// </param>
     public FileSystemNoteRepository(
@@ -99,7 +99,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         _changeDebounce = new System.Threading.Timer(
             _ =>
             {
-                // 回呼在執行緒池上跑,Dispose 之後仍可能被叫到 —— 那時訂閱者多半已死。
+                // 回呼在執行緒池上跑，Dispose 之後仍可能被叫到 —— 那時訂閱者多半已死。
                 if (_disposed)
                 {
                     return;
@@ -112,13 +112,13 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
                 catch (Exception)
                 {
                     // **執行緒池上沒接住的例外會直接終止整個擴展進程。** 同一條規則這個檔案
-                    // 自己在 OnFileSystemChanged 的 ObjectDisposedException 上寫過,
-                    // 但只套用在那一條路。訂閱者是 UI 層的頁面,它們會呼叫 RaiseItemsChanged ——
-                    // 那是跨 COM 邊界的呼叫,CmdPal 那頭走掉之後 proxy 就死了。
+                    // 自己在 OnFileSystemChanged 的 ObjectDisposedException 上寫過，
+                    // 但只套用在那一條路。訂閱者是 UI 層的頁面，它們會呼叫 RaiseItemsChanged ——
+                    // 那是跨 COM 邊界的呼叫，CmdPal 那頭走掉之後 proxy 就死了。
                     // 使用者看到的會是「Inkling 突然整個不見了」。
                     //
                     // 這裡不記 log:Core 不引用 UI 層的 DiagnosticLog(架構界線)。
-                    // 要留痕跡的話該由訂閱端自己包一層,那一層才有 log 可用。
+                    // 要留痕跡的話該由訂閱端自己包一層，那一層才有 log 可用。
                 }
             },
             null,
@@ -144,21 +144,21 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
                 return _cache;
             }
 
-            // 先掛 watcher 再掃磁碟:反過來的話,掃描完成到 watcher 啟用之間進來的
-            // 檔案兩邊都漏掉,之後沒有任何東西會讓快取失效,那個檔案一直隱形。
+            // 先掛 watcher 再掃磁碟:反過來的話，掃描完成到 watcher 啟用之間進來的
+            // 檔案兩邊都漏掉，之後沒有任何東西會讓快取失效，那個檔案一直隱形。
             // 掃描期間收到事件反而安全 —— 失效旗標會讓快取重來一次。
             EnsureWatcher();
             var loaded = Load();
 
             if (!Directory.Exists(_directory))
             {
-                // watcher 監看的目錄已經消失,它永遠不會再發事件。拆掉,
+                // watcher 監看的目錄已經消失，它永遠不會再發事件。拆掉，
                 // 目錄之後重建(OneDrive 重新佈建、使用者自己建回來)時這裡才掛得上新的。
                 DisposeWatcherUnlocked();
 
-                // 資料夾還不存在時不要快取空結果:第一次用 Inkling 的時候它本來就不存在,
-                // 而 watcher 也還掛不上去,沒有任何東西會來通知我們它出現了。
-                // 快取住的話,資料夾之後被建出來(第一次記筆記、或別台機器同步下來)
+                // 資料夾還不存在時不要快取空結果:第一次用 Inkling 的時候它本來就不存在，
+                // 而 watcher 也還掛不上去，沒有任何東西會來通知我們它出現了。
+                // 快取住的話，資料夾之後被建出來(第一次記筆記、或別台機器同步下來)
                 // 就再也讀不到內容。每次多一個 Directory.Exists 的成本可以忽略。
                 return loaded;
             }
@@ -176,14 +176,14 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// 只給 <see cref="GenerateUniqueId"/> 用的碰撞偵測。
     ///
     /// **刻意是 private。** 「用 id 查一則筆記」是個陷阱:同一個 id 可能對到兩個檔案
-    /// (雲端硬碟的衝突副本),而這個方法只會回第一筆。留在介面上遲早會有人拿它去解析
-    /// 編輯 / 刪除的目標,那正是修掉的那個 bug。要重新取內容走 <see cref="GetByPath"/>。
+    /// (雲端硬碟的衝突副本)，而這個方法只會回第一筆。留在介面上遲早會有人拿它去解析
+    /// 編輯 / 刪除的目標，那正是修掉的那個 bug。要重新取內容走 <see cref="GetByPath"/>。
     /// </summary>
     private Note? GetById(string id) =>
         GetAll().FirstOrDefault(n => string.Equals(n.Id, id, StringComparison.Ordinal));
 
     /// <summary>
-    /// Windows 的路徑比對:大小寫不敏感。兩邊都先正規化,免得 <c>C:\a\b.md</c> 與
+    /// Windows 的路徑比對:大小寫不敏感。兩邊都先正規化，免得 <c>C:\a\b.md</c> 與
     /// <c>C:\a\.\b.md</c> 被當成兩個檔案。
     /// </summary>
     private static bool PathsEqual(string left, string right) =>
@@ -205,8 +205,8 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             Id = GenerateUniqueId(now),
             Title = title.Trim(),
 
-            // 正規化要在**回傳的物件上**做,不能只在寫檔那一頭做:Serialize 會 ToLf,
-            // 所以磁碟上永遠是 LF,再讀回來也是 LF。這裡不做的話,剛存好那一則
+            // 正規化要在**回傳的物件上**做，不能只在寫檔那一頭做:Serialize 會 ToLf,
+            // 所以磁碟上永遠是 LF，再讀回來也是 LF。這裡不做的話，剛存好那一則
             // 在記憶體裡帶著呼叫端給的 CRLF(Adaptive Cards 甚至是裸 CR),
             // 跟從磁碟讀回來的同一則不相等 —— 預覽頁比對「內文是否已含標題」、
             // 快取比對這類地方就會得到莫名其妙的結果。
@@ -224,15 +224,15 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     }
 
     /// <summary>
-    /// id 的後綴只有 16-bit,同一秒內兩次 Create 各有 1/65536 的碰撞率。撞了不會再弄壞
-    /// 編輯與刪除(那兩條認的是路徑),但清單上那兩列會被標成「衝突副本」——
-    /// 而它們根本不是。撞了就重抽,順便也擋住「別台機器同一秒同步下來同名 id」的情境。
+    /// id 的後綴只有 16-bit，同一秒內兩次 Create 各有 1/65536 的碰撞率。撞了不會再弄壞
+    /// 編輯與刪除(那兩條認的是路徑)，但清單上那兩列會被標成「衝突副本」——
+    /// 而它們根本不是。撞了就重抽，順便也擋住「別台機器同一秒同步下來同名 id」的情境。
     /// </summary>
     private string GenerateUniqueId(DateTimeOffset now)
     {
-        // 這裡的 GetById 走的是 GetAll 的快取,不是每抽一次就重掃一遍資料夾 ——
-        // 而且走到這裡的路徑(快速記下頁、新增筆記頁)都已經先列過清單,快取是熱的。
-        // 看起來像「每存一則都掃全部」,量過之後不是,別為此改成別的形狀。
+        // 這裡的 GetById 走的是 GetAll 的快取，不是每抽一次就重掃一遍資料夾 ——
+        // 而且走到這裡的路徑(快速記下頁、新增筆記頁)都已經先列過清單，快取是熱的。
+        // 看起來像「每存一則都掃全部」，量過之後不是，別為此改成別的形狀。
         var id = _idGenerator(now);
         while (GetById(id) is not null)
         {
@@ -248,24 +248,24 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         ArgumentNullException.ThrowIfNull(title);
         ArgumentNullException.ThrowIfNull(body);
 
-        // 重新查一次而不是直接用傳進來的快照:呼叫端手上那份可能是幾分鐘前的,
+        // 重新查一次而不是直接用傳進來的快照:呼叫端手上那份可能是幾分鐘前的，
         // 而 created / tags / 不認得的 front matter 欄位要照磁碟上的最新內容保留。
         var existing = GetByPath(note.FilePath)
             ?? throw NoteNotFoundException.ForPath(note.FilePath);
 
         var now = _timeProvider.GetLocalNow();
 
-        // **外來檔案第一次在 Inkling 裡編輯,就給它一個真正的 id。**
-        // 在此之前它的 id 是我們拿路徑算出來的(見 DeriveId)—— 那個東西跟著檔名跑,
-        // 改個名就變了,不是身分。寫進檔案的必須是真的能當身分用的那種。
+        // **外來檔案第一次在 Inkling 裡編輯，就給它一個真正的 id。**
+        // 在此之前它的 id 是我們拿路徑算出來的(見 DeriveId)—— 那個東西跟著檔名跑，
+        // 改個名就變了，不是身分。寫進檔案的必須是真的能當身分用的那種。
         //
         // **但只在它本來就沒有 id 的時候。** front matter 裡已經有別人的 id
         // (Zettelkasten 的 202401051200、Hugo 的 slug……)就原樣留著:覆蓋它等於毀掉
-        // 使用者的 metadata,而「不認得的東西不要動」比「讓它變成我們的」重要得多。
-        // 那種檔案因此永遠算外來的 —— 保守的方向,批次刪除會放過它。
+        // 使用者的 metadata，而「不認得的東西不要動」比「讓它變成我們的」重要得多。
+        // 那種檔案因此永遠算外來的 —— 保守的方向，批次刪除會放過它。
         var adopting = NoteFileName.IsDerivedId(existing.Id);
 
-        // 改標題不重新命名檔案 —— 檔名只是給人看的,而在同步資料夾裡 rename 會製造衝突檔。
+        // 改標題不重新命名檔案 —— 檔名只是給人看的，而在同步資料夾裡 rename 會製造衝突檔。
         var updated = existing with
         {
             Id = adopting ? GenerateUniqueId(now) : existing.Id,
@@ -276,8 +276,8 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             Body = Newlines.ToLf(body),
             Updated = now,
 
-            // 原本讀不懂的 updated: 那一行到此為止 —— 我們正在改動這則筆記,
-            // 「最後改動時間」本來就該換成現在。created 相反,原樣留著。
+            // 原本讀不懂的 updated: 那一行到此為止 —— 我們正在改動這則筆記，
+            // 「最後改動時間」本來就該換成現在。created 相反，原樣留著。
             UpdatedRaw = null,
         };
 
@@ -316,13 +316,13 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // 一個檔案刪不掉就放棄整批,只會留下一個「刪到一半」而且說不清楚的狀態。
-                // 繼續刪其他的,漏掉幾則由回傳值反映。
+                // 一個檔案刪不掉就放棄整批，只會留下一個「刪到一半」而且說不清楚的狀態。
+                // 繼續刪其他的，漏掉幾則由回傳值反映。
             }
         }
 
-        // 一次就好。每刪一則就 Invalidate 的話,清單會在整批刪除的過程中被重建 N 次。
-        // 一則都沒刪掉時連這一次都不必 —— 磁碟上什麼都沒變,發個 Changed 只是叫
+        // 一次就好。每刪一則就 Invalidate 的話，清單會在整批刪除的過程中被重建 N 次。
+        // 一則都沒刪掉時連這一次都不必 —— 磁碟上什麼都沒變，發個 Changed 只是叫
         // 正開著的頁面白重建一遍。
         if (deleted > 0)
         {
@@ -333,15 +333,15 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     }
 
     /// <summary>
-    /// 丟掉快取,下次讀取時重新掃描資料夾,並立刻通知訂閱者。
+    /// 丟掉快取，下次讀取時重新掃描資料夾，並立刻通知訂閱者。
     ///
     /// 刻意不在 <see cref="INoteRepository"/> 上:介面上的外部變動通知已由
-    /// <see cref="INoteRepository.Changed"/> 與 <see cref="INoteRepository.Version"/> 涵蓋,
+    /// <see cref="INoteRepository.Changed"/> 與 <see cref="INoteRepository.Version"/> 涵蓋，
     /// UI 層沒有任何透過介面呼叫它的需求 —— 留著只會逼每個未來的替代實作
     /// 替它發明一個語意。目前只有這個類自己的寫入路徑與測試在用。
     ///
-    /// 由 Inkling 自己的寫入(Create / Update)觸發,一次操作就一個事件,
-    /// 不需要去抖動,而且要立刻通知 —— 使用者剛按下儲存,畫面就該跟上。
+    /// 由 Inkling 自己的寫入(Create / Update)觸發，一次操作就一個事件，
+    /// 不需要去抖動，而且要立刻通知 —— 使用者剛按下儲存，畫面就該跟上。
     /// </summary>
     public void Invalidate()
     {
@@ -357,7 +357,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         Interlocked.Increment(ref _version);
 
-        // 事件在鎖外面發,handler 幾乎一定會回頭呼叫 GetAll()。
+        // 事件在鎖外面發，handler 幾乎一定會回頭呼叫 GetAll()。
         if (notifyImmediately)
         {
             Changed?.Invoke(this, EventArgs.Empty);
@@ -377,8 +377,8 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         try
         {
-            // 連子資料夾一起掃:使用者用檔案總管把筆記分門別類是很自然的事,
-            // 只掃頂層的話那些筆記會無聲消失,查都查不出來。新筆記一律寫在根目錄。
+            // 連子資料夾一起掃:使用者用檔案總管把筆記分門別類是很自然的事，
+            // 只掃頂層的話那些筆記會無聲消失，查都查不出來。新筆記一律寫在根目錄。
             //
             // IgnoreInaccessible:進不去的子目錄(Documents 底下 deny-read 的 junction、
             // 權限不對的資料夾)靜靜跳過 —— 一個壞子目錄不該讓整份清單列不出來。
@@ -390,9 +390,9 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
             foreach (var path in Directory.EnumerateFiles(_directory, "*" + NoteFileName.Extension, enumeration))
             {
-                // 隨手草稿的檔案不是筆記(沒有標題也沒有 id),列進來只會讓清單永遠多一列
+                // 隨手草稿的檔案不是筆記(沒有標題也沒有 id)，列進來只會讓清單永遠多一列
                 // 標題在跳動的半成品。**刻意不計入 SkippedFileCount** —— 那個數字講的是
-                // 「有幾個檔案壞到讀不出來」,而這一個是我們自己決定不列的。
+                // 「有幾個檔案壞到讀不出來」，而這一個是我們自己決定不列的。
                 if (ScratchpadStore.IsScratchpad(_directory, path))
                 {
                     continue;
@@ -412,17 +412,17 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // 目錄本身枚舉不了:Exists 之後被刪、根目錄沒有權限、OneDrive 把同步根抽掉。
-            // 回傳已掃到的部分,總比讓例外穿出頁面的 GetItems、整頁變成擴展錯誤好。
+            // 回傳已掃到的部分，總比讓例外穿出頁面的 GetItems、整頁變成擴展錯誤好。
         }
 
         MarkDuplicateIds(notes);
 
-        // **Updated 只到秒。** 快速記下連打兩則、或別台機器一次同步下來一批,
-        // 時間戳就是相等的 —— 而 List<T>.Sort 是不穩定排序,相等元素的先後由實作決定,
+        // **Updated 只到秒。** 快速記下連打兩則、或別台機器一次同步下來一批，
+        // 時間戳就是相等的 —— 而 List<T>.Sort 是不穩定排序，相等元素的先後由實作決定，
         // 同一個資料夾在不同機器上可能排出不同順序。用 id 當第二鍵讓順序完全確定
-        // (id 本身也帶著時間與亂數後綴,所以次序仍然合理)。
+        // (id 本身也帶著時間與亂數後綴，所以次序仍然合理)。
         //
-        // 衝突副本的兩份 id 相同,所以第二鍵也分不出先後 —— 路徑當第三鍵補上,
+        // 衝突副本的兩份 id 相同，所以第二鍵也分不出先後 —— 路徑當第三鍵補上，
         // 那一組的順序才不會每次掃描都跳。
         return
         [
@@ -436,8 +436,8 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// <summary>
     /// 同一個 id 出現在多個檔案上就標記起來(見 <see cref="Note.HasDuplicateId"/>)。
     ///
-    /// 幾乎只有雲端硬碟的衝突副本會走到這裡。編輯與刪除認的是路徑,所以兩份各自獨立,
-    /// 不標記也不會弄壞資料 —— 標記是為了讓清單頁講得出來,不然畫面上就是兩列一模一樣。
+    /// 幾乎只有雲端硬碟的衝突副本會走到這裡。編輯與刪除認的是路徑，所以兩份各自獨立，
+    /// 不標記也不會弄壞資料 —— 標記是為了讓清單頁講得出來，不然畫面上就是兩列一模一樣。
     /// </summary>
     private static void MarkDuplicateIds(List<Note> notes)
     {
@@ -477,7 +477,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         var parsed = NoteFile.Parse(content);
 
         // 缺的欄位用檔案本身的資訊補齊。這讓「使用者自己丟進來的普通 .md」
-        // 也能正常出現在清單裡,而不是被當成壞檔案跳過。
+        // 也能正常出現在清單裡，而不是被當成壞檔案跳過。
         var created = parsed.Created ?? new DateTimeOffset(File.GetCreationTime(path));
         var updated = parsed.Updated ?? new DateTimeOffset(File.GetLastWriteTime(path));
 
@@ -494,7 +494,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             ExtraFrontMatter = parsed.ExtraFrontMatter,
             FilePath = path,
 
-            // **判準是 id 的形狀,不是「有沒有 id」。** 理由與踩過的坑見 Note.IsExternal ——
+            // **判準是 id 的形狀，不是「有沒有 id」。** 理由與踩過的坑見 Note.IsExternal ——
             // 一句話:`id:` 在 Obsidian / Zettelkasten / Hugo 裡到處都是。
             IsExternal = !NoteFileName.IsGeneratedId(parsed.Id),
         };
@@ -502,7 +502,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
     /// <summary>
     /// 讀檔並在短暫的 IO 衝突時重試 —— OneDrive 與其他編輯器都可能正好在寫同一個檔。
-    /// 讀不出來(含編碼不是 UTF-8)回 null,由呼叫端計進 <see cref="SkippedFileCount"/>。
+    /// 讀不出來(含編碼不是 UTF-8)回 null，由呼叫端計進 <see cref="SkippedFileCount"/>。
     /// </summary>
     private static string? TryReadAllText(string path)
     {
@@ -511,24 +511,24 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             try
             {
                 // **一定要用會丟例外的那個 UTF8Encoding。** File.ReadAllText 的預設解碼器
-                // 把無效位元組默默換成 U+FFFD,於是一個 Big5 / GBK / Latin-1 的 .md 會被讀成
-                // 一串 �,而使用者一旦在 Inkling 裡編輯它,那些 � 就被寫回檔案 ——
-                // 原始位元組永久消失,而且沒有備份、沒有提示、資源回收筒裡什麼都沒有。
-                // 寧可整個檔案讀不出來:清單最後那一列「有 N 個檔案讀不出來」會講,
+                // 把無效位元組默默換成 U+FFFD，於是一個 Big5 / GBK / Latin-1 的 .md 會被讀成
+                // 一串 �，而使用者一旦在 Inkling 裡編輯它，那些 � 就被寫回檔案 ——
+                // 原始位元組永久消失，而且沒有備份、沒有提示、資源回收筒裡什麼都沒有。
+                // 寧可整個檔案讀不出來:清單最後那一列「有 N 個檔案讀不出來」會講，
                 // 而那句話的口徑本來就是「檔案還在資料夾裡」。
                 //
                 // 有 BOM 的檔案不受影響:StreamReader 仍然會先照 BOM 判編碼
-                // (UTF-8 / UTF-16 LE / BE 都認得),這個編碼只是「沒有 BOM 時的假設」。
+                // (UTF-8 / UTF-16 LE / BE 都認得)，這個編碼只是「沒有 BOM 時的假設」。
                 return File.ReadAllText(path, StrictUtf8);
             }
             catch (DecoderFallbackException)
             {
-                // 編碼不對是確定性的,重試沒有意義。
+                // 編碼不對是確定性的，重試沒有意義。
                 return null;
             }
             catch (IOException)
             {
-                // 最後一輪不睡。這段迴圈跑在持有 _gate 的掃描裡,那一次白睡是所有
+                // 最後一輪不睡。這段迴圈跑在持有 _gate 的掃描裡，那一次白睡是所有
                 // 等著拿清單的呼叫端一起付的 —— 而睡完只會直接 return null。
                 if (attempt < ReadRetries - 1)
                 {
@@ -574,17 +574,17 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     }
 
     /// <summary>
-    /// 監看資料夾,任何變動就讓快取失效。
+    /// 監看資料夾，任何變動就讓快取失效。
     ///
-    /// 用「延遲失效」而不是「立即重載」有個好處:OneDrive 同步下來時是一陣爆發式的寫入,
-    /// 立即重載會被打成篩子,而失效旗標天然就把它們併成一次。
+    /// 用「延遲失效」而不是「立即重載」有個好處:OneDrive 同步下來時是一陣爆發式的寫入，
+    /// 立即重載會被打成篩子，而失效旗標天然就把它們併成一次。
     /// </summary>
     private void EnsureWatcher()
     {
         // **Dispose 之後不准再掛。** 換筆記資料夾時 provider 會釋放舊的 repository,
         // 但舊頁面可能還活著(CmdPal 手上那個實例不會因為我們重建就換掉)。
-        // 它一呼叫 GetAll,這裡就會生出一個新的 FileSystemWatcher,而已經沒有人
-        // 會再去 Dispose 它了 —— 換幾次資料夾就漏幾個,每個都還盯著舊目錄發事件。
+        // 它一呼叫 GetAll，這裡就會生出一個新的 FileSystemWatcher，而已經沒有人
+        // 會再去 Dispose 它了 —— 換幾次資料夾就漏幾個，每個都還盯著舊目錄發事件。
         if (_disposed || _watcher is not null || !Directory.Exists(_directory))
         {
             return;
@@ -592,13 +592,13 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         try
         {
-            // **刻意不設 Filter,副檔名改在 OnFileSystemChanged 自己判。**
-            // 以前是 new FileSystemWatcher(_directory, "*.md"),而那個過濾器**連資料夾事件
+            // **刻意不設 Filter，副檔名改在 OnFileSystemChanged 自己判。**
+            // 以前是 new FileSystemWatcher(_directory, "*.md")，而那個過濾器**連資料夾事件
             // 一起濾掉了** —— 也就是下面 NotifyFilters.DirectoryName 設了等於沒設。
             // 實測(同一組組態、獨立重現):在檔案總管把裝著筆記的子資料夾改名
-            // (Directory.Move)**一個事件都沒有**,清單因此不會更新;拿掉 Filter 之後
+            // (Directory.Move)**一個事件都沒有**，清單因此不會更新;拿掉 Filter 之後
             // 收得到 Renamed。代價是事件量變大(資料夾裡任何檔案都會發),
-            // 但 handler 只是設一個失效旗標 + 去抖動,而且 AffectsNotes 會先擋掉。
+            // 但 handler 只是設一個失效旗標 + 去抖動，而且 AffectsNotes 會先擋掉。
             var watcher = new FileSystemWatcher(_directory)
             {
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName,
@@ -610,8 +610,8 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             watcher.Deleted += OnFileSystemChanged;
             watcher.Renamed += OnFileSystemChanged;
 
-            // 事件緩衝區溢位時前面的事件會遺失,而且這個 watcher 的狀態已不可信 ——
-            // 拆掉讓下一次 GetAll 重掃並重新掛上,而不是繼續信它。
+            // 事件緩衝區溢位時前面的事件會遺失，而且這個 watcher 的狀態已不可信 ——
+            // 拆掉讓下一次 GetAll 重掃並重新掛上，而不是繼續信它。
             watcher.Error += OnWatcherError;
 
             watcher.EnableRaisingEvents = true;
@@ -619,7 +619,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            // 監看不到就退化成「每次都重掃」,功能不受影響,只是少了自動更新。
+            // 監看不到就退化成「每次都重掃」，功能不受影響，只是少了自動更新。
             _watcher = null;
         }
     }
@@ -635,7 +635,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             _watcher = null;
         }
 
-        // FileSystemWatcher 從自己的事件回呼裡同步 Dispose 有死結回報,丟給執行緒池收。
+        // FileSystemWatcher 從自己的事件回呼裡同步 Dispose 有死結回報，丟給執行緒池收。
         if (stale is not null)
         {
             ThreadPool.QueueUserWorkItem(static w => ((FileSystemWatcher)w!).Dispose(), stale);
@@ -660,24 +660,24 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             return true;
         }
 
-        // 改名要看兩邊:把 note.md 改成 note.txt 之後新路徑不是筆記,
+        // 改名要看兩邊:把 note.md 改成 note.txt 之後新路徑不是筆記，
         // 但那一則確實從清單裡消失了。
         if (e is RenamedEventArgs renamed && IsNoteFile(renamed.OldFullPath))
         {
             return true;
         }
 
-        // 沒有副檔名的幾乎一定是資料夾。**只認 Created / Deleted / Renamed,不認 Changed:**
+        // 沒有副檔名的幾乎一定是資料夾。**只認 Created / Deleted / Renamed，不認 Changed:**
         //
         //  - 要的是資料夾被改名或刪掉 —— 那不會替裡面每個 .md 各發一次事件
-        //    (實測 Directory.Move 在舊的 Filter="*.md" 之下一個事件都沒有,那就是這條的成因)。
+        //    (實測 Directory.Move 在舊的 Filter="*.md" 之下一個事件都沒有，那就是這條的成因)。
         //  - 不要的是資料夾的 Changed:在子資料夾裡動一個檔案會順帶讓那個資料夾的
-        //    LastWrite 變動,而那個事件的路徑是**資料夾**、不是我們剛寫的檔案 ——
-        //    它會繞過自寫回音的抑制(見 <see cref="_selfWrites"/>),讓一次存檔又變成
-        //    重掃兩次。裡面的檔案事件本來就會通知,資料夾那一則沒有帶來新資訊。
+        //    LastWrite 變動，而那個事件的路徑是**資料夾**、不是我們剛寫的檔案 ——
+        //    它會繞過自寫回音的抑制(見 <see cref="_selfWrites"/>)，讓一次存檔又變成
+        //    重掃兩次。裡面的檔案事件本來就會通知，資料夾那一則沒有帶來新資訊。
         //
-        // 副作用是名字裡帶點的資料夾(my.notes)會被當成檔案濾掉。代價只是少一次自動更新,
-        // 跟修正前一樣;反過來把有副檔名的東西全放行,等於整個過濾形同虛設
+        // 副作用是名字裡帶點的資料夾(my.notes)會被當成檔案濾掉。代價只是少一次自動更新，
+        // 跟修正前一樣;反過來把有副檔名的東西全放行，等於整個過濾形同虛設
         // (原子寫入的 .md.tmp 每次都會多打一次事件)。
         return e.ChangeType != WatcherChangeTypes.Changed
             && Path.GetExtension(e.FullPath.AsSpan()).IsEmpty;
@@ -687,7 +687,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
         Path.GetExtension(path.AsSpan()).Equals(NoteFileName.Extension, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// 記下「這個路徑等一下會發事件,那是我們自己造成的」。
+    /// 記下「這個路徑等一下會發事件，那是我們自己造成的」。
     /// **要在動手寫之前叫** —— 事件有可能在 File.Move 還沒返回時就送到 watcher 執行緒。
     /// </summary>
     private void NoteSelfWrite(string path) =>
@@ -697,9 +697,9 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     {
         var now = Environment.TickCount64;
 
-        // 一次寫入常常發不只一個事件(Created 之後還有 Changed),所以命中之後
-        // **不移除**,讓它自己過期 —— 移除的話第二個事件照樣會穿過去。
-        // 過期的順手清掉:這個字典只在寫入路徑上長,但不該無限長。
+        // 一次寫入常常發不只一個事件(Created 之後還有 Changed)，所以命中之後
+        // **不移除**，讓它自己過期 —— 移除的話第二個事件照樣會穿過去。
+        // 過期的順手清掉:這個字典只在寫入路徑上長，但不該無限長。
         foreach (var entry in _selfWrites)
         {
             if (entry.Value <= now)
@@ -713,9 +713,9 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
     private void OnFileSystemChanged(object sender, FileSystemEventArgs e)
     {
-        // 隨手草稿的檔案不在清單裡,它的寫入不該讓每一個開著的清單頁白重掃一遍 ——
-        // 隨手草稿每按一次儲存就寫一次檔,而一次重掃要讀完整個資料夾。
-        // 忽略它不會漏掉什麼:隨手草稿頁面每次 GetContent() 都自己重讀檔案,不靠這條路,
+        // 隨手草稿的檔案不在清單裡，它的寫入不該讓每一個開著的清單頁白重掃一遍 ——
+        // 隨手草稿每按一次儲存就寫一次檔，而一次重掃要讀完整個資料夾。
+        // 忽略它不會漏掉什麼:隨手草稿頁面每次 GetContent() 都自己重讀檔案，不靠這條路，
         // 所以連「使用者用外部編輯器改了草稿」也照樣看得到。
         //
         // e 要先擋 null —— OnWatcherError 是拿 null! 呼叫進來的。
@@ -730,14 +730,14 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             return;
         }
 
-        // watcher 沒有設 Filter(理由見 EnsureWatcher),副檔名在這裡判。
+        // watcher 沒有設 Filter(理由見 EnsureWatcher)，副檔名在這裡判。
         if (e is not null && !AffectsNotes(e))
         {
             return;
         }
 
-        // 外部異動走去抖動:OneDrive 同步下來時是一陣爆發式的寫入,
-        // 每個檔案都立刻通知一次的話,清單頁會在同步期間被重建幾十次。
+        // 外部異動走去抖動:OneDrive 同步下來時是一陣爆發式的寫入，
+        // 每個檔案都立刻通知一次的話，清單頁會在同步期間被重建幾十次。
         InvalidateCore(notifyImmediately: false);
 
         if (_disposed)
@@ -747,13 +747,13 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
         try
         {
-            // 每來一個事件就把觸發時間往後推,連續寫入結束後才真的通知一次。
+            // 每來一個事件就把觸發時間往後推，連續寫入結束後才真的通知一次。
             _changeDebounce.Change(ChangeDebounceMs, Timeout.Infinite);
         }
         catch (ObjectDisposedException)
         {
-            // watcher 事件在執行緒池上跑:上面的檢查通過之後、Change 之前,
-            // Dispose 可能已經把 Timer 收掉。吞掉 —— 物件正在消失,通知已無意義,
+            // watcher 事件在執行緒池上跑:上面的檢查通過之後、Change 之前，
+            // Dispose 可能已經把 Timer 收掉。吞掉 —— 物件正在消失，通知已無意義，
             // 而執行緒池上沒接住的例外會直接終止整個擴展進程。
         }
     }

@@ -11,7 +11,7 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
 
-    <!-- MSIX 專用,刻意不放進根目錄的 Directory.Build.props -->
+    <!-- MSIX 專用，刻意不放進根目錄的 Directory.Build.props -->
     <Platforms>x64;ARM64</Platforms>
     <PlatformTarget>$(Platform)</PlatformTarget>
 
@@ -20,41 +20,41 @@
 
     <!--
       [GeneratedComInterface] 的來源產生器產出的封送程式碼是 unsafe 的(vtable 全是 void*)。
-      只有 FolderPicker 那組 shell 介面用得到,我們自己寫的程式碼裡沒有 unsafe。
+      只有 FolderPicker 那組 shell 介面用得到，我們自己寫的程式碼裡沒有 unsafe。
     -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!--
       中性資源是英文。SDK 會把它翻成 [assembly: NeutralResourcesLanguage("en")],
-      ResourceManager 在 CurrentUICulture 是英文時就直接讀主組件,不會多繞一圈
-      去找一個不存在的 en 附屬組件。(屬性名是 NeutralLanguage,不是屬性本身的名字
-      NeutralResourcesLanguage —— 寫錯不會報錯,只會 CA1824 說你沒標。)
+      ResourceManager 在 CurrentUICulture 是英文時就直接讀主組件，不會多繞一圈
+      去找一個不存在的 en 附屬組件。(屬性名是 NeutralLanguage，不是屬性本身的名字
+      NeutralResourcesLanguage —— 寫錯不會報錯，只會 CA1824 說你沒標。)
     -->
     <NeutralLanguage>en</NeutralLanguage>
 
     <!--
-      MSIX/PRI 的預設語言。跟上面的 NeutralLanguage 是兩回事,兩個都要設:
+      MSIX/PRI 的預設語言。跟上面的 NeutralLanguage 是兩回事，兩個都要設:
       NeutralLanguage 管 .NET 的資源查找(附屬組件),DefaultLanguage 管 MRT 產生
       PRI 時寫進 priconfig.xml 的 Language 限定詞。
 
       不設的話 WinAppSdkGetDefaultResourceLanguage 會回退到**建置機器的顯示語言** ——
-      實測這台機器產出 `<qualifier name="Language" value="zh-TW" />`,而 GitHub Actions
-      的 windows-latest 會產 en-US。也就是同一份原始碼在不同機器建出不同的套件,
+      實測這台機器產出 `<qualifier name="Language" value="zh-TW" />`，而 GitHub Actions
+      的 windows-latest 會產 en-US。也就是同一份原始碼在不同機器建出不同的套件，
       本機驗過的 manifest 跟發版的不是同一份。
     -->
     <DefaultLanguage>en-US</DefaultLanguage>
   </PropertyGroup>
 
   <!--
-    介面字串一律走 Properties\Resources.resx,語言跟著使用者的 Windows 顯示語言
+    介面字串一律走 Properties\Resources.resx，語言跟著使用者的 Windows 顯示語言
     (CultureInfo.CurrentUICulture)—— 見 docs/design-notes.md〈介面語言跟著 Windows 走〉。
 
     產生強型別的 Resources 類別。用 StronglyTypedFileName 而不是 Visual Studio 的
-    設計工具,是因為這台機器上的建置全部走 dotnet CLI:交給 GenerateResource 這個
-    MSBuild 工作做,`dotnet build` 與 IDE 產出的東西才會一致。產出的檔案落在 obj\ 底下,
-    不進版控,而且它帶著 GeneratedCodeAttribute,分析器不會唸它。
+    設計工具，是因為這台機器上的建置全部走 dotnet CLI:交給 GenerateResource 這個
+    MSBuild 工作做，`dotnet build` 與 IDE 產出的東西才會一致。產出的檔案落在 obj\ 底下，
+    不進版控，而且它帶著 GeneratedCodeAttribute，分析器不會唸它。
 
-    zh-Hant / zh-Hans 那兩份不必在這裡列:.NET SDK 會從檔名認出文化,自動編成
+    zh-Hant / zh-Hans 那兩份不必在這裡列:.NET SDK 會從檔名認出文化，自動編成
     zh-Hant\Inkling.resources.dll 這種附屬組件。trimmed publish 不會把它們砍掉(驗過)。
   -->
   <ItemGroup>
@@ -68,14 +68,14 @@
   </ItemGroup>
 
   <!--
-    套件的圖示。用萬用字元收,新增尺寸時不必回來改這裡 ——
-    那幾張 PNG 是 tools\render-icons.ps1 從 assets\icon\*.svg 產生的,不要手改。
+    套件的圖示。用萬用字元收，新增尺寸時不必回來改這裡 ——
+    那幾張 PNG 是 tools\render-icons.ps1 從 assets\icon\*.svg 產生的，不要手改。
 
-    CopyToOutputDirectory 是必要的:少了它 Content 不會進建置輸出,而我們是以
+    CopyToOutputDirectory 是必要的:少了它 Content 不會進建置輸出，而我們是以
     loose file 註冊建置輸出當套件(見 tools\deploy.ps1)。少了它 AppxManifest 裡
-    每一個 Logo 都指向不存在的檔案 —— 套件照樣註冊得起來,只是圖示全部變成
-    Windows 的預設灰方塊,而且 IconHelpers.FromRelativePath 也讀不到檔
-    (它組的是 BaseDirectory 底下的實體路徑,不走 MRT)。踩過一次,查了很久。
+    每一個 Logo 都指向不存在的檔案 —— 套件照樣註冊得起來，只是圖示全部變成
+    Windows 的預設灰方塊，而且 IconHelpers.FromRelativePath 也讀不到檔
+    (它組的是 BaseDirectory 底下的實體路徑，不走 MRT)。踩過一次，查了很久。
   -->
   <ItemGroup>
     <Content Include="Assets\*.png">
@@ -88,7 +88,7 @@
   </ItemGroup>
 
   <!--
-    宣告 "Msix" ProjectCapability,讓 MSIX 打包工具即使在 Windows App SDK
+    宣告 "Msix" ProjectCapability，讓 MSIX 打包工具即使在 Windows App SDK
     套件尚未還原時也能作用。
   -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
@@ -100,10 +100,10 @@
   </ItemGroup>
 
   <!--
-    這一層幾乎整個是 internal(它只對 CmdPal 開放,沒有第三方消費者),
+    這一層幾乎整個是 internal(它只對 CmdPal 開放，沒有第三方消費者),
     而測試要看得到頁面的命令順序、快速鍵與快取鍵 —— 那些正是最會漂、
-    而且從外面完全觀察不到的東西。開一條給測試專案的縫,不是把型別改成 public:
-    公開等於承諾,而這裡沒有要對誰承諾。
+    而且從外面完全觀察不到的東西。開一條給測試專案的縫，不是把型別改成 public:
+    公開等於承諾，而這裡沒有要對誰承諾。
   -->
   <ItemGroup>
     <InternalsVisibleTo Include="Inkling.Tests" />
@@ -127,21 +127,21 @@
 
   <PropertyGroup>
     <!--
-      **這個屬性對本專案的產出沒有任何作用**,加上條件純粹是為了不要製造誤導的錯誤訊息。
+      **這個屬性對本專案的產出沒有任何作用**，加上條件純粹是為了不要製造誤導的錯誤訊息。
 
-      兩份 pubxml 都把 PublishSingleFile 設回 False(官方模板自己就是這樣,微軟的
-      Microsoft.CmdPal.Ext.PowerToys 更是直接寫 false),所以 publish 出來的從來不是
-      單一檔案 —— 實測 49 個 dll。模板留著這行無條件的 true,只在一種情況下會被看見:
-      方案層級的 `dotnet build`(Platform=AnyCPU,對不到 win-$(Platform).pubxml,
+      兩份 pubxml 都把 PublishSingleFile 設回 False(官方模板自己就是這樣，微軟的
+      Microsoft.CmdPal.Ext.PowerToys 更是直接寫 false)，所以 publish 出來的從來不是
+      單一檔案 —— 實測 49 個 dll。模板留著這行無條件的 true，只在一種情況下會被看見:
+      方案層級的 `dotnet build`(Platform=AnyCPU，對不到 win-$(Platform).pubxml,
       於是 true 沒被覆寫)會報 NETSDK1097「沒有 RID 就不能發佈成單一檔案」——
       一個完全指不到問題的訊息。
 
-      加了條件之後那個假訊息消失,但**方案層級的 build 仍然建不起來**:MSIX 的打包目標
-      拒絕 ProcessorArchitecture neutral。那是打包專案的本質,不是這裡能解的
-      (`.slnx` 的 Platform 對應試過,它的 schema 不吃)。要建擴展就指定專案 +
-      `-p:Platform=x64`;`dotnet test` 不受影響,它只建測試專案與 Core。
+      加了條件之後那個假訊息消失，但**方案層級的 build 仍然建不起來**:MSIX 的打包目標
+      拒絕 ProcessorArchitecture neutral。那是打包專案的本質，不是這裡能解的
+      (`.slnx` 的 Platform 對應試過，它的 schema 不吃)。要建擴展就指定專案 +
+      `-p:Platform=x64`;`dotnet test` 不受影響，它只建測試專案與 Core。
 
-      單一檔案的分析器由下面 Debug 區塊的 EnableSingleFileAnalyzer 獨立控制,不受影響。
+      單一檔案的分析器由下面 Debug 區塊的 EnableSingleFileAnalyzer 獨立控制，不受影響。
     -->
     <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
     <IsAotCompatible>true</IsAotCompatible>
@@ -155,8 +155,8 @@
   </PropertyGroup>
 
   <!--
-    Debug 不做 trimming,換取較快的內層迴圈;但保留 trim / AOT 分析器,
-    讓違規在 Debug 就以警告現形,而不是等到 Release 才爆。
+    Debug 不做 trimming，換取較快的內層迴圈;但保留 trim / AOT 分析器，
+    讓違規在 Debug 就以警告現形，而不是等到 Release 才爆。
   -->
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <PublishTrimmed>false</PublishTrimmed>
@@ -172,17 +172,17 @@
 
   <!--
     第三方的偵錯符號不進套件。Microsoft.CommandPalette.Extensions.pdb 一個就 2.61 MB,
-    佔未壓縮套件的 8.5%,而它對我們毫無用處 —— 那是別人組件的行號,我們既不會拿它
-    除錯,使用者更不會。
+    佔未壓縮套件的 8.5%，而它對我們毫無用處 —— 那是別人組件的行號，我們既不會拿它
+    除錯，使用者更不會。
 
-    **自家的兩個 pdb 刻意留著**(Inkling.pdb / Inkling.Core.pdb,合計 70 KB):
-    擴展沒有主控台,唯一的現場線索是例外的堆疊,少了 pdb 就只剩沒有行號的方法名。
+    **自家的兩個 pdb 刻意留著**(Inkling.pdb / Inkling.Core.pdb，合計 70 KB):
+    擴展沒有主控台，唯一的現場線索是例外的堆疊，少了 pdb 就只剩沒有行號的方法名。
 
     用 NuGetPackageId 分辨而不是比對檔名:凡是從套件還原下來的 ResolvedFileToPublish
-    都帶著這個中繼資料,自家專案的產出沒有。改用檔名前綴的話,哪天多一個叫
+    都帶著這個中繼資料，自家專案的產出沒有。改用檔名前綴的話，哪天多一個叫
     Inkling.Something 的第三方套件就會靜靜地漏掉。
 
-    只掛在 publish:Debug 走的是 build 佈局(deploy.ps1 直接註冊它),那條路不在乎體積,
+    只掛在 publish:Debug 走的是 build 佈局(deploy.ps1 直接註冊它)，那條路不在乎體積，
     而且多留符號反而方便。
   -->
   <Target Name="TrimThirdPartySymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">

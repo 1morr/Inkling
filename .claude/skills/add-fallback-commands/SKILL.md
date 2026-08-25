@@ -7,26 +7,26 @@ description: >-
   when no other extension matches. Used by 14 of 20 built-in extensions.
 ---
 
-> **這份是 CmdPal 官方擴展模板附的 skill,正文原封不動搬進來當參考。**
+> **這份是 CmdPal 官方擴展模板附的 skill，正文原封不動搬進來當參考。**
 >
-> **本專案刻意不用 fallback。** 這條路完整做完過,最後整個移除
+> **本專案刻意不用 fallback。** 這條路完整做完過，最後整個移除
 > (型別叫 `QuickCaptureFallbackItem`,`git log --diff-filter=D` 找得到)。
 >
-> 原因:只有 fallback 拿得到使用者正在打的字(`UpdateQuery`),但沒命中前綴時我們只能把
-> `Title` 設成空字串,而 0.11.11762.0 **只在底部 fallback 區塊那條路濾空標題** ——
-> 勾了「Include in the Global result」走的那條評分路沒濾,每次搜索都多一個
+> 原因:只有 fallback 拿得到使用者正在打的字(`UpdateQuery`)，但沒命中前綴時我們只能把
+> `Title` 設成空字串，而 0.11.11762.0 **只在底部 fallback 區塊那條路濾空標題** ——
+> 勾了「Include in the Global result」走的那條評分路沒濾，每次搜索都多一個
 > 點不動的空列;不勾又會排在所有結果後面、失去意義。**這不是我們能修的。**
-> (那條路的名字對不到可驗證的識別名:0.11 安裝版兩種編碼都掃不到,`main` 也只有
+> (那條路的名字對不到可驗證的識別名:0.11 安裝版兩種編碼都掃不到，`main` 也只有
 > `MainListPageResultFactory.Create` 的同義參數 `scoredFallbackItems`;
 > 結論本身來自當時的真機重現。)
-> 查證過程見 [設計考證〈快速記下為什麼是頁面,不是 fallback〉](../../../docs/design-notes.md#capture-page-not-fallback)。
+> 查證過程見 [設計考證〈快速記下為什麼是頁面，不是 fallback〉](../../../docs/design-notes.md#capture-page-not-fallback)。
 >
-> 現在的入口是 `QuickCapturePage` + 使用者自設的 alias,按鍵數一樣。
+> 現在的入口是 `QuickCapturePage` + 使用者自設的 alias，按鍵數一樣。
 >
-> **要重新考慮之前先讀那一節**,而且注意改名前的 `Notelet.QuickCapture` 曾經掛在 fallback 上,
+> **要重新考慮之前先讀那一節**，而且注意改名前的 `Notelet.QuickCapture` 曾經掛在 fallback 上，
 > 那個字串八成還躺在使用者的 CmdPal `settings.json` 裡帶著舊的顯示規則 ——
-> **它現在程式裡碰不到了,也不要再拿它當任何東西的 Id**。
-> 現在的 `CommandIds.QuickCapture`(`Inkling.QuickCapture`)是全新的鍵,撿不到那些殘留。
+> **它現在程式裡碰不到了，也不要再拿它當任何東西的 Id**。
+> 現在的 `CommandIds.QuickCapture`(`Inkling.QuickCapture`)是全新的鍵，撿不到那些殘留。
 
 # Add Fallback Commands
 

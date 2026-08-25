@@ -3,7 +3,7 @@
   <!--
     繁體中文。zh-TW / zh-HK / zh-MO 都會回落到這一份(zh-TW 的 parent 就是 zh-Hant)。
 
-    這份檔案由人維護,不是產生出來的。改動時三份要一起改
+    這份檔案由人維護，不是產生出來的。改動時三份要一起改
     (Resources.resx / Resources.zh-Hant.resx / Resources.zh-Hans.resx),
     ResourceParityTests 會擋住只改一份的情況。
 
@@ -113,7 +113,7 @@
     <value>瀏覽與搜尋筆記</value>
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
-    <value>打字直接存成筆記,分隔符後面接內文</value>
+    <value>打字直接存成筆記，分隔符後面接內文</value>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
     <value>Inkling：新增筆記</value>
@@ -125,7 +125,7 @@
     <value>Inkling：隨手草稿</value>
   </data>
   <data name="ProviderScratchpadSubtitle" xml:space="preserve">
-    <value>打開就接著上次寫,不必取標題</value>
+    <value>打開就接著上次寫，不必取標題</value>
   </data>
   <data name="ScratchpadDiscard" xml:space="preserve">
     <value>捨棄變更</value>
@@ -137,7 +137,7 @@
     <value>已捨棄這次的變更</value>
   </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
-    <value>挑幾則刪掉,或整個清空</value>
+    <value>挑幾則刪掉，或整個清空</value>
   </data>
   <data name="ListPagePlaceholder" xml:space="preserve">
     <value>搜尋標題與內文…</value>
@@ -152,7 +152,7 @@
     <value>找不到符合的筆記</value>
   </data>
   <data name="ListPageNoMatchSubtitle" xml:space="preserve">
-    <value>換個關鍵字試試,或按 Enter 去記下新筆記</value>
+    <value>換個關鍵字試試，或按 Enter 去記下新筆記</value>
   </data>
   <data name="ListPageMoreResults" xml:space="preserve">
     <value>還有 {0} 則沒顯示</value>
@@ -164,7 +164,7 @@
     <value>有 {0} 個檔案讀不出來</value>
   </data>
   <data name="ListPageSkippedFilesSubtitle" xml:space="preserve">
-    <value>檔案還在資料夾裡 —— 可能被別的程式開著,或者編碼不是 UTF-8</value>
+    <value>檔案還在資料夾裡 —— 可能被別的程式開著，或者編碼不是 UTF-8</value>
   </data>
   <data name="ToggleSourceShowRaw" xml:space="preserve">
     <value>顯示原始文字</value>
@@ -194,10 +194,10 @@
     <value>Inkling：快速記下</value>
   </data>
   <data name="QuickCapturePlaceholder" xml:space="preserve">
-    <value>打字記下想法,{0} 後面接內文…</value>
+    <value>打字記下想法，{0} 後面接內文…</value>
   </data>
   <data name="QuickCaptureHint" xml:space="preserve">
-    <value>「買咖啡機{0}比較過幾台」—— {0} 前面是標題,後面是內文</value>
+    <value>「買咖啡機{0}比較過幾台」—— {0} 前面是標題，後面是內文</value>
   </data>
   <data name="QuickCaptureEmptyTitle" xml:space="preserve">
     <value>打字就記下</value>
@@ -244,22 +244,22 @@
     <value>還有 {0} 則沒列出</value>
   </data>
   <data name="DeleteMoreNotesSubtitle" xml:space="preserve">
-    <value>刪除全部仍然會刪掉它們,這裡只是列不下</value>
+    <value>刪除全部仍然會刪掉它們，這裡只是列不下</value>
   </data>
   <data name="DeleteExternalConfirmTitle" xml:space="preserve">
     <value>刪除這個檔案？</value>
   </data>
   <data name="DeleteExternalConfirmDescription" xml:space="preserve">
-    <value>「{0}」不是 Inkling 建立的,會被移到資源回收筒。</value>
+    <value>「{0}」不是 Inkling 建立的，會被移到資源回收筒。</value>
   </data>
   <data name="DeleteQuickTitle" xml:space="preserve">
     <value>直接刪除</value>
   </data>
   <data name="DeleteQuickSubtitle" xml:space="preserve">
-    <value>不問,直接移到資源回收筒</value>
+    <value>不問，直接移到資源回收筒</value>
   </data>
   <data name="DeleteExternalAlwaysConfirmSubtitle" xml:space="preserve">
-    <value>不是 Inkling 建立的,一律先確認</value>
+    <value>不是 Inkling 建立的，一律先確認</value>
   </data>
   <data name="DeleteAllName" xml:space="preserve">
     <value>刪除全部</value>
@@ -271,7 +271,7 @@
     <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒。隨手草稿不受影響。</value>
   </data>
   <data name="DeleteAllConfirmDescriptionWithExternal" xml:space="preserve">
-    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒,其中 {1} 則不是 Inkling 建立的。隨手草稿不受影響。</value>
+    <value>{0} 底下(含子資料夾)所有的 .md 都會移到資源回收筒，其中 {1} 則不是 Inkling 建立的。隨手草稿不受影響。</value>
   </data>
   <data name="DeleteAllItemTitle" xml:space="preserve">
     <value>刪除全部 {0} 則</value>
@@ -280,12 +280,12 @@
     <value>{0}(含子資料夾)</value>
   </data>
   <data name="DeleteAllScope" xml:space="preserve">
-    <value>底下(含子資料夾)所有的 `.md`,目前 {0} 則,**全部都會刪掉**。隨手草稿不受影響。</value>
+    <value>底下(含子資料夾)所有的 `.md`，目前 {0} 則，**全部都會刪掉**。隨手草稿不受影響。</value>
   </data>
   <data name="DeleteAllScopeExternalSuffix" xml:space="preserve">
     <value>
 
-其中 **{0} 則不是 Inkling 建立的** —— front matter 裡沒有 Inkling 的 id,是別的工具寫的、或是直接丟進這個資料夾的檔案。</value>
+其中 **{0} 則不是 Inkling 建立的** —— front matter 裡沒有 Inkling 的 id，是別的工具寫的、或是直接丟進這個資料夾的檔案。</value>
   </data>
   <data name="DeleteMineName" xml:space="preserve">
     <value>只刪 Inkling 建立的</value>
@@ -294,7 +294,7 @@
     <value>刪除 Inkling 建立的 {0} 則筆記？</value>
   </data>
   <data name="DeleteMineConfirmDescription" xml:space="preserve">
-    <value>移到資源回收筒。另外 {0} 則不是 Inkling 建立的,不會動到。</value>
+    <value>移到資源回收筒。另外 {0} 則不是 Inkling 建立的，不會動到。</value>
   </data>
   <data name="DeleteMineItemTitle" xml:space="preserve">
     <value>只刪 Inkling 建立的 {0} 則</value>
@@ -303,9 +303,9 @@
     <value>保留 {0} 則不是 Inkling 建立的</value>
   </data>
   <data name="DeleteMineScope" xml:space="preserve">
-    <value>底下(含子資料夾)共 {0} 則 `.md`,這個動作只刪其中 **Inkling 建立的 {1} 則**。
+    <value>底下(含子資料夾)共 {0} 則 `.md`，這個動作只刪其中 **Inkling 建立的 {1} 則**。
 
-另外 {2} 則 front matter 裡沒有 Inkling 的 id(別的工具寫的、或是直接丟進這個資料夾的),留著不動。</value>
+另外 {2} 則 front matter 裡沒有 Inkling 的 id(別的工具寫的、或是直接丟進這個資料夾的)，留著不動。</value>
   </data>
   <data name="DeleteDetailsTitle" xml:space="preserve">
     <value>會刪掉什麼</value>
@@ -315,7 +315,7 @@
 
 {1}
 
-刪掉的檔案會進資源回收筒。網路磁碟或沒有回收筒的裝置上則是直接消失,那是 Windows 的行為,不是我們能選的。</value>
+刪掉的檔案會進資源回收筒。網路磁碟或沒有回收筒的裝置上則是直接消失，那是 Windows 的行為，不是我們能選的。</value>
   </data>
   <data name="DeleteDone" xml:space="preserve">
     <value>已刪除：{0}</value>
@@ -324,7 +324,7 @@
     <value>已刪除 {0} 則</value>
   </data>
   <data name="DeletePartialFailure" xml:space="preserve">
-    <value>已刪除 {0} 則,{1} 則刪不掉(檔案可能被其他程式開著)</value>
+    <value>已刪除 {0} 則，{1} 則刪不掉(檔案可能被其他程式開著)</value>
   </data>
   <data name="DeleteFailed" xml:space="preserve">
     <value>刪除失敗：{0} —— 請到設定檢查筆記資料夾</value>
@@ -360,7 +360,7 @@
     <value>細節、連結、待辦…</value>
   </data>
   <data name="FormCaretHint" xml:space="preserve">
-    <value>游標落在內文開頭。按 Ctrl+End 跳到最後接著寫。存檔之後這一頁會留著,按 Esc 回上一頁。</value>
+    <value>游標落在內文開頭。按 Ctrl+End 跳到最後接著寫。存檔之後這一頁會留著，按 Esc 回上一頁。</value>
   </data>
   <data name="FormSave" xml:space="preserve">
     <value>儲存</value>
@@ -408,7 +408,7 @@
     <value>設定已儲存</value>
   </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
-    <value>暫時生效了,但沒寫進磁碟 —— 重啟之後會還原。再存一次；一直失敗的話檢查磁碟空間與權限</value>
+    <value>暫時生效了，但沒寫進磁碟 —— 重啟之後會還原。再存一次；一直失敗的話檢查磁碟空間與權限</value>
   </data>
   <data name="SettingsFolderPickerTitle" xml:space="preserve">
     <value>選擇筆記資料夾</value>
@@ -423,28 +423,28 @@
     <value>開不了資料夾選擇對話框 —— 直接把路徑打進欄位</value>
   </data>
   <data name="SettingsDirectoryRejected" xml:space="preserve">
-    <value>沒有儲存 —— 筆記資料夾要填完整路徑,例如「C:\Notes」</value>
+    <value>沒有儲存 —— 筆記資料夾要填完整路徑，例如「C:\Notes」</value>
   </data>
   <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
-    <value>已儲存 —— 這個資料夾還不存在,第一次存檔時會建立：{0}</value>
+    <value>已儲存 —— 這個資料夾還不存在，第一次存檔時會建立：{0}</value>
   </data>
   <data name="SettingNotesDirectoryLabel" xml:space="preserve">
     <value>筆記資料夾</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
-    <value>放在 OneDrive 之類的雲端硬碟底下,多端同步就交給它處理 —— Inkling 自己不做同步。換資料夾不會搬動已經寫好的筆記,只是改成去讀新的位置。要填完整路徑；資料夾還不存在的話,第一次存檔時會建立。清空這個欄位就回到預設資料夾。</value>
+    <value>放在 OneDrive 之類的雲端硬碟底下，多端同步就交給它處理 —— Inkling 自己不做同步。換資料夾不會搬動已經寫好的筆記，只是改成去讀新的位置。要填完整路徑；資料夾還不存在的話，第一次存檔時會建立。清空這個欄位就回到預設資料夾。</value>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">
     <value>快速記下的分隔符</value>
   </data>
   <data name="SettingSeparatorDescription" xml:space="preserve">
-    <value>快速記下時,打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快,而連續兩個分號在一般句子裡不會出現,標題因此還是能自由使用單一個分號；常寫 for (;;) 這種筆記的話換成「,,」,鍵位一樣好按、撞得更少。半形全形算同一個：設定填「;;」、打字打「；；」照樣切得開。</value>
+    <value>快速記下時，打在它前面的是標題、後面是內文。預設的「;;」不用按 Shift、連打兩下最快，而連續兩個分號在一般句子裡不會出現，標題因此還是能自由使用單一個分號；常寫 for (;;) 這種筆記的話換成「,,」，鍵位一樣好按、撞得更少。半形全形算同一個：設定填「;;」、打字打「；；」照樣切得開。</value>
   </data>
   <data name="SettingPreviewLabel" xml:space="preserve">
     <value>記下後先看一眼</value>
   </data>
   <data name="SettingPreviewDescription" xml:space="preserve">
-    <value>記下之後停在筆記上,再按一次 Enter 才收起 Command Palette。</value>
+    <value>記下之後停在筆記上，再按一次 Enter 才收起 Command Palette。</value>
   </data>
   <data name="CommandRetry" xml:space="preserve">
     <value>再試一次</value>
@@ -453,12 +453,12 @@
     <value>繼續編輯</value>
   </data>
   <data name="EditKeepEditingSubtitle" xml:space="preserve">
-    <value>什麼都不做,表單留在原地</value>
+    <value>什麼都不做，表單留在原地</value>
   </data>
   <data name="ListPageConflictTag" xml:space="preserve">
     <value>衝突副本</value>
   </data>
   <data name="SettingsCorruptWarning" xml:space="preserve">
-    <value>設定檔不是合法的 JSON。Inkling 已經改用預設值,並把原本那份搬成「{0}」—— 按儲存之前先確認下面的筆記資料夾。</value>
+    <value>設定檔不是合法的 JSON。Inkling 已經改用預設值，並把原本那份搬成「{0}」—— 按儲存之前先確認下面的筆記資料夾。</value>
   </data>
 </root>

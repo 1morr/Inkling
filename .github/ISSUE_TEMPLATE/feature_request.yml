@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Write in English or Traditional Chinese, whichever you prefer.
-        繁體中文也可以,不必翻成英文。
+        繁體中文也可以，不必翻成英文。
 
   - type: textarea
     id: scenario

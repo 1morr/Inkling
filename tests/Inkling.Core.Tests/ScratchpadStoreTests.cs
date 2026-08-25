@@ -3,7 +3,7 @@ using Xunit;
 namespace Inkling.Core.Tests;
 
 /// <summary>
-/// 隨手草稿的檔案讀寫。這一層的規矩只有三條,但每一條壞掉都會讓使用者靜靜地掉資料:
+/// 隨手草稿的檔案讀寫。這一層的規矩只有三條，但每一條壞掉都會讓使用者靜靜地掉資料:
 /// 讀不到要當成「空的」而不是爆掉、寫入要是原子的、EnsureFile 絕不能覆寫既有內容。
 /// </summary>
 public class ScratchpadStoreTests
@@ -14,7 +14,7 @@ public class ScratchpadStoreTests
         using var temp = new TempDirectory();
         var store = new ScratchpadStore(temp.Options);
 
-        // 不能丟例外:第一次打開隨手草稿時檔案本來就不存在,而這個回傳值會直接進 UI。
+        // 不能丟例外:第一次打開隨手草稿時檔案本來就不存在，而這個回傳值會直接進 UI。
         Assert.Equal(string.Empty, store.Read());
     }
 
@@ -31,15 +31,15 @@ public class ScratchpadStoreTests
     }
 
     /// <remarks>
-    /// 記憶體裡的約定是「LF、檔尾不帶換行」,所以這裡的輸入都照那個形狀寫。
-    /// CR / CRLF 進來會被折平,那是 <see cref="Write_NormalizesEveryFlavourOfNewlineToCrlfOnDisk"/> 的事。
+    /// 記憶體裡的約定是「LF、檔尾不帶換行」，所以這裡的輸入都照那個形狀寫。
+    /// CR / CRLF 進來會被折平，那是 <see cref="Write_NormalizesEveryFlavourOfNewlineToCrlfOnDisk"/> 的事。
     /// </remarks>
     [Theory]
     [InlineData("一行")]
     [InlineData("第一行\n第二行\n第三行")]
     [InlineData("中間有\n\n空行也要留著")]
-    [InlineData("  前導空白是使用者自己的縮排,不能吃掉")]
-    [InlineData("emoji 🐈 與全形標點,。「」都要活著")]
+    [InlineData("  前導空白是使用者自己的縮排，不能吃掉")]
+    [InlineData("emoji 🐈 與全形標點，。「」都要活著")]
     [InlineData("${foo} 與 \"雙引號\" 不該被任何人解讀")]
     public void WriteThenRead_RoundTrips(string text)
     {
@@ -60,7 +60,7 @@ public class ScratchpadStoreTests
         store.Write("很長很長的第一版內容");
         store.Write("短");
 
-        // 草稿是整份覆寫的,不是追加 —— 舊內容的殘骸不能留在後面。
+        // 草稿是整份覆寫的，不是追加 —— 舊內容的殘骸不能留在後面。
         Assert.Equal("短", store.Read());
     }
 
@@ -70,8 +70,8 @@ public class ScratchpadStoreTests
     public void Write_NormalizesEveryFlavourOfNewlineToCrlfOnDisk(string typed)
     {
         // Adaptive Cards 的多行輸入框送回來的換行是**裸 CR**(底下那個 WinUI TextBox 的行為)。
-        // 原樣落地的話,Ctrl+O 用外部編輯器打開會看到擠成一行的一大塊字 ——
-        // 而那條路正是這個功能拿來替代自動儲存的,不能壞。
+        // 原樣落地的話，Ctrl+O 用外部編輯器打開會看到擠成一行的一大塊字 ——
+        // 而那條路正是這個功能拿來替代自動儲存的，不能壞。
         using var temp = new TempDirectory();
         var store = new ScratchpadStore(temp.Options);
 
@@ -82,7 +82,7 @@ public class ScratchpadStoreTests
         Assert.DoesNotContain('\r', raw.Replace("\r\n", string.Empty, StringComparison.Ordinal));
         Assert.DoesNotContain('\n', raw.Replace("\r\n", string.Empty, StringComparison.Ordinal));
 
-        // 讀回來一律是 LF,而且行的內容一個字都沒少。
+        // 讀回來一律是 LF，而且行的內容一個字都沒少。
         Assert.Equal(
             typed.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n'),
             store.Read());
@@ -102,7 +102,7 @@ public class ScratchpadStoreTests
     [Fact]
     public void WriteThenRead_DoesNotGrowATrailingBlankLineEachRound()
     {
-        // 檔尾那個換行是格式不是內容。Read 不拿掉的話,每存一次就多長一行 ——
+        // 檔尾那個換行是格式不是內容。Read 不拿掉的話，每存一次就多長一行 ——
         // NoteFile.StripTrailingNewline 存在的理由一模一樣。
         using var temp = new TempDirectory();
         var store = new ScratchpadStore(temp.Options);
@@ -165,7 +165,7 @@ public class ScratchpadStoreTests
 
         store.EnsureFile();
 
-        // Ctrl+O 要開得起來,檔案就得真的存在。
+        // Ctrl+O 要開得起來，檔案就得真的存在。
         Assert.True(File.Exists(store.FilePath));
         Assert.Equal(string.Empty, store.Read());
     }

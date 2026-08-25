@@ -8,47 +8,47 @@ description: >-
   Use when working with Command Palette SDK types, pages, content, or commands.
 ---
 
-> **這份是 CmdPal 官方擴展模板附的文檔,正文原封不動搬進來當 API 速查。**
+> **這份是 CmdPal 官方擴展模板附的文檔，正文原封不動搬進來當 API 速查。**
 > 來源:`TemplateExtension/.github/instructions/cmdpal-extension.instructions.md`。
 >
-> **它有幾處跟本專案實測到的行為衝突,照做會壞掉。以這一段為準:**
+> **它有幾處跟本專案實測到的行為衝突，照做會壞掉。以這一段為準:**
 >
-> 1. **下面〈Status Messages and Toasts〉那兩行是兩種完全不同的東西,只有一種會關掉面板。**
+> 1. **下面〈Status Messages and Toasts〉那兩行是兩種完全不同的東西，只有一種會關掉面板。**
 >
->    - **`CommandResult.ShowToast(...)`(以及 `CopyTextCommand` 的預設 `Result`)會讓面板消失,
->      但成因不是焦點。** 它送的是 `ShowToastMessage`,由 CmdPal 開一個獨立的 `ToastWindow`,
+>    - **`CommandResult.ShowToast(...)`(以及 `CopyTextCommand` 的預設 `Result`)會讓面板消失，
+>      但成因不是焦點。** 它送的是 `ShowToastMessage`，由 CmdPal 開一個獨立的 `ToastWindow`,
 >      而那個視窗是 `WS_EX_TOOLWINDOW | WS_DISABLED` —— **它拿不到前景**。
->      收面板的是 `ToastArgs.Result`,而字串那個簡寫吃的預設值正好是 `Dismiss`。
+>      收面板的是 `ToastArgs.Result`，而字串那個簡寫吃的預設值正好是 `Dismiss`。
 >      明著給 `Result = KeepOpen()` 面板就留著(實機量過)。
->      ⚠ 這一段以前寫著「那個視窗會搶焦點,`KeepOpen` 救不回來」——**那是錯的**,
->      2026-08-23 在三條路上推翻,見
+>      ⚠ 這一段以前寫著「那個視窗會搶焦點，`KeepOpen` 救不回來」——**那是錯的**,
+>      2026-08-23 在三條路上推翻，見
 >      [設計考證〈toast 不會把面板關掉〉](../../../docs/design-notes.md#toast-does-not-steal-focus)。
->    - **`new ToastStatusMessage(...).Show()` 不會。** 它名字裡有 Toast,但根本沒開視窗:
->      呼叫的是 `IExtensionHost.ShowStatus`,由 CmdPal 加進 `StatusMessages`,顯示成底部命令列
+>    - **`new ToastStatusMessage(...).Show()` 不會。** 它名字裡有 Toast，但根本沒開視窗:
+>      呼叫的是 `IExtensionHost.ShowStatus`，由 CmdPal 加進 `StatusMessages`，顯示成底部命令列
 >      左邊那個 `InfoBadge`(點開是 flyout 裡的 `InfoBar`),2.5 秒後自己收掉。
->      擴展跑在自己的進程裡,本來就開不了 CmdPal 的視窗 —— 它能做的只有呼叫 host。
+>      擴展跑在自己的進程裡，本來就開不了 CmdPal 的視窗 —— 它能做的只有呼叫 host。
 >      本專案的存檔提示走的就是這條(`NoteFormContent`、`InklingSettingsForm`)。
 >
->    要「做完之後留在原地」而且**不想離開清單**,還有第三條路:`ListItem.Tags`
->    就地改一列的狀態(見 `NoteListPage.BaseTags`,本專案用它標雲端硬碟的衝突副本)。
->    那是**持續性**的狀態;短暫的回饋用上面兩條,標籤做過一版但收掉了。
-> 2. **`ListItem.Details` 只能整個換掉,不能就地改屬性。** 下面把它寫成一般屬性,但 `IDetails`
->    在 SDK IDL 裡沒有宣告成可觀察介面,通知跨不過 out-of-process 邊界 —— 值改了畫面不動。
->    `Details.Size` 更只在初始化時讀一次,不明著寫就是最窄那一檔。
+>    要「做完之後留在原地」而且**不想離開清單**，還有第三條路:`ListItem.Tags`
+>    就地改一列的狀態(見 `NoteListPage.BaseTags`，本專案用它標雲端硬碟的衝突副本)。
+>    那是**持續性**的狀態;短暫的回饋用上面兩條，標籤做過一版但收掉了。
+> 2. **`ListItem.Details` 只能整個換掉，不能就地改屬性。** 下面把它寫成一般屬性，但 `IDetails`
+>    在 SDK IDL 裡沒有宣告成可觀察介面，通知跨不過 out-of-process 邊界 —— 值改了畫面不動。
+>    `Details.Size` 更只在初始化時讀一次，不明著寫就是最窄那一檔。
 > 3. **每個頂層命令都要有固定 `Id`**(`src/Inkling/CommandIds.cs`)。下面的範例全都沒設。
->    沒設的話 CmdPal 拿 `ProviderId + DisplayTitle + Title + Subtitle` 算雜湊當身分,
->    標題改一個字,使用者的 alias / 快速鍵 / 釘選就全部對不上。
-> 4. **`Debug.Write()` 在這個專案沒用。** 它掛著 `[Conditional("DEBUG")]`,而日常安裝的是 Release。
->    用 `DiagnosticLog`,見 `docs/development.md`〈讓擴展自己說話(DiagnosticLog)〉。
-> 5. **〈Build & Debug〉那節是 Visual Studio 流程,這台機器沒有 VS。** 走 `tools\deploy.ps1`。
+>    沒設的話 CmdPal 拿 `ProviderId + DisplayTitle + Title + Subtitle` 算雜湊當身分，
+>    標題改一個字，使用者的 alias / 快速鍵 / 釘選就全部對不上。
+> 4. **`Debug.Write()` 在這個專案沒用。** 它掛著 `[Conditional("DEBUG")]`，而日常安裝的是 Release。
+>    用 `DiagnosticLog`，見 `docs/development.md`〈讓擴展自己說話(DiagnosticLog)〉。
+> 5. **〈Build & Debug〉那節是 Visual Studio 流程，這台機器沒有 VS。** 走 `tools\deploy.ps1`。
 > 6. **圖示碼位不要寫成 `\uXXXX`。** 本專案的 `Icons.cs` 用 `Glyph(0xE70B)` —— `\u` 逸出
->    被文字處理工具碰到會**無聲地**變成一個私用區字元,檔案看起來還是好的,圖示卻全部消失。
-> 7. **介面字串不准寫在程式碼裡**,一律走 `Properties/Resources.resx`(英文 / 繁中 / 簡中三份),
+>    被文字處理工具碰到會**無聲地**變成一個私用區字元，檔案看起來還是好的，圖示卻全部消失。
+> 7. **介面字串不准寫在程式碼裡**，一律走 `Properties/Resources.resx`(英文 / 繁中 / 簡中三份),
 >    見 CLAUDE.md〈慣例〉。下面的範例為了簡潔都是寫死的字串。
 > 8. `CommandResult.Confirm` 的 `IsPrimaryCommandCritical` 在 0.11.11762.0 **完全沒有效果**
->    (整個套件掃不到 `set_DefaultButton`),確認框的按鈕也碰不到任何顏色。
->    見 [設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](../../../docs/design-notes.md#confirm-dialog-colors)。
-> 9. **正文 `KeyChordHelpers.FromModifiers` 的範例是舊的 4 參數簽章,照抄編譯不過。**
+>    (整個套件掃不到 `set_DefaultButton`)，確認框的按鈕也碰不到任何顏色。
+>    見 [設計考證〈確認框的按鈕沒有顏色，也沒有「危險」樣式〉](../../../docs/design-notes.md#confirm-dialog-colors)。
+> 9. **正文 `KeyChordHelpers.FromModifiers` 的範例是舊的 4 參數簽章，照抄編譯不過。**
 >    現行 SDK 是 6 參數:`(ctrl, alt, shift, win, vkey, scanCode)`(另有 `VirtualKey` 多載),
 >    `dotnet run --project tools\ApiDump -- KeyChordHelpers` 可複驗;本專案的用法見
 >    `src/Inkling/Shortcuts.cs`(6 參數具名呼叫)。

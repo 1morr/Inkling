@@ -9,29 +9,29 @@
   IgnorableNamespaces="uap uap3 rescap">
 
   <!--
-    **這三個值是 Partner Center 指派的,不是我們挑的,一個字都不要改。**
-    來源是該 app 的 產品管理 → 產品標識(Product identity)頁,2026-08-23 抄下來的。
-    Name / Publisher / PublisherDisplayName 對不上的話 Partner Center 會在上傳時退件,
+    **這三個值是 Partner Center 指派的，不是我們挑的，一個字都不要改。**
+    來源是該 app 的 產品管理 → 產品標識(Product identity)頁，2026-08-23 抄下來的。
+    Name / Publisher / PublisherDisplayName 對不上的話 Partner Center 會在上傳時退件，
     而 `makeappx pack` 與 CI **都不會**先報錯 —— 只有上傳那一刻才知道。
 
     **`DisplayName` 必須是你在 Partner Center 保留過的名字**(這裡是 `Inkling Notes`),
-    否則上傳被擋,錯誤字面是 “The name found in the package is not one of your reserved
+    否則上傳被擋，錯誤字面是 “The name found in the package is not one of your reserved
     app names”。**它跟 CmdPal 裡看到的名字是兩回事** —— 那五個命令的標題走 .resx,
-    現在仍然是「Inkling」,而且刻意保持:那是使用者打的字,短的比較好按。
-    `Inkling` 這個名字在 Store 被商標擋下(Inkling Systems / inkling.com),所以上架名
+    現在仍然是「Inkling」，而且刻意保持:那是使用者打的字，短的比較好按。
+    `Inkling` 這個名字在 Store 被商標擋下(Inkling Systems / inkling.com)，所以上架名
     加了 Notes。
 
-    **這裡沒有任何憑證,以後也不會有。** Store 會在通過認證之後用微軟的憑證重簽,
-    本機部署走 Add-AppxPackage -Register(開發者模式的 loose-file 註冊),兩條路都不需要
+    **這裡沒有任何憑證，以後也不會有。** Store 會在通過認證之後用微軟的憑證重簽，
+    本機部署走 Add-AppxPackage -Register(開發者模式的 loose-file 註冊)，兩條路都不需要
     我們自己簽。
 
-    **PFN = `<Name>_<Publisher 的雜湊>`,雜湊算不出來**,要註冊一次之後用
+    **PFN = `<Name>_<Publisher 的雜湊>`，雜湊算不出來**，要註冊一次之後用
     `(Get-AppxPackage '*Inkling*').PackageFamilyName` 量。目前是
-    `CPPt.InklingNotes_fsn608qftpbpp`。PFN 一變,
-    %LOCALAPPDATA%\Packages\<PFN>\LocalState 換位置,擴展自己的 settings.json 變孤兒
-    (筆記資料夾會靜靜退回預設值 —— 檔案都還在,清單卻是空的);CmdPal 端
-    `<PFN>!App!Inkling` 那個鍵也跟著孤兒化,啟用狀態與釘選回到預設。**alias 不受影響**,
-    它的鍵是純命令 Id。身分已經定案,所以這是最後一次。
+    `CPPt.InklingNotes_fsn608qftpbpp`。PFN 一變，
+    %LOCALAPPDATA%\Packages\<PFN>\LocalState 換位置，擴展自己的 settings.json 變孤兒
+    (筆記資料夾會靜靜退回預設值 —— 檔案都還在，清單卻是空的);CmdPal 端
+    `<PFN>!App!Inkling` 那個鍵也跟著孤兒化，啟用狀態與釘選回到預設。**alias 不受影響**,
+    它的鍵是純命令 Id。身分已經定案，所以這是最後一次。
   -->
   <Identity
     Name="CPPt.InklingNotes"
@@ -49,12 +49,12 @@
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.19041.0" />
   </Dependencies>
 
-  <!-- 三種語言明確列出來,**第一項就是預設**。
+  <!-- 三種語言明確列出來，**第一項就是預設**。
 
-       不要換回官方模板的 `x-generate`:那會讓 MRT 拿 PRI 裡實際存在的語言限定詞去展開,
+       不要換回官方模板的 `x-generate`:那會讓 MRT 拿 PRI 裡實際存在的語言限定詞去展開，
        而我們的介面字串走的是 .NET 的 .resx 附屬組件、不是 PRI —— PRI 裡一個語言資源
-       都沒有,於是它退回「預設語言」那一個,產出物就變成單語(實測作者機器產 ZH-TW、
-       Actions 的 windows-latest 會產 EN-US)。Store 與 gallery 讀的就是這一段,
+       都沒有，於是它退回「預設語言」那一個，產出物就變成單語(實測作者機器產 ZH-TW、
+       Actions 的 windows-latest 會產 EN-US)。Store 與 gallery 讀的就是這一段，
        一個三語擴展會被登記成單語。csproj 的 <DefaultLanguage> 同時釘住 PRI 那一邊。 -->
   <Resources>
     <Resource Language="en-US"/>
@@ -66,18 +66,18 @@
     <Application Id="App"
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
-      <!-- Description 用英文:NeutralLanguage 是 en,這段會出現在 Windows「應用程式」
-           清單與 gallery 的中繼資料裡;不是身分欄位,改它不影響已安裝的使用者。
+      <!-- Description 用英文:NeutralLanguage 是 en，這段會出現在 Windows「應用程式」
+           清單與 gallery 的中繼資料裡;不是身分欄位，改它不影響已安裝的使用者。
 
            AppListEntry="none" —— **不要拿掉。** 這個套件的 exe 是純 COM server:
-           Program.cs 沒帶 -RegisterProcessAsComServer 就只印一行字然後結束,而擴展
-           進程沒有主控台,所以使用者「啟動」它會完全沒有反應。少了這一行,Windows 會
-           把它登記成一個一般的已安裝應用程式,於是 CmdPal 內建的應用程式搜索**也會**
-           把它列進結果 —— 五個真的命令下面多一列同名的死項目,按 Enter 什麼都不發生。
-           (那一列不是第 6 條那個「兩個 Inkling」,副標會是這裡的 Description 而不是
-           我們自己的字串,圖示也是 Windows 從 Square44x44Logo 挑的,不是 provider 的。)
+           Program.cs 沒帶 -RegisterProcessAsComServer 就只印一行字然後結束，而擴展
+           進程沒有主控台，所以使用者「啟動」它會完全沒有反應。少了這一行，Windows 會
+           把它登記成一個一般的已安裝應用程式，於是 CmdPal 內建的應用程式搜索**也會**
+           把它列進結果 —— 五個真的命令下面多一列同名的死項目，按 Enter 什麼都不發生。
+           (那一列不是第 6 條那個「兩個 Inkling」，副標會是這裡的 Description 而不是
+           我們自己的字串，圖示也是 Windows 從 Square44x44Logo 挑的，不是 provider 的。)
            微軟自己的〈Packaging a CLI Executable as MSIX〉對同樣形狀的套件開的就是這個處方。
-           代價是 Inkling 不再出現在開始功能表;設定 → 應用程式 仍然列得到,解安裝不受影響。 -->
+           代價是 Inkling 不再出現在開始功能表;設定 → 應用程式 仍然列得到，解安裝不受影響。 -->
       <uap:VisualElements
         DisplayName="Inkling Notes"
         Description="Capture thoughts in seconds, right in Command Palette"

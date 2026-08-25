@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
-    中性(fallback)資源:英文。系統語言不是我們有翻譯的那幾種時,使用者看到的就是這一份。
+    中性(fallback)資源:英文。系統語言不是我們有翻譯的那幾種時，使用者看到的就是這一份。
 
-    這份檔案由人維護,不是產生出來的。改動時三份要一起改
+    這份檔案由人維護，不是產生出來的。改動時三份要一起改
     (Resources.resx / Resources.zh-Hant.resx / Resources.zh-Hans.resx),
     ResourceParityTests 會擋住只改一份的情況。
 
@@ -76,7 +76,7 @@
   </data>
   <data name="CommandNewNote" xml:space="preserve">
     <value>New note</value>
-    <comment>清單頁 Ctrl+K 選單裡的「新增筆記」(Ctrl+N)。不帶「Inkling:」前綴 —— 那是頂層命令用來自報家門的,在自己的選單裡是雜訊。</comment>
+    <comment>清單頁 Ctrl+K 選單裡的「新增筆記」(Ctrl+N)。不帶「Inkling:」前綴 —— 那是頂層命令用來自報家門的，在自己的選單裡是雜訊。</comment>
   </data>
   <data name="CommandEdit" xml:space="preserve">
     <value>Edit</value>
@@ -92,7 +92,7 @@
   </data>
   <data name="CommandCapture" xml:space="preserve">
     <value>Capture</value>
-    <comment>快速記下那一列的動作,也當作那一區的標題。</comment>
+    <comment>快速記下那一列的動作，也當作那一區的標題。</comment>
   </data>
   <data name="CommandCopyBody" xml:space="preserve">
     <value>Copy body</value>
@@ -117,7 +117,7 @@
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
     <value>Type to save a note; the body goes after the separator</value>
-    <comment>刻意不寫出實際的分隔符:那是可以改的設定,而頂層命令的副標不會跟著更新。也刻意不放 alias 的提示:副標永遠顯示,而 alias 只需要學一次,而且這個命令沒有 alias 照樣能用(選中按 Enter 就進去了)—— 那件事寫在 README。</comment>
+    <comment>刻意不寫出實際的分隔符:那是可以改的設定，而頂層命令的副標不會跟著更新。也刻意不放 alias 的提示:副標永遠顯示，而 alias 只需要學一次，而且這個命令沒有 alias 照樣能用(選中按 Enter 就進去了)—— 那件事寫在 README。</comment>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
     <value>Inkling: New note</value>
@@ -133,15 +133,15 @@
   </data>
   <data name="ScratchpadDiscard" xml:space="preserve">
     <value>Discard changes</value>
-    <comment>草稿板底部工具列的第一顆(Enter)。刻意不叫 Done —— 這一頁存檔會自己關掉面板,所以按到這一顆的意思是「這次打的不存」。講「變更」而不是「草稿」:被丟掉的是這一次的編輯,不是已經存在檔案裡的草稿。</comment>
+    <comment>草稿板底部工具列的第一顆(Enter)。刻意不叫 Done —— 這一頁存檔會自己關掉面板，所以按到這一顆的意思是「這次打的不存」。講「變更」而不是「草稿」:被丟掉的是這一次的編輯，不是已經存在檔案裡的草稿。</comment>
   </data>
   <data name="ScratchpadSaved" xml:space="preserve">
     <value>Saved to scratchpad</value>
-    <comment>存完就關面板,所以走的是會關面板的 toast(CommandResult.ShowToast),不是 InfoBadge —— 後者畫在面板上,面板收了就看不見。</comment>
+    <comment>存完就關面板，所以走的是會關面板的 toast(CommandResult.ShowToast)，不是 InfoBadge —— 後者畫在面板上，面板收了就看不見。</comment>
   </data>
   <data name="ScratchpadDiscarded" xml:space="preserve">
     <value>Changes discarded</value>
-    <comment>toast 是一瞥的東西,一行就要讀完 —— 曾經在後面接「存著的草稿沒有動」,實機看過就知道太長。要保住的區分(丟掉的是這一次的編輯,不是檔案裡的草稿)由中文的「這次的」帶,英文 discarded 的受詞是 changes 已經隱含。同一個區別見 ScratchpadDiscard。</comment>
+    <comment>toast 是一瞥的東西，一行就要讀完 —— 曾經在後面接「存著的草稿沒有動」，實機看過就知道太長。要保住的區分(丟掉的是這一次的編輯，不是檔案裡的草稿)由中文的「這次的」帶，英文 discarded 的受詞是 changes 已經隱含。同一個區別見 ScratchpadDiscard。</comment>
   </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
     <value>Delete a few, or clear them all</value>
@@ -154,15 +154,15 @@
   </data>
   <data name="ListPageEmptySubtitle" xml:space="preserve">
     <value>Capture your first one with “{0}”</value>
-    <comment>{0} 是快速記下那個頂層命令的標題(ProviderCapturePageTitle),兩邊自動保持一致。</comment>
+    <comment>{0} 是快速記下那個頂層命令的標題(ProviderCapturePageTitle)，兩邊自動保持一致。</comment>
   </data>
   <data name="ListPageNoMatchTitle" xml:space="preserve">
     <value>No matching notes</value>
-    <comment>查詢沒有命中時的空白提示。CmdPal 的 ShowEmptyContent 不看搜尋框有沒有字,所以「有筆記但搜不到」也會走到這裡 —— 不能說「還沒有任何筆記」。</comment>
+    <comment>查詢沒有命中時的空白提示。CmdPal 的 ShowEmptyContent 不看搜尋框有沒有字，所以「有筆記但搜不到」也會走到這裡 —— 不能說「還沒有任何筆記」。</comment>
   </data>
   <data name="ListPageNoMatchSubtitle" xml:space="preserve">
     <value>Try different words, or press Enter to capture a new note instead</value>
-    <comment>空白提示那一列的命令就是快速記下頁,Enter 會導覽過去。</comment>
+    <comment>空白提示那一列的命令就是快速記下頁，Enter 會導覽過去。</comment>
   </data>
   <data name="ListPageMoreResults" xml:space="preserve">
     <value>{0} more not shown</value>
@@ -171,7 +171,7 @@
   <data name="ListPageMoreResultsSubtitle" xml:space="preserve">
     <value>Type a bit more to narrow it down</value>
   </data>
-  <!-- 跟「還有幾則沒顯示」同一個形狀:讀不出來的檔案會從清單上消失,不講的話
+  <!-- 跟「還有幾則沒顯示」同一個形狀:讀不出來的檔案會從清單上消失，不講的話
        使用者沒有任何線索。{0} 是這次掃描略過的檔案數。 -->
   <data name="ListPageSkippedFiles" xml:space="preserve">
     <value>{0} file(s) could not be read</value>
@@ -181,7 +181,7 @@
   </data>
   <data name="ToggleSourceShowRaw" xml:space="preserve">
     <value>Show raw text</value>
-    <comment>講的是「按下去之後會看到什麼」,不是目前的狀態。</comment>
+    <comment>講的是「按下去之後會看到什麼」，不是目前的狀態。</comment>
   </data>
   <data name="ToggleSourceShowRendered" xml:space="preserve">
     <value>Show rendered preview</value>
@@ -191,15 +191,15 @@
   </data>
   <data name="ToggleSourcePageSubtitle" xml:space="preserve">
     <value>Exactly what the file holds — indentation, HTML and SVG included</value>
-    <comment>預覽頁上同一個切換的副標。跟清單頁那條不同:這裡走的是純文字檢視器,連縮排都不動,而且渲染時會整段消失的 HTML / SVG 在這裡看得到。</comment>
+    <comment>預覽頁上同一個切換的副標。跟清單頁那條不同:這裡走的是純文字檢視器，連縮排都不動，而且渲染時會整段消失的 HTML / SVG 在這裡看得到。</comment>
   </data>
   <data name="NoBody" xml:space="preserve">
     <value>_(no body)_</value>
-    <comment>會進 Markdown 詳細窗格,前後的底線是斜體語法,翻譯時要留著。</comment>
+    <comment>會進 Markdown 詳細窗格，前後的底線是斜體語法，翻譯時要留著。</comment>
   </data>
   <data name="NoBodyPlain" xml:space="preserve">
     <value>(no body)</value>
-    <comment>同一句話的純文字版,給預覽頁的原始文字模式用 —— 那個檢視器不解析 Markdown,底線會照字面印出來。</comment>
+    <comment>同一句話的純文字版，給預覽頁的原始文字模式用 —— 那個檢視器不解析 Markdown，底線會照字面印出來。</comment>
   </data>
   <data name="DeleteConfirmTitle" xml:space="preserve">
     <value>Delete this note?</value>
@@ -213,11 +213,11 @@
   </data>
   <data name="QuickCapturePlaceholder" xml:space="preserve">
     <value>Type your thought; the body goes after {0}…</value>
-    <comment>{0} 是使用者自己設的分隔符,一律照設定顯示,不要寫死成分號。</comment>
+    <comment>{0} 是使用者自己設的分隔符，一律照設定顯示，不要寫死成分號。</comment>
   </data>
   <data name="QuickCaptureHint" xml:space="preserve">
     <value>“Buy a coffee machine{0}compared a few models” — title before {0}, body after</value>
-    <comment>{0} 是使用者設的分隔符,出現兩次。</comment>
+    <comment>{0} 是使用者設的分隔符，出現兩次。</comment>
   </data>
   <data name="QuickCaptureEmptyTitle" xml:space="preserve">
     <value>Type to capture</value>
@@ -254,7 +254,7 @@
 ## {1}
 
 {2}</value>
-    <comment>整塊 Markdown。{0} 錯誤訊息、{1} 標題、{2} 內文 —— 存檔失敗時把使用者打的字原樣顯示出來,至少複製得走。</comment>
+    <comment>整塊 Markdown。{0} 錯誤訊息、{1} 標題、{2} 內文 —— 存檔失敗時把使用者打的字原樣顯示出來，至少複製得走。</comment>
   </data>
   <data name="ProviderDeletePageTitle" xml:space="preserve">
     <value>Inkling: Delete notes</value>
@@ -297,11 +297,11 @@
   </data>
   <data name="DeleteAllConfirmDescription" xml:space="preserve">
     <value>Every .md under {0} (including subfolders) will be moved to the Recycle Bin. The scratchpad is not touched.</value>
-    <comment>{0} 是筆記資料夾的路徑。刪除範圍來自 GetAll(),而 Load() 明確跳過根目錄的 scratchpad.md —— 行為是安全的方向,但文案不講的話,想「清空重來」的人會以為草稿也沒了。</comment>
+    <comment>{0} 是筆記資料夾的路徑。刪除範圍來自 GetAll()，而 Load() 明確跳過根目錄的 scratchpad.md —— 行為是安全的方向，但文案不講的話，想「清空重來」的人會以為草稿也沒了。</comment>
   </data>
   <data name="DeleteAllConfirmDescriptionWithExternal" xml:space="preserve">
     <value>Every .md under {0} (including subfolders) will be moved to the Recycle Bin, {1} of which were not created by Inkling. The scratchpad is not touched.</value>
-    <comment>{0} 是資料夾路徑,{1} 是外來檔案的則數。</comment>
+    <comment>{0} 是資料夾路徑，{1} 是外來檔案的則數。</comment>
   </data>
   <data name="DeleteAllItemTitle" xml:space="preserve">
     <value>Delete all {0}</value>
@@ -319,7 +319,7 @@
     <value>
 
 **{0} of them were not created by Inkling** — no Inkling id in the front matter; they were written by another tool, or dropped into this folder.</value>
-    <comment>接在 DeleteAllScope 後面,開頭那兩個換行要留著。{0} 是外來檔案的則數。</comment>
+    <comment>接在 DeleteAllScope 後面，開頭那兩個換行要留著。{0} 是外來檔案的則數。</comment>
   </data>
   <data name="DeleteMineName" xml:space="preserve">
     <value>Delete only Inkling notes</value>
@@ -355,14 +355,14 @@ The other {2} have no Inkling id in their front matter (written by another tool,
 {1}
 
 Deleted files go to the Recycle Bin. On network drives, or devices without one, they are gone for good — that is Windows behaviour, not something we choose.</value>
-    <comment>Markdown。{0} 是資料夾路徑,{1} 是 DeleteAllScope / DeleteMineScope 那一段。</comment>
+    <comment>Markdown。{0} 是資料夾路徑，{1} 是 DeleteAllScope / DeleteMineScope 那一段。</comment>
   </data>
-  <!-- 刪除是唯一不可逆的動作,而它以前是唯一不出聲的成功路徑 —— 那是「發訊息會關掉面板」
+  <!-- 刪除是唯一不可逆的動作，而它以前是唯一不出聲的成功路徑 —— 那是「發訊息會關掉面板」
        那條假規則的遺產。措辭刻意**不提資源回收筒**:網路磁碟與沒有回收筒的裝置上
-       Windows 是直接刪除,那句話會變成假的(刪除頁的詳細窗格已經講明這個差別)。 -->
+       Windows 是直接刪除，那句話會變成假的(刪除頁的詳細窗格已經講明這個差別)。 -->
   <data name="DeleteDone" xml:space="preserve">
     <value>Deleted: {0}</value>
-    <comment>{0} 是筆記標題。刪完焦點會移到下一則,視覺錨點沒了,標題是「剛才刪的是哪一則」的唯一線索。</comment>
+    <comment>{0} 是筆記標題。刪完焦點會移到下一則，視覺錨點沒了，標題是「剛才刪的是哪一則」的唯一線索。</comment>
   </data>
   <data name="DeleteAllDone" xml:space="preserve">
     <value>Deleted {0} notes</value>
@@ -374,11 +374,11 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   </data>
   <data name="DeleteFailed" xml:space="preserve">
     <value>Delete failed: {0} — check the notes folder in Settings</value>
-    <comment>{0} 是例外訊息,由 .NET 提供,不會翻譯。後半句給下一步:常見原因(資料夾被移走、沒權限、OneDrive 鎖檔)全都指向設定裡的資料夾路徑。</comment>
+    <comment>{0} 是例外訊息，由 .NET 提供，不會翻譯。後半句給下一步:常見原因(資料夾被移走、沒權限、OneDrive 鎖檔)全都指向設定裡的資料夾路徑。</comment>
   </data>
   <data name="OpenFileMissing" xml:space="preserve">
     <value>File not found — it may have been renamed or moved outside Inkling</value>
-    <comment>Ctrl+O 與 Ctrl+L 共用。走的是 ToastStatusMessage(底部 InfoBadge),不是會關掉面板的那種 toast。</comment>
+    <comment>Ctrl+O 與 Ctrl+L 共用。走的是 ToastStatusMessage(底部 InfoBadge)，不是會關掉面板的那種 toast。</comment>
   </data>
   <data name="OpenInEditorFailed" xml:space="preserve">
     <value>Nothing is set to open .md files — pick a default app in Windows Settings</value>
@@ -389,10 +389,10 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   </data>
   <data name="CopyDone" xml:space="preserve">
     <value>Copied: {0}</value>
-    <comment>{0} 是筆記標題。三個畫面共用同一則 toast,標題是「複製到的是哪一則」的唯一線索
-             —— 清單頁以前靠那一列上的標籤講這件事,現在那條路沒有了。</comment>
+    <comment>{0} 是筆記標題。三個畫面共用同一則 toast，標題是「複製到的是哪一則」的唯一線索
+             —— 清單頁以前靠那一列上的標籤講這件事，現在那條路沒有了。</comment>
   </data>
-  <!-- 塞不下下一步,而下一步就是再按一次,使用者自然會做。 -->
+  <!-- 塞不下下一步，而下一步就是再按一次，使用者自然會做。 -->
   <data name="CopyFailed" xml:space="preserve">
     <value>Copy failed</value>
   </data>
@@ -413,7 +413,7 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   </data>
   <data name="FormCaretHint" xml:space="preserve">
     <value>The cursor starts at the beginning of the body. Press Ctrl+End to jump to the end. Saving keeps this page open — press Esc to go back.</value>
-    <comment>游標位置擴展指定不了,所以改成把鍵位講出來 —— 見 NoteFormContent.CaretHint。</comment>
+    <comment>游標位置擴展指定不了，所以改成把鍵位講出來 —— 見 NoteFormContent.CaretHint。</comment>
   </data>
   <data name="FormSave" xml:space="preserve">
     <value>Save</value>
@@ -428,7 +428,7 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   </data>
   <data name="SaveFailed" xml:space="preserve">
     <value>Save failed: {0} — check the notes folder in Settings</value>
-    <comment>{0} 是例外訊息,由 .NET 提供,不會翻譯。後半句給下一步:常見原因(資料夾被移走、沒權限、OneDrive 鎖檔)全都指向設定裡的資料夾路徑。</comment>
+    <comment>{0} 是例外訊息，由 .NET 提供，不會翻譯。後半句給下一步:常見原因(資料夾被移走、沒權限、OneDrive 鎖檔)全都指向設定裡的資料夾路徑。</comment>
   </data>
   <data name="EditPageTitle" xml:space="preserve">
     <value>Edit: {0}</value>
@@ -437,15 +437,15 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="EditOpenExternalTitle" xml:space="preserve">
     <value>Open in default editor instead</value>
   </data>
-  <!-- 這一頁的 Enter 就坐在這個命令上(底部工具列的主命令只看順序),而卡片上
-       改到一半的內容不會跟著過去 —— 焦點在單行的標題欄時按 Enter 特別容易誤觸,
+  <!-- 這一頁的 Enter 就坐在這個命令上(底部工具列的主命令只看順序)，而卡片上
+       改到一半的內容不會跟著過去 —— 焦點在單行的標題欄時按 Enter 特別容易誤觸，
        所以副標要把代價講出來。 -->
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
     <value>Better than the form for long bodies; unsaved edits here are dropped</value>
   </data>
   <data name="CapturePageTitle" xml:space="preserve">
     <value>Quick capture</value>
-    <comment>頁面自己的標題(顯示在標題列與底部命令列),刻意不帶「Inkling:」前綴 —— 使用者已經在頁面裡了。頂層那一列是 ProviderCapturePageTitle,那裡才需要品牌名。</comment>
+    <comment>頁面自己的標題(顯示在標題列與底部命令列)，刻意不帶「Inkling:」前綴 —— 使用者已經在頁面裡了。頂層那一列是 ProviderCapturePageTitle，那裡才需要品牌名。</comment>
   </data>
   <data name="NewNotePageTitle" xml:space="preserve">
     <value>New note</value>
@@ -469,8 +469,8 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="SettingsSaved" xml:space="preserve">
     <value>Settings saved</value>
   </data>
-  <!-- 值已經在這個工作階段生效,只是沒寫進 settings.json —— 重啟後會還原,
-       所以不能只說「存檔失敗」,要講清楚現在是什麼狀態。 -->
+  <!-- 值已經在這個工作階段生效，只是沒寫進 settings.json —— 重啟後會還原，
+       所以不能只說「存檔失敗」，要講清楚現在是什麼狀態。 -->
   <data name="SettingsSaveFailed" xml:space="preserve">
     <value>Applied for now, but not written to disk — settings revert on restart. Try again; if it keeps failing, check free space and permissions</value>
   </data>
@@ -487,54 +487,54 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   </data>
   <data name="SettingsFolderPickerFailed" xml:space="preserve">
     <value>Could not open the folder picker — type the path into the field instead</value>
-    <comment>對話框開不起來(CoCreateInstance / Show 失敗、STA 執行緒拋例外)時給的回饋;細節在 DiagnosticLog。使用者按取消不算失敗,不會顯示這句。</comment>
+    <comment>對話框開不起來(CoCreateInstance / Show 失敗、STA 執行緒拋例外)時給的回饋;細節在 DiagnosticLog。使用者按取消不算失敗，不會顯示這句。</comment>
   </data>
   <data name="SettingsDirectoryRejected" xml:space="preserve">
     <value>Nothing saved — the notes folder must be a full path, like “C:\Notes”</value>
-    <comment>相對路徑會對著擴展進程的 CWD 解析,整筆拒絕,表單留在原地。</comment>
+    <comment>相對路徑會對著擴展進程的 CWD 解析，整筆拒絕，表單留在原地。</comment>
   </data>
   <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
     <value>Saved — the folder does not exist yet and will be created on first save: {0}</value>
-    <comment>{0} 是資料夾路徑。打錯一個字就靜靜換了資料夾,看起來會像舊筆記全部消失,所以要當場講。</comment>
+    <comment>{0} 是資料夾路徑。打錯一個字就靜靜換了資料夾，看起來會像舊筆記全部消失，所以要當場講。</comment>
   </data>
   <data name="SettingNotesDirectoryLabel" xml:space="preserve">
     <value>Notes folder</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
     <value>Put it under a cloud drive such as OneDrive and let that handle multi-device sync — Inkling does not sync anything itself. Changing the folder does not move notes you have already written; it only points Inkling at the new location. Use a full path — a folder that does not exist yet is created on first save. Clear the field to go back to the default folder.</value>
-    <comment>會進 Adaptive Cards 的 TextBlock,它只認得粗體/斜體/清單/連結 —— 反引號會照字面印出來,引用一律用引號。</comment>
+    <comment>會進 Adaptive Cards 的 TextBlock，它只認得粗體/斜體/清單/連結 —— 反引號會照字面印出來，引用一律用引號。</comment>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">
     <value>Quick capture separator</value>
   </data>
   <data name="SettingSeparatorDescription" xml:space="preserve">
     <value>In quick capture, whatever you type before it becomes the title and the rest becomes the body. The default “;;” needs no Shift and is fastest to double-tap, and two semicolons in a row never turn up in ordinary prose, so a single semicolon stays free inside titles. If you often write notes containing for (;;), switch to “,,” — same key positions, even fewer collisions. Half-width and full-width count as the same: set “;;” and typing “；；” still splits.</value>
-    <comment>同上,反引號會照字面印出來,引用一律用引號。</comment>
+    <comment>同上，反引號會照字面印出來，引用一律用引號。</comment>
   </data>
   <data name="SettingPreviewLabel" xml:space="preserve">
     <value>Preview after capture</value>
   </data>
   <data name="SettingPreviewDescription" xml:space="preserve">
     <value>Stay on the note after capturing; press Enter once more to dismiss Command Palette.</value>
-    <comment>只寫「按下去會發生什麼」;取捨的理由屬於 README,不是設定頁。</comment>
+    <comment>只寫「按下去會發生什麼」;取捨的理由屬於 README，不是設定頁。</comment>
   </data>
   <data name="CommandRetry" xml:space="preserve">
     <value>Try again</value>
-    <comment>記下並預覽頁存檔失敗時,底部工具列那一顆。GoBack 不動,所以改成就地重試 —— 見 CapturedNotePage.Capture。</comment>
+    <comment>記下並預覽頁存檔失敗時，底部工具列那一顆。GoBack 不動，所以改成就地重試 —— 見 CapturedNotePage.Capture。</comment>
   </data>
   <data name="EditKeepEditingTitle" xml:space="preserve">
     <value>Keep editing</value>
-    <comment>編輯表單底部工具列的第一顆,存在的理由是把 Enter 從「跳去外部編輯器」擋開 —— 見 NoteEditPage。</comment>
+    <comment>編輯表單底部工具列的第一顆，存在的理由是把 Enter 從「跳去外部編輯器」擋開 —— 見 NoteEditPage。</comment>
   </data>
   <data name="EditKeepEditingSubtitle" xml:space="preserve">
     <value>Does nothing — the form stays open</value>
   </data>
   <data name="ListPageConflictTag" xml:space="preserve">
     <value>Conflict copy</value>
-    <comment>同一個 id 出現在兩個檔案上,幾乎一定是雲端硬碟的衝突副本 —— 見 Note.HasDuplicateId。</comment>
+    <comment>同一個 id 出現在兩個檔案上，幾乎一定是雲端硬碟的衝突副本 —— 見 Note.HasDuplicateId。</comment>
   </data>
   <data name="SettingsCorruptWarning" xml:space="preserve">
     <value>Your settings file was not valid JSON. Inkling started from the defaults and moved the old file aside as “{0}” — check the notes folder below before saving.</value>
-    <comment>{0} 是被搬走的那個檔名。這是設定卡片上唯一常駐以外的區塊,理由見 InklingSettingsForm.CorruptSettingsWarning。</comment>
+    <comment>{0} 是被搬走的那個檔名。這是設定卡片上唯一常駐以外的區塊，理由見 InklingSettingsForm.CorruptSettingsWarning。</comment>
   </data>
 </root>

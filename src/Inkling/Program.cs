@@ -16,7 +16,7 @@ public static class Program
 
             ManualResetEvent extensionDisposedEvent = new(false);
 
-            // 只建立一個擴展實例並在每次 callback 時回傳同一個,
+            // 只建立一個擴展實例並在每次 callback 時回傳同一個，
             // 讓 CmdPal 每次要 IExtension 拿到的都是同一個物件。
             InklingExtension extensionInstance = new(extensionDisposedEvent);
             server.RegisterClass<InklingExtension, IExtension>(() => extensionInstance);

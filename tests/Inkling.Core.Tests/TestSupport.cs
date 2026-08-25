@@ -10,12 +10,12 @@ internal sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
 
     public override DateTimeOffset GetUtcNow() => Now;
 
-    // 固定用 UTC,免得測試結果隨著跑測試那台機器的時區而變。
+    // 固定用 UTC，免得測試結果隨著跑測試那台機器的時區而變。
     public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
 }
 
 /// <summary>
-/// 一次性的暫存資料夾,測完自動刪掉。
+/// 一次性的暫存資料夾，測完自動刪掉。
 /// </summary>
 internal sealed class TempDirectory : IDisposable
 {

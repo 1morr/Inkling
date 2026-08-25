@@ -23,7 +23,7 @@ public class QuickCaptureTests
     [Fact]
     public void DoesNotSecondGuessTheUsersIntent()
     {
-        // 沒有前綴判斷,也不該有:進得了快速記下頁就代表意圖明確。
+        // 沒有前綴判斷，也不該有:進得了快速記下頁就代表意圖明確。
         // 這裡刻意用一句看起來像普通搜索的話 —— 它一樣是合法的筆記標題。
         Assert.Equal("note about something", QuickCapture.Split("note about something")?.Title);
     }
@@ -46,7 +46,7 @@ public class QuickCaptureTests
     [InlineData("  買咖啡機 ;;  比較過 Breville 跟 Sage  ")]
     public void SplitsTitleAndBodyOnTheSeparator(string text)
     {
-        // 全形分號也要認(中文輸入法打出來的就是全形),而且半形全形混著打也算 ——
+        // 全形分號也要認(中文輸入法打出來的就是全形)，而且半形全形混著打也算 ——
         // 中英切換的當下打出哪一個並不受控。
         var draft = QuickCapture.Split(text);
 
@@ -61,7 +61,7 @@ public class QuickCaptureTests
     [InlineData("for (var i = 0; i < 10; i++)")]
     public void SingleSeparatorIsOrdinaryText(string text)
     {
-        // 要連續兩個才切。單一個分號在標題裡太常見了,不能拿來當觸發條件。
+        // 要連續兩個才切。單一個分號在標題裡太常見了，不能拿來當觸發條件。
         var draft = QuickCapture.Split(text);
 
         Assert.NotNull(draft);
@@ -72,7 +72,7 @@ public class QuickCaptureTests
     [Fact]
     public void SplitsOnTheFirstSeparatorOnly()
     {
-        // 後面的分隔符是內文的一部分,不再切。
+        // 後面的分隔符是內文的一部分，不再切。
         var draft = QuickCapture.Split("標題;;第一段;;第二段");
 
         Assert.NotNull(draft);
@@ -94,7 +94,7 @@ public class QuickCaptureTests
     [Fact]
     public void ThirdSeparatorCharBelongsToTheBody()
     {
-        // 「;;;」切在前兩個,第三個是內文的第一個字。
+        // 「;;;」切在前兩個，第三個是內文的第一個字。
         var draft = QuickCapture.Split("標題;;;內文");
 
         Assert.NotNull(draft);
@@ -128,8 +128,8 @@ public class QuickCaptureTests
     [Fact]
     public void TheDefaultSeparatorStopsWorkingOnceAnotherOneIsConfigured()
     {
-        // 換了分隔符之後,`;;` 就只是普通文字 —— 不留舊的那一組當備援,
-        // 否則使用者永遠沒辦法把分號寫進標題,換設定就失去意義。
+        // 換了分隔符之後，`;;` 就只是普通文字 —— 不留舊的那一組當備援，
+        // 否則使用者永遠沒辦法把分號寫進標題，換設定就失去意義。
         var draft = QuickCapture.Split("標題;;內文", ",,");
 
         Assert.NotNull(draft);
@@ -143,7 +143,7 @@ public class QuickCaptureTests
     [InlineData("   ")]
     public void FallsBackToTheDefaultSeparator(string? separator)
     {
-        // 舊的 settings.json 沒有這個鍵,而使用者也可能把欄位清空。
+        // 舊的 settings.json 沒有這個鍵，而使用者也可能把欄位清空。
         var draft = QuickCapture.Split("標題;;內文", separator);
 
         Assert.NotNull(draft);
@@ -156,7 +156,7 @@ public class QuickCaptureTests
     [InlineData(";;")]
     public void SurroundingWhitespaceInTheSeparatorIsIgnored(string separator)
     {
-        // 尾隨空白在單行輸入框裡完全看不見。不去掉的話,分隔符會無聲失效,
+        // 尾隨空白在單行輸入框裡完全看不見。不去掉的話，分隔符會無聲失效，
         // 而使用者盯著設定頁只會看到一個長得完全正確的值。
         var draft = QuickCapture.Split("標題;;內文", separator);
 
@@ -185,8 +185,8 @@ public class QuickCaptureTests
     [Fact]
     public void FullWidthOnlyPunctuationHasNoHalfWidthTwin()
     {
-        // 、 和 。 不在全形 ASCII 的範圍裡,沒有半形對應版本可以折算,
-        // 填那些就只認它自己 —— 這是規則的邊界,寫成測試免得哪天被「順手擴充」。
+        // 、 和 。 不在全形 ASCII 的範圍裡，沒有半形對應版本可以折算，
+        // 填那些就只認它自己 —— 這是規則的邊界，寫成測試免得哪天被「順手擴充」。
         Assert.Equal("標題、、內文", QuickCapture.Split("標題、、內文", "``")?.Title);
     }
 
@@ -203,7 +203,7 @@ public class QuickCaptureTests
     [Fact]
     public void APartialSeparatorAtTheEndIsOrdinaryText()
     {
-        // 打到一半:分隔符只打了前半個字元。整句都還是標題,不能提早切。
+        // 打到一半:分隔符只打了前半個字元。整句都還是標題，不能提早切。
         var draft = QuickCapture.Split("標題--", "-->");
 
         Assert.NotNull(draft);
@@ -223,7 +223,7 @@ public class QuickCaptureTests
     [Fact]
     public void NormalizeSeparatorKeepsWhatTheUserActuallyTyped()
     {
-        // 設定頁存回去的是這個結果,所以它必須是「原樣、只去掉前後空白」。
+        // 設定頁存回去的是這個結果，所以它必須是「原樣、只去掉前後空白」。
         Assert.Equal("->", QuickCapture.NormalizeSeparator("  ->  "));
         Assert.Equal("，，", QuickCapture.NormalizeSeparator("，，"));
     }

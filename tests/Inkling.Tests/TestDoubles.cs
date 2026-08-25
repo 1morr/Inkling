@@ -63,7 +63,7 @@ internal sealed class FakeNoteRepository : INoteRepository
         return removed;
     }
 
-    /// <summary>不進版本號的直接塞入,給「先鋪好資料再建頁面」的測試用。</summary>
+    /// <summary>不進版本號的直接塞入，給「先鋪好資料再建頁面」的測試用。</summary>
     public Note Add(string title, string body = "")
     {
         var id = $"id-{_notes.Count + 1}";
@@ -81,7 +81,7 @@ internal sealed class FakeNoteRepository : INoteRepository
         return note;
     }
 
-    /// <summary>模擬外部異動:版本前進並發事件,頁面的快取應該因此失效。</summary>
+    /// <summary>模擬外部異動:版本前進並發事件，頁面的快取應該因此失效。</summary>
     public void Bump()
     {
         _version++;

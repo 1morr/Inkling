@@ -32,7 +32,7 @@ public class NotePreviewTests
     [Fact]
     public void BlankLines_AreLeftAlone()
     {
-        // 空行本身就是段落分隔,不需要也不該加標記。
+        // 空行本身就是段落分隔，不需要也不該加標記。
         var result = NotePreview.PreserveLineBreaks("第一段\n\n第二段");
 
         Assert.Equal("第一段\n\n第二段", result);
@@ -57,7 +57,7 @@ public class NotePreviewTests
     [Fact]
     public void FencedCodeBlocks_AreUntouched()
     {
-        // 程式碼區塊裡加空白會改變程式碼內容,而且換行本來就已經是換行了。
+        // 程式碼區塊裡加空白會改變程式碼內容，而且換行本來就已經是換行了。
         const string markdown = "說明文字\n\n```csharp\nvar x = 1;\nvar y = 2;\n```\n\n後面";
 
         var result = NotePreview.PreserveLineBreaks(markdown);
@@ -79,7 +79,7 @@ public class NotePreviewTests
     [Fact]
     public void TextAfterAClosedFence_IsProcessedAgain()
     {
-        // 圍籬關掉之後要恢復正常處理,不能因為進過程式碼區塊就整份不管了。
+        // 圍籬關掉之後要恢復正常處理，不能因為進過程式碼區塊就整份不管了。
         const string markdown = "```\ncode\n```\n\n甲\n乙";
 
         var result = NotePreview.PreserveLineBreaks(markdown);
@@ -111,7 +111,7 @@ public class NotePreviewTests
     [Fact]
     public void SetextHeadingUnderlines_AreUntouched()
     {
-        // 動了上面那行,setext 標題就不成立了。
+        // 動了上面那行，setext 標題就不成立了。
         const string markdown = "標題\n====\n\n內文";
 
         var result = NotePreview.PreserveLineBreaks(markdown);
@@ -124,7 +124,7 @@ public class NotePreviewTests
     {
         var result = NotePreview.PreserveLineBreaks("- 甲\n- 乙\n- 丙");
 
-        // 清單項目本來就各自成行,加了標記也不會壞,但不能把 "- " 弄丟。
+        // 清單項目本來就各自成行，加了標記也不會壞，但不能把 "- " 弄丟。
         Assert.Contains("- 甲", result, StringComparison.Ordinal);
         Assert.Contains("- 乙", result, StringComparison.Ordinal);
         Assert.Contains("- 丙", result, StringComparison.Ordinal);
@@ -153,7 +153,7 @@ public class NotePreviewTests
     [Fact]
     public void Render_DoesNotDuplicateATitleThatIsAlreadyInTheBody()
     {
-        // 外來的 Markdown 檔標題是從內文第一個標題推導出來的,再補一次就會出現兩個標題。
+        // 外來的 Markdown 檔標題是從內文第一個標題推導出來的，再補一次就會出現兩個標題。
         var note = MakeNote("外面來的標題", "# 外面來的標題\n\n內文");
 
         var result = NotePreview.Render(note);
@@ -192,8 +192,8 @@ public class NotePreviewTests
     [Fact]
     public void RenderSource_LeavesNonAsciiAlone()
     {
-        // 中文與全形標點都不在 CommonMark 的逃脫集合裡,補反斜線只會讓它顯示出來。
-        // (半形標點就該逃脫,連 : 也在集合內 —— 這裡刻意避開,測的是非 ASCII。)
+        // 中文與全形標點都不在 CommonMark 的逃脫集合裡，補反斜線只會讓它顯示出來。
+        // (半形標點就該逃脫，連 : 也在集合內 —— 這裡刻意避開，測的是非 ASCII。)
         const string Text = "買咖啡機、順便看看濾杯。「這個要記住」";
 
         Assert.Equal(Text, NotePreview.RenderSource(Text));
@@ -202,14 +202,14 @@ public class NotePreviewTests
     [Fact]
     public void RenderSource_BlankLineStaysAParagraphBreak()
     {
-        // 空行前面不補硬換行 —— 空行本身就是段落分隔,補了只是多出看不見的空白。
+        // 空行前面不補硬換行 —— 空行本身就是段落分隔，補了只是多出看不見的空白。
         Assert.Equal("111\n\n222", NotePreview.RenderSource("111\n\n222"));
     }
 
     [Fact]
     public void RenderSource_DropsLeadingIndentation()
     {
-        // 刻意接受的取捨。段落開頭的四個空白在 CommonMark 裡是縮排程式碼區塊,
+        // 刻意接受的取捨。段落開頭的四個空白在 CommonMark 裡是縮排程式碼區塊，
         // 那會把我們正想避開的外框畫回來。
         Assert.Equal("縮排的行", NotePreview.RenderSource("    縮排的行"));
     }

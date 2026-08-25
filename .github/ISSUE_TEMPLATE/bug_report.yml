@@ -10,7 +10,7 @@ body:
         trace only in the log.
 
         Write in English or Traditional Chinese, whichever you prefer.
-        繁體中文也可以,不必翻成英文。
+        繁體中文也可以，不必翻成英文。
 
         Found something with security or data-loss impact? Please do not open a public
         issue — see [SECURITY.md](../blob/master/SECURITY.md).

@@ -60,7 +60,7 @@ public class NoteFileTests
         Assert.Contains("  - 別名一", parsed.ExtraFrontMatter);
         Assert.Contains("  - 別名二", parsed.ExtraFrontMatter);
 
-        // 再寫回去,那些欄位還要在。
+        // 再寫回去，那些欄位還要在。
         var note = SampleNote() with
         {
             Title = parsed.Title!,
@@ -92,7 +92,7 @@ public class NoteFileTests
     public void Serialize_OmitsEmptyTags()
     {
         // front matter 是使用者在手機的雲端硬碟 App 裡最先看到的東西(那些 App
-        // 不渲染 Markdown),而 tags 還沒有功能 —— 空的就別佔那一行。
+        // 不渲染 Markdown)，而 tags 還沒有功能 —— 空的就別佔那一行。
         var text = NoteFile.Serialize(SampleNote());
 
         Assert.DoesNotContain("tags:", text, StringComparison.Ordinal);
@@ -117,7 +117,7 @@ public class NoteFileTests
     [Fact]
     public void RoundTrip_TagContainingComma_StaysOneTag()
     {
-        // inline 陣列裡逗號是分隔符;含逗號的 tag 不加引號寫回去,讀回來就裂成兩個 ——
+        // inline 陣列裡逗號是分隔符;含逗號的 tag 不加引號寫回去，讀回來就裂成兩個 ——
         // 正好違反「別人的 metadata 經過 Inkling 一輪必須原封不動」的承諾。
         var parsed = NoteFile.Parse(NoteFile.Serialize(SampleNote() with { Tags = ["a, b", "c"] }));
 
@@ -152,8 +152,8 @@ public class NoteFileTests
     [Fact]
     public void RoundTrip_TitleContainingNewline_IsCollapsedToSingleLine()
     {
-        // 多行純量我們自己的 Parse 讀不回來:後半會掉進 ExtraFrontMatter,之後每編輯
-        // 一輪就把殘骸當別人的欄位再寫回去。標題本來就該是單行,序列化時收攏。
+        // 多行純量我們自己的 Parse 讀不回來:後半會掉進 ExtraFrontMatter，之後每編輯
+        // 一輪就把殘骸當別人的欄位再寫回去。標題本來就該是單行，序列化時收攏。
         var parsed = NoteFile.Parse(NoteFile.Serialize(SampleNote("第一行\n第二行")));
 
         Assert.Equal("第一行 第二行", parsed.Title);
@@ -163,8 +163,8 @@ public class NoteFileTests
     [Fact]
     public void Parse_StillReadsFilesWithEmptyTags()
     {
-        // Inkling 不再寫這一行,但既有的檔案裡到處都是,照樣要讀得懂 ——
-        // 而且 tags 不能掉進 ExtraFrontMatter,否則寫回去會多出一行空陣列。
+        // Inkling 不再寫這一行，但既有的檔案裡到處都是，照樣要讀得懂 ——
+        // 而且 tags 不能掉進 ExtraFrontMatter，否則寫回去會多出一行空陣列。
         var parsed = NoteFile.Parse("---\nid: abc\ntitle: 舊檔案\ntags: []\n---\n\n內文");
 
         Assert.Empty(parsed.Tags);
@@ -217,7 +217,7 @@ public class NoteFileTests
     [Fact]
     public void Parse_UnterminatedFrontMatter_FallsBackToBody()
     {
-        // 開頭有 --- 卻沒收尾。寧可整份當內文,也不能把內容吞掉。
+        // 開頭有 --- 卻沒收尾。寧可整份當內文，也不能把內容吞掉。
         const string content = "---\nid: abc\ntitle: 沒有收尾\n\n內文";
 
         var parsed = NoteFile.Parse(content);
@@ -265,7 +265,7 @@ public class NoteFileTests
     [Fact]
     public void Serialize_DoesNotDoubleUpCarriageReturns()
     {
-        // 表單送回來的內文可能已經是 CRLF,不能再被轉一次變成 \r\r\n。
+        // 表單送回來的內文可能已經是 CRLF，不能再被轉一次變成 \r\r\n。
         var text = NoteFile.Serialize(SampleNote(body: "第一行\r\n第二行"));
 
         Assert.DoesNotContain("\r\r", text, StringComparison.Ordinal);
@@ -280,7 +280,7 @@ public class NoteFileTests
     [InlineData("# 標題\n\n- 清單\n- 項目\n\n```\ncode\n```")]
     public void SerializeParse_IsIdempotent(string body)
     {
-        // 每編輯一次就在檔尾多長一個換行,是這種手寫序列化最典型的 bug。
+        // 每編輯一次就在檔尾多長一個換行，是這種手寫序列化最典型的 bug。
         // 這裡直接釘死:序列化兩輪之後的文字必須一模一樣。
         var note = SampleNote(body: body);
 
@@ -294,7 +294,7 @@ public class NoteFileTests
     [Fact]
     public void RoundTrip_EmptyBody()
     {
-        // 快速新增只有標題、沒有內文,這是最常見的一種筆記。
+        // 快速新增只有標題、沒有內文，這是最常見的一種筆記。
         var parsed = NoteFile.Parse(NoteFile.Serialize(SampleNote(body: string.Empty)));
 
         Assert.Equal(string.Empty, parsed.Body);
@@ -304,9 +304,9 @@ public class NoteFileTests
     [Fact]
     public void Parse_HorizontalRuleAtTopOfFile_IsNotFrontMatter()
     {
-        // Markdown 的水平線也是 ---。以前這種檔案的第一段會被當成 front matter 吞掉,
+        // Markdown 的水平線也是 ---。以前這種檔案的第一段會被當成 front matter 吞掉，
         // 使用者在 Inkling 裡編輯一次之後那幾行還會被寫進 front matter 區塊 ——
-        // 它們沒有冒號,別的工具從此解析不了這個檔案。
+        // 它們沒有冒號，別的工具從此解析不了這個檔案。
         const string content = "---\n\n# 我的標題\n\n第一段內容\n\n---\n\n第二段內容";
 
         var parsed = NoteFile.Parse(content);
@@ -320,8 +320,8 @@ public class NoteFileTests
     [Fact]
     public void Parse_BlockThatOnlyLooksLikeKeysBecauseOfAUrl_IsNotFrontMatter()
     {
-        // https://… 有冒號但後面沒有空白。YAML 的對應規則要求冒號後接空白或就是行尾,
-        // 少了這一條,任何以水平線開頭又貼了網址的筆記都會被當成 front matter。
+        // https://… 有冒號但後面沒有空白。YAML 的對應規則要求冒號後接空白或就是行尾，
+        // 少了這一條，任何以水平線開頭又貼了網址的筆記都會被當成 front matter。
         const string content = "---\n\nhttps://example.com\n\n---\n\n內文";
 
         var parsed = NoteFile.Parse(content);
@@ -344,7 +344,7 @@ public class NoteFileTests
     [Fact]
     public void Parse_RealFrontMatterWithOnlyOneKey_IsStillFrontMatter()
     {
-        // 上面三條的反面:只要有一行是真的 key,就照樣當 front matter,
+        // 上面三條的反面:只要有一行是真的 key，就照樣當 front matter,
         // 不能因為收緊判準而把正常的檔案擋掉。
         const string content = "---\ntitle: 只有標題\n---\n\n內文";
 
@@ -363,9 +363,9 @@ public class NoteFileTests
     [InlineData("|2")]
     public void Parse_FoldedTitle_KeepsTheTitleAndDoesNotOrphanItsLines(string indicator)
     {
-        // 別的工具會把長標題寫成區塊純量。以前 Title 會變成一個 ">",續行掉進
-        // ExtraFrontMatter —— 而 extra 是寫在固定欄位後面的,那幾行縮排於是排到
-        // updated: 底下,把 updated 變成多行純量、日期就此壞掉。
+        // 別的工具會把長標題寫成區塊純量。以前 Title 會變成一個 ">"，續行掉進
+        // ExtraFrontMatter —— 而 extra 是寫在固定欄位後面的，那幾行縮排於是排到
+        // updated: 底下，把 updated 變成多行純量、日期就此壞掉。
         var content = $"---\nid: abc\ntitle: {indicator}\n  這是一個很長的標題\n  被折成兩行\naliases:\n  - foo\n---\n\n內文";
 
         var parsed = NoteFile.Parse(content);
@@ -413,8 +413,8 @@ public class NoteFileTests
     [InlineData("'單引號' 開頭也 '單引號' 結尾")]
     public void Parse_TitleThatMerelyStartsAndEndsWithAQuote_IsNotStripped(string title)
     {
-        // 只看頭尾兩個字元的話會剝掉一層,而下一次 Serialize 又整個包起來 ——
-        // 每編輯一輪就多一層殘骸,沒有任何地方會報錯。
+        // 只看頭尾兩個字元的話會剝掉一層，而下一次 Serialize 又整個包起來 ——
+        // 每編輯一輪就多一層殘骸，沒有任何地方會報錯。
         var content = $"---\ntitle: {title}\n---\n\n內文";
 
         var parsed = NoteFile.Parse(content);

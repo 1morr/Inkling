@@ -56,7 +56,7 @@ public class NoteTests
     }
 
     [Theory]
-    // 兩邊都要剝:以前只剝前綴,`**賣點**` 的摘要會顯示成 `賣點**`。
+    // 兩邊都要剝:以前只剝前綴，`**賣點**` 的摘要會顯示成 `賣點**`。
     [InlineData("**賣點**", "賣點")]
     [InlineData("*強調*", "強調")]
     [InlineData("~~刪除線~~", "刪除線")]
@@ -70,7 +70,7 @@ public class NoteTests
     }
 
     [Theory]
-    // 記號沒有包住整行 —— 剝了只會變成 `甲** 與 **乙`,比原樣更糟。
+    // 記號沒有包住整行 —— 剝了只會變成 `甲** 與 **乙`，比原樣更糟。
     [InlineData("**甲** 與 **乙**")]
     // 收尾的井號前面沒有空白就不是收尾語法。
     [InlineData("談談 C#")]
@@ -96,7 +96,7 @@ public class NoteTests
     [Fact]
     public void Summary_SkipsTheLineThatBecameTheTitle()
     {
-        // 外來檔案的標題是從內文第一行推導出來的;副標再顯示同一句話只是重複,
+        // 外來檔案的標題是從內文第一行推導出來的;副標再顯示同一句話只是重複，
         // 該從標題那一行之後開始取。
         var note = MakeNote("外來標題", "# 外來標題\n\n這是別的工具寫的檔案。");
 
@@ -106,7 +106,7 @@ public class NoteTests
     [Fact]
     public void Summary_IsEmptyWhenTheOnlyContentIsTheTitle()
     {
-        // 沒有下一行有效文字就留空,讓副標乾脆不顯示。
+        // 沒有下一行有效文字就留空，讓副標乾脆不顯示。
         var note = MakeNote("唯一一行", "# 唯一一行");
 
         Assert.Equal(string.Empty, note.Summary);

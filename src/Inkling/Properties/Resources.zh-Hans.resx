@@ -3,7 +3,7 @@
   <!--
     簡體中文。zh-CN / zh-SG 會回落到這一份。
 
-    這份檔案由人維護,不是產生出來的。改動時三份要一起改
+    這份檔案由人維護，不是產生出來的。改動時三份要一起改
     (Resources.resx / Resources.zh-Hant.resx / Resources.zh-Hans.resx),
     ResourceParityTests 會擋住只改一份的情況。
 
@@ -113,7 +113,7 @@
     <value>浏览与搜索笔记</value>
   </data>
   <data name="ProviderCaptureSubtitle" xml:space="preserve">
-    <value>打字直接存成笔记,分隔符后面接正文</value>
+    <value>打字直接存成笔记，分隔符后面接正文</value>
   </data>
   <data name="ProviderNewNoteTitle" xml:space="preserve">
     <value>Inkling：新建笔记</value>
@@ -125,7 +125,7 @@
     <value>Inkling：随手草稿</value>
   </data>
   <data name="ProviderScratchpadSubtitle" xml:space="preserve">
-    <value>打开就接着上次写,不必取标题</value>
+    <value>打开就接着上次写，不必取标题</value>
   </data>
   <data name="ScratchpadDiscard" xml:space="preserve">
     <value>放弃更改</value>
@@ -137,7 +137,7 @@
     <value>已放弃这次的更改</value>
   </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
-    <value>挑几则删掉,或整个清空</value>
+    <value>挑几则删掉，或整个清空</value>
   </data>
   <data name="ListPagePlaceholder" xml:space="preserve">
     <value>搜索标题与正文…</value>
@@ -152,7 +152,7 @@
     <value>没有符合的笔记</value>
   </data>
   <data name="ListPageNoMatchSubtitle" xml:space="preserve">
-    <value>换个关键词试试,或按 Enter 去记下新笔记</value>
+    <value>换个关键词试试，或按 Enter 去记下新笔记</value>
   </data>
   <data name="ListPageMoreResults" xml:space="preserve">
     <value>还有 {0} 则没显示</value>
@@ -164,7 +164,7 @@
     <value>有 {0} 个文件读不出来</value>
   </data>
   <data name="ListPageSkippedFilesSubtitle" xml:space="preserve">
-    <value>文件还在文件夹里 —— 可能被别的程序开着,或者编码不是 UTF-8</value>
+    <value>文件还在文件夹里 —— 可能被别的程序开着，或者编码不是 UTF-8</value>
   </data>
   <data name="ToggleSourceShowRaw" xml:space="preserve">
     <value>显示原始文本</value>
@@ -194,10 +194,10 @@
     <value>Inkling：快速记下</value>
   </data>
   <data name="QuickCapturePlaceholder" xml:space="preserve">
-    <value>打字记下想法,{0} 后面接正文…</value>
+    <value>打字记下想法，{0} 后面接正文…</value>
   </data>
   <data name="QuickCaptureHint" xml:space="preserve">
-    <value>“买咖啡机{0}比较过几台”—— {0} 前面是标题,后面是正文</value>
+    <value>“买咖啡机{0}比较过几台”—— {0} 前面是标题，后面是正文</value>
   </data>
   <data name="QuickCaptureEmptyTitle" xml:space="preserve">
     <value>打字就记下</value>
@@ -244,22 +244,22 @@
     <value>还有 {0} 则没列出</value>
   </data>
   <data name="DeleteMoreNotesSubtitle" xml:space="preserve">
-    <value>删除全部仍然会删掉它们,这里只是列不下</value>
+    <value>删除全部仍然会删掉它们，这里只是列不下</value>
   </data>
   <data name="DeleteExternalConfirmTitle" xml:space="preserve">
     <value>删除这个文件？</value>
   </data>
   <data name="DeleteExternalConfirmDescription" xml:space="preserve">
-    <value>“{0}”不是 Inkling 创建的,会被移到回收站。</value>
+    <value>“{0}”不是 Inkling 创建的，会被移到回收站。</value>
   </data>
   <data name="DeleteQuickTitle" xml:space="preserve">
     <value>直接删除</value>
   </data>
   <data name="DeleteQuickSubtitle" xml:space="preserve">
-    <value>不问,直接移到回收站</value>
+    <value>不问，直接移到回收站</value>
   </data>
   <data name="DeleteExternalAlwaysConfirmSubtitle" xml:space="preserve">
-    <value>不是 Inkling 创建的,一律先确认</value>
+    <value>不是 Inkling 创建的，一律先确认</value>
   </data>
   <data name="DeleteAllName" xml:space="preserve">
     <value>删除全部</value>
@@ -271,7 +271,7 @@
     <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站。随手草稿不受影响。</value>
   </data>
   <data name="DeleteAllConfirmDescriptionWithExternal" xml:space="preserve">
-    <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站,其中 {1} 则不是 Inkling 创建的。随手草稿不受影响。</value>
+    <value>{0} 底下(含子文件夹)所有的 .md 都会移到回收站，其中 {1} 则不是 Inkling 创建的。随手草稿不受影响。</value>
   </data>
   <data name="DeleteAllItemTitle" xml:space="preserve">
     <value>删除全部 {0} 则</value>
@@ -280,12 +280,12 @@
     <value>{0}(含子文件夹)</value>
   </data>
   <data name="DeleteAllScope" xml:space="preserve">
-    <value>底下(含子文件夹)所有的 `.md`,目前 {0} 则,**全部都会删掉**。随手草稿不受影响。</value>
+    <value>底下(含子文件夹)所有的 `.md`，目前 {0} 则，**全部都会删掉**。随手草稿不受影响。</value>
   </data>
   <data name="DeleteAllScopeExternalSuffix" xml:space="preserve">
     <value>
 
-其中 **{0} 则不是 Inkling 创建的** —— front matter 里没有 Inkling 的 id,是别的工具写的、或是直接丢进这个文件夹的文件。</value>
+其中 **{0} 则不是 Inkling 创建的** —— front matter 里没有 Inkling 的 id，是别的工具写的、或是直接丢进这个文件夹的文件。</value>
   </data>
   <data name="DeleteMineName" xml:space="preserve">
     <value>只删 Inkling 创建的</value>
@@ -294,7 +294,7 @@
     <value>删除 Inkling 创建的 {0} 则笔记？</value>
   </data>
   <data name="DeleteMineConfirmDescription" xml:space="preserve">
-    <value>移到回收站。另外 {0} 则不是 Inkling 创建的,不会动到。</value>
+    <value>移到回收站。另外 {0} 则不是 Inkling 创建的，不会动到。</value>
   </data>
   <data name="DeleteMineItemTitle" xml:space="preserve">
     <value>只删 Inkling 创建的 {0} 则</value>
@@ -303,9 +303,9 @@
     <value>保留 {0} 则不是 Inkling 创建的</value>
   </data>
   <data name="DeleteMineScope" xml:space="preserve">
-    <value>底下(含子文件夹)共 {0} 则 `.md`,这个动作只删其中 **Inkling 创建的 {1} 则**。
+    <value>底下(含子文件夹)共 {0} 则 `.md`，这个动作只删其中 **Inkling 创建的 {1} 则**。
 
-另外 {2} 则 front matter 里没有 Inkling 的 id(别的工具写的、或是直接丢进这个文件夹的),留着不动。</value>
+另外 {2} 则 front matter 里没有 Inkling 的 id(别的工具写的、或是直接丢进这个文件夹的)，留着不动。</value>
   </data>
   <data name="DeleteDetailsTitle" xml:space="preserve">
     <value>会删掉什么</value>
@@ -315,7 +315,7 @@
 
 {1}
 
-删掉的文件会进回收站。网络磁盘或没有回收站的设备上则是直接消失,那是 Windows 的行为,不是我们能选的。</value>
+删掉的文件会进回收站。网络磁盘或没有回收站的设备上则是直接消失，那是 Windows 的行为，不是我们能选的。</value>
   </data>
   <data name="DeleteDone" xml:space="preserve">
     <value>已删除：{0}</value>
@@ -324,7 +324,7 @@
     <value>已删除 {0} 则</value>
   </data>
   <data name="DeletePartialFailure" xml:space="preserve">
-    <value>已删除 {0} 则,{1} 则删不掉(文件可能被其他程序开着)</value>
+    <value>已删除 {0} 则，{1} 则删不掉(文件可能被其他程序开着)</value>
   </data>
   <data name="DeleteFailed" xml:space="preserve">
     <value>删除失败：{0} —— 请到设置检查笔记文件夹</value>
@@ -360,7 +360,7 @@
     <value>细节、链接、待办…</value>
   </data>
   <data name="FormCaretHint" xml:space="preserve">
-    <value>光标落在正文开头。按 Ctrl+End 跳到最后接着写。保存之后这一页会留着,按 Esc 回上一页。</value>
+    <value>光标落在正文开头。按 Ctrl+End 跳到最后接着写。保存之后这一页会留着，按 Esc 回上一页。</value>
   </data>
   <data name="FormSave" xml:space="preserve">
     <value>保存</value>
@@ -408,7 +408,7 @@
     <value>设置已保存</value>
   </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
-    <value>暂时生效了,但没写进磁盘 —— 重启之后会还原。再保存一次；一直失败的话检查磁盘空间与权限</value>
+    <value>暂时生效了，但没写进磁盘 —— 重启之后会还原。再保存一次；一直失败的话检查磁盘空间与权限</value>
   </data>
   <data name="SettingsFolderPickerTitle" xml:space="preserve">
     <value>选择笔记文件夹</value>
@@ -423,28 +423,28 @@
     <value>无法打开文件夹选择对话框 —— 直接把路径打进字段</value>
   </data>
   <data name="SettingsDirectoryRejected" xml:space="preserve">
-    <value>未保存 —— 笔记文件夹要填完整路径,例如“C:\Notes”</value>
+    <value>未保存 —— 笔记文件夹要填完整路径，例如“C:\Notes”</value>
   </data>
   <data name="SettingsDirectoryWillBeCreated" xml:space="preserve">
-    <value>已保存 —— 这个文件夹还不存在,第一次保存时会创建：{0}</value>
+    <value>已保存 —— 这个文件夹还不存在，第一次保存时会创建：{0}</value>
   </data>
   <data name="SettingNotesDirectoryLabel" xml:space="preserve">
     <value>笔记文件夹</value>
   </data>
   <data name="SettingNotesDirectoryDescription" xml:space="preserve">
-    <value>放在 OneDrive 之类的云端硬盘底下,多端同步就交给它处理 —— Inkling 自己不做同步。换文件夹不会搬动已经写好的笔记,只是改成去读新的位置。要填完整路径；文件夹还不存在的话,第一次保存时会创建。清空这个字段就回到默认文件夹。</value>
+    <value>放在 OneDrive 之类的云端硬盘底下，多端同步就交给它处理 —— Inkling 自己不做同步。换文件夹不会搬动已经写好的笔记，只是改成去读新的位置。要填完整路径；文件夹还不存在的话，第一次保存时会创建。清空这个字段就回到默认文件夹。</value>
   </data>
   <data name="SettingSeparatorLabel" xml:space="preserve">
     <value>快速记下的分隔符</value>
   </data>
   <data name="SettingSeparatorDescription" xml:space="preserve">
-    <value>快速记下时,打在它前面的是标题、后面是正文。默认的“;;”不用按 Shift、连打两下最快,而连续两个分号在一般句子里不会出现,标题因此还是能自由使用单一个分号；常写 for (;;) 这种笔记的话换成“,,”,键位一样好按、撞得更少。半角全角算同一个：设置填“;;”、打字打“；；”照样切得开。</value>
+    <value>快速记下时，打在它前面的是标题、后面是正文。默认的“;;”不用按 Shift、连打两下最快，而连续两个分号在一般句子里不会出现，标题因此还是能自由使用单一个分号；常写 for (;;) 这种笔记的话换成“,,”，键位一样好按、撞得更少。半角全角算同一个：设置填“;;”、打字打“；；”照样切得开。</value>
   </data>
   <data name="SettingPreviewLabel" xml:space="preserve">
     <value>记下后先看一眼</value>
   </data>
   <data name="SettingPreviewDescription" xml:space="preserve">
-    <value>记下之后停在笔记上,再按一次 Enter 才收起 Command Palette。</value>
+    <value>记下之后停在笔记上，再按一次 Enter 才收起 Command Palette。</value>
   </data>
   <data name="CommandRetry" xml:space="preserve">
     <value>再试一次</value>
@@ -453,12 +453,12 @@
     <value>继续编辑</value>
   </data>
   <data name="EditKeepEditingSubtitle" xml:space="preserve">
-    <value>什么都不做,表单留在原地</value>
+    <value>什么都不做，表单留在原地</value>
   </data>
   <data name="ListPageConflictTag" xml:space="preserve">
     <value>冲突副本</value>
   </data>
   <data name="SettingsCorruptWarning" xml:space="preserve">
-    <value>设置文件不是合法的 JSON。Inkling 已经改用默认值,并把原本那份搬成「{0}」—— 按保存之前先确认下面的笔记文件夹。</value>
+    <value>设置文件不是合法的 JSON。Inkling 已经改用默认值，并把原本那份搬成「{0}」—— 按保存之前先确认下面的笔记文件夹。</value>
   </data>
 </root>

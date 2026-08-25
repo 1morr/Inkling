@@ -26,8 +26,8 @@ public sealed partial class InklingExtension : IExtension, IDisposable
     {
         // provider 那份 Dispose 有完整的退訂與 ProviderState 釋放
         // (見 InklingCommandsProvider.Dispose)。目前不叫也不會出事 —— Program.Main
-        // 收到這個 event 之後整個進程就結束了 —— 但那份 Dispose 是按「會被呼叫」寫的,
-        // 宿主生命週期哪天變了(同進程重建擴展實例),漏叫就會留下還在聽設定事件的
+        // 收到這個 event 之後整個進程就結束了 —— 但那份 Dispose 是按「會被呼叫」寫的，
+        // 宿主生命週期哪天變了(同進程重建擴展實例)，漏叫就會留下還在聽設定事件的
         // 死頁面與 FileSystemWatcher。
         _provider.Dispose();
         _extensionDisposedEvent.Set();

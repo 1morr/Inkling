@@ -4,11 +4,11 @@ using Xunit;
 namespace Inkling.Core.Tests;
 
 /// <summary>
-/// 效能的防退化警戒線,不是 benchmark。
+/// 效能的防退化警戒線，不是 benchmark。
 ///
 /// 存在的理由是需求裡那條「擴展不能拖慢 Command Palette」。搜索是每按一個鍵就跑一次的
-/// 路徑,一旦有人在裡面塞了正規表示式或每次都重讀磁碟,這裡會先叫。
-/// 門檻刻意抓得寬鬆,免得在慢一點的機器上變成隨機失敗的測試。
+/// 路徑，一旦有人在裡面塞了正規表示式或每次都重讀磁碟，這裡會先叫。
+/// 門檻刻意抓得寬鬆，免得在慢一點的機器上變成隨機失敗的測試。
 /// </summary>
 [Collection(DiskBoundTests.Name)]
 public class PerformanceTests
@@ -23,14 +23,14 @@ public class PerformanceTests
             {
                 Id = i.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 Title = $"筆記 {i} 的標題",
-                Body = string.Join('\n', Enumerable.Repeat($"這是第 {i} 則筆記的內文,寫得長一點才有意義。", 20)),
+                Body = string.Join('\n', Enumerable.Repeat($"這是第 {i} 則筆記的內文，寫得長一點才有意義。", 20)),
                 Created = DateTimeOffset.UnixEpoch.AddMinutes(i),
                 Updated = DateTimeOffset.UnixEpoch.AddMinutes(i),
                 FilePath = $"{i}.md",
             })
             .ToArray();
 
-        // 先跑一次暖身,不要把 JIT 的時間算進去。
+        // 先跑一次暖身，不要把 JIT 的時間算進去。
         NoteSearch.Filter(notes, "暖身");
 
         var stopwatch = Stopwatch.StartNew();
@@ -42,7 +42,7 @@ public class PerformanceTests
         stopwatch.Stop();
 
         var perQuery = stopwatch.Elapsed.TotalMilliseconds / 10;
-        Assert.True(perQuery < 50, $"{NoteCount} 則筆記的一次搜索花了 {perQuery:F1} ms,超過 50 ms 的警戒線");
+        Assert.True(perQuery < 50, $"{NoteCount} 則筆記的一次搜索花了 {perQuery:F1} ms，超過 50 ms 的警戒線");
     }
 
     [Fact]
@@ -65,23 +65,23 @@ public class PerformanceTests
 
         Assert.Equal(NoteCount, notes.Count);
 
-        // 門檻放到 15 秒,不是因為載入真的要那麼久(這台機器上是 3.8 秒),而是因為
-        // 這一條量的是**含磁碟的牆鐘時間**,快慢取決於跑的環境而不是程式碼。
-        // 原本的 3000 ms 太緊:在剛建好的 worktree 上冷跑就是 4.3 秒,主線的舊程式碼
+        // 門檻放到 15 秒，不是因為載入真的要那麼久(這台機器上是 3.8 秒)，而是因為
+        // 這一條量的是**含磁碟的牆鐘時間**，快慢取決於跑的環境而不是程式碼。
+        // 原本的 3000 ms 太緊:在剛建好的 worktree 上冷跑就是 4.3 秒，主線的舊程式碼
         // 一樣過不了 —— 也就是說 CI(永遠是冷的、而且用的是共用機器)必然隨機紅。
         //
-        // 這條測試防的是「有人在載入路徑上塞了 O(n²) 或每則筆記多開一次檔」那種退化,
-        // 那種退化會讓數字跳到幾十秒,15 秒的警戒線照樣叫得出來。要量絕對速度請用
-        // benchmark,不要把門檻收緊回去。
+        // 這條測試防的是「有人在載入路徑上塞了 O(n²) 或每則筆記多開一次檔」那種退化，
+        // 那種退化會讓數字跳到幾十秒，15 秒的警戒線照樣叫得出來。要量絕對速度請用
+        // benchmark，不要把門檻收緊回去。
         Assert.True(
             stopwatch.Elapsed.TotalMilliseconds < 15000,
-            $"載入 {NoteCount} 則筆記花了 {stopwatch.Elapsed.TotalMilliseconds:F0} ms,超過 15000 ms 的警戒線");
+            $"載入 {NoteCount} 則筆記花了 {stopwatch.Elapsed.TotalMilliseconds:F0} ms，超過 15000 ms 的警戒線");
     }
 
     [Fact]
     public void GetAll_IsCachedAfterFirstLoad()
     {
-        // 清單頁每按一個鍵就會問一次筆記,每次都重掃磁碟是絕對不行的。
+        // 清單頁每按一個鍵就會問一次筆記，每次都重掃磁碟是絕對不行的。
         using var temp = new TempDirectory();
 
         for (var i = 0; i < 200; i++)

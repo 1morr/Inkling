@@ -8,16 +8,16 @@ description: >-
   and live-updating content.
 ---
 
-> **這份是 CmdPal 官方擴展模板附的 skill,正文原封不動搬進來。**
+> **這份是 CmdPal 官方擴展模板附的 skill，正文原封不動搬進來。**
 >
 > **本專案還沒有 dock band。** 要做的話注意這幾條:
 >
-> 1. SDK 版本夠(需要 ≥ 0.9.260303001,我們釘的是 0.11.260520004)。
+> 1. SDK 版本夠(需要 ≥ 0.9.260303001，我們釘的是 0.11.260520004)。
 > 2. **dock band 的命令一樣要有固定 `Id`** —— 這份文檔自己也講了「沒有 Id 會被忽略」,
->    而本專案的規矩更嚴:Id 進 `src/Inkling/CommandIds.cs`,而且**進去之後不能改**
+>    而本專案的規矩更嚴:Id 進 `src/Inkling/CommandIds.cs`，而且**進去之後不能改**
 >    (使用者的釘選是用它當鍵的)。
-> 3. **標題走資源檔**,不要像範例那樣寫死字串。
-> 4. 範例裡那個 `System.Timers.Timer` 每分鐘更新的 band,跟 [設計考證〈效能上的規矩〉](../../../docs/design-notes.md#perf-rules) 那一節
+> 3. **標題走資源檔**，不要像範例那樣寫死字串。
+> 4. 範例裡那個 `System.Timers.Timer` 每分鐘更新的 band，跟 [設計考證〈效能上的規矩〉](../../../docs/design-notes.md#perf-rules) 那一節
 >    要一起看:`TopLevelCommands()` 絕不碰磁碟。
 > 5. 加了之後 `docs/manual-test-checklist.md` 要補一節 —— dock 是另一個沒有自動化介面的表面。
 

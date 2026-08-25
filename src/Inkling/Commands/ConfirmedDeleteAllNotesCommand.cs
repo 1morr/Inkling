@@ -7,10 +7,10 @@ namespace Inkling.Commands;
 /// <summary>批次刪除的範圍。</summary>
 internal enum DeleteScope
 {
-    /// <summary>筆記資料夾(含子資料夾)底下所有的 .md,包括不是 Inkling 建立的。</summary>
+    /// <summary>筆記資料夾(含子資料夾)底下所有的 .md，包括不是 Inkling 建立的。</summary>
     Everything,
 
-    /// <summary>只刪 front matter 裡有 Inkling id 的那些,別的工具丟進來的檔案留著。</summary>
+    /// <summary>只刪 front matter 裡有 Inkling id 的那些，別的工具丟進來的檔案留著。</summary>
     InklingCreatedOnly,
 }
 
@@ -18,7 +18,7 @@ internal enum DeleteScope
 /// 確認之後真正動手的那一步。
 ///
 /// 這個命令本身**不問**要不要刪 —— 確認是包在外面的 <see cref="CommandResult.Confirm"/>
-/// 負責的,CmdPal 會先跳確認框,使用者按下主要按鈕之後才輪到這裡跑。
+/// 負責的，CmdPal 會先跳確認框，使用者按下主要按鈕之後才輪到這裡跑。
 /// 所以走到 Invoke 就代表已經確認過了。
 /// </summary>
 internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
@@ -39,8 +39,8 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
     {
         try
         {
-            // 刪的當下重新讀一次,不用頁面建清單時的那一份:中間可能有筆記從別台機器
-            // 同步下來。使用者按的是「刪除全部」,那就該是按下去那一刻的全部。
+            // 刪的當下重新讀一次，不用頁面建清單時的那一份:中間可能有筆記從別台機器
+            // 同步下來。使用者按的是「刪除全部」，那就該是按下去那一刻的全部。
             var all = _repository.GetAll();
 
             IReadOnlyList<Note> targets = _scope == DeleteScope.Everything
@@ -49,33 +49,33 @@ internal sealed partial class ConfirmedDeleteAllNotesCommand : InvokableCommand
 
             if (targets.Count == 0)
             {
-                // 這條路只有在按下確認的那一瞬間別人剛好把資料夾清空了才會走到,
-                // 而頁面本身的 EmptyContent 馬上就會講同一件事,不必再發 toast。
+                // 這條路只有在按下確認的那一瞬間別人剛好把資料夾清空了才會走到，
+                // 而頁面本身的 EmptyContent 馬上就會講同一件事，不必再發 toast。
                 return CommandResult.KeepOpen();
             }
 
             var deleted = _repository.DeleteMany(targets);
             DiagnosticLog.Write($"DeleteAllNotes: scope={_scope}, deleted {deleted}/{targets.Count}");
 
-            // **全部成功也要講。** 這裡以前是靜默的,而下面「部分失敗」那條會講 ——
-            // 於是「沒聲音」得同時承擔「全部成功」的意思,那正是我們在別處剛消滅掉的歧義。
+            // **全部成功也要講。** 這裡以前是靜默的，而下面「部分失敗」那條會講 ——
+            // 於是「沒聲音」得同時承擔「全部成功」的意思，那正是我們在別處剛消滅掉的歧義。
             //
-            // 「刪除全部」那條路清單會整個空掉、換成 EmptyContent,回饋確實夠強;
-            // 但**「只刪 Inkling 建立的」不會** —— 外來檔案還留在清單上,
+            // 「刪除全部」那條路清單會整個空掉、換成 EmptyContent，回饋確實夠強;
+            // 但**「只刪 Inkling 建立的」不會** —— 外來檔案還留在清單上，
             // 畫面看起來跟「刪到一半失敗」分不出來。則數是唯一講得清楚的東西。
             if (deleted == targets.Count)
             {
                 return Feedback.Stay(Strings.Format(Resources.DeleteAllDone, deleted));
             }
 
-            // 有漏網的就非講不可 —— 使用者按下刪除之後看到清單還剩東西,
-            // 要能立刻知道那不是沒生效,是那幾個檔案刪不掉。
+            // 有漏網的就非講不可 —— 使用者按下刪除之後看到清單還剩東西，
+            // 要能立刻知道那不是沒生效，是那幾個檔案刪不掉。
             //
-            // **所以 `Result` 非 `KeepOpen` 不可,而這裡以前是反的。** 這條路以前用
-            // `ShowToast(字串)` 那個簡寫,而它的預設收尾是 `Dismiss` —— 面板關掉,
+            // **所以 `Result` 非 `KeepOpen` 不可，而這裡以前是反的。** 這條路以前用
+            // `ShowToast(字串)` 那個簡寫，而它的預設收尾是 `Dismiss` —— 面板關掉，
             // 上面那句「要能立刻知道清單還剩東西」就自相矛盾了:看不到清單。
-            // 當時以為 toast 必然關面板(假規則,見 docs/design-notes.md
-            // 〈toast 不會把面板關掉〉),所以沒發現這個矛盾。
+            // 當時以為 toast 必然關面板(假規則，見 docs/design-notes.md
+            // 〈toast 不會把面板關掉〉)，所以沒發現這個矛盾。
             return Feedback.Stay(
                 Strings.Format(Resources.DeletePartialFailure, deleted, targets.Count - deleted));
         }
