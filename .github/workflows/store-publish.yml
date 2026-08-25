@@ -1,0 +1,95 @@
+# 把某個 tag 的 msixbundle 送進 Partner Center。
+#
+# **預設只建草稿，不送審** —— 送出去之後就沒有 rollback(見 runbook 第 24 步)，
+# 所以最後那一下留給人按。要讓 CI 直接送審就把 submit 勾起來。
+#
+# 認證照跑，自動化省掉的是「開 submission、把 26 MB 的 bundle 拖上去」那兩步,
+# 不是等待時間。Store listing 的文字**不走這條路**,它的來源是 docs/copy.md,
+# 要改的話在 Partner Center 上手動貼(理由見 runbook 第 17 步)。
+#
+# 前置作業(一次性,而且只有帳號擁有者做得了):
+#   1. Partner Center 帳號關聯一個 Microsoft Entra 租戶。
+#   2. 在 Entra 註冊一個應用程式,回 Partner Center 的
+#      帳戶設定 → 使用者管理 → Microsoft Entra applications 把它加進去,角色給 **Manager**。
+#   3. repo 加四個 secret:AZURE_AD_TENANT_ID / AZURE_AD_APPLICATION_CLIENT_ID /
+#      AZURE_AD_APPLICATION_SECRET / SELLER_ID。
+# 來源:https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/github-actions
+#
+# ⚠ Learn 上 `msstore publish` 的 `--inputFile` 只寫 `.msix` 與 `.msixupload`,
+# 但那份文檔不完整 —— msstore-cli 的 MSIXProjectPublisher.PackageFilesExtensionInclude
+# 三種都收(`.msix` / `.msixbundle` / `.msixupload`),所以我們的 bundle 餵得進去。
+
+name: Store publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要送的 release tag,例如 v1.0.1'
+        required: true
+        type: string
+      submit:
+        description: '直接送審(不勾就只留草稿,由人在 Partner Center 按 Submit)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  STORE_PRODUCT_ID: 9NDGWN4JTXHH
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      # 四個 secret 缺一個就會在 reconfigure 那一步失敗，而那裡的錯誤訊息看不出是缺了什麼。
+      - name: Check the Partner Center secrets are set
+        env:
+          TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+          SELLER_ID: ${{ secrets.SELLER_ID }}
+        run: |
+          $missing = @('TENANT_ID', 'CLIENT_ID', 'CLIENT_SECRET', 'SELLER_ID') |
+            Where-Object { -not [Environment]::GetEnvironmentVariable($_) }
+          if ($missing) {
+            throw "缺少 repo secret: $($missing -join ', ') —— 見這個 workflow 開頭的前置作業"
+          }
+
+      - name: Download the bundle from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.tag }}" --repo "${{ github.repository }}" `
+            --pattern '*.msixbundle' --dir bundle
+          $bundle = Get-ChildItem bundle -Filter *.msixbundle
+          if ($bundle.Count -ne 1) { throw "預期剛好一個 msixbundle，實際 $($bundle.Count) 個" }
+          "BUNDLE_PATH=$($bundle[0].FullName)" >> $env:GITHUB_ENV
+          "送出的是 $($bundle[0].Name)($([math]::Round($bundle[0].Length / 1MB, 1)) MB)"
+
+      - name: Setup Microsoft Store Developer CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.4
+
+      - name: Configure Partner Center credentials
+        run: >
+          msstore reconfigure
+          --tenantId ${{ secrets.AZURE_AD_TENANT_ID }}
+          --sellerId ${{ secrets.SELLER_ID }}
+          --clientId ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          --clientSecret ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+
+      - name: Publish to the Store
+        run: |
+          # --noCommit 留草稿;沒有它 msstore 會直接送審。
+          $arguments = @('publish', $env:BUNDLE_PATH, '-id', $env:STORE_PRODUCT_ID)
+          if ('${{ inputs.submit }}' -ne 'true') { $arguments += '--noCommit' }
+          msstore @arguments
+          if ($LASTEXITCODE -ne 0) { throw "msstore publish 失敗($LASTEXITCODE)" }
+
+      - name: Say what still needs a human
+        if: ${{ inputs.submit != true }}
+        run: |
+          "草稿建好了，還沒送審。到 Partner Center 補「What's new in this version」"
+          "(三個語言各一份)，確認之後按 Submit for certification。"

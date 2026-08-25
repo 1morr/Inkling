@@ -313,24 +313,34 @@ gh run watch
 
 ## 第 6 部分:Microsoft Store 送審
 
-### 17. `[人工]` 在 Partner Center 開一個新的 submission
+### 17. `[人工 + 自動]` 在 Partner Center 開一個新的 submission
 
-1. 該 app 的 Overview → **Update**。
-2. **Packages**:上傳從 GitHub Release 抓下來的 `Inkling_v<版本>.msixbundle`。
-   **每次發版一定要動這個**，而且**要先傳它** —— 底下好幾件事是套件上傳之後才長出來的
-   (見第 5、6 點)，先填別的會白填一輪。
-   ⚠ **這一步自動化不了**:瀏覽器工具的檔案上傳有 10 MB 上限而 bundle 有 26 MB,
-   而且合成的點擊叫不出原生檔案對話框。自己拖進去。
-3. **Store listing → What's new in this version**:手寫，從這次的 CHANGELOG 段落譯過去。
+**傳包有兩條路,文字那幾欄兩條路都要人填。**
+
+**(a) 讓 CI 傳** —— Actions → **Store publish** → Run workflow,`tag` 填 `v<版本>`。
+它從那個 GitHub Release 抓 msixbundle,用 msstore CLI 開一個 submission 把包放進去,
+**預設停在草稿**(`--noCommit`);`submit` 勾起來才會直接送審。
+前置作業(一次性,只有帳號擁有者做得了:Entra 應用程式 + 四個 repo secret)寫在
+`.github/workflows/store-publish.yml` 的開頭。**secret 沒設之前這條路整條不通。**
+⚠ **這條路還沒有真的跑過一次** —— 第一次用要盯著 Actions 的輸出,失敗就走 (b)。
+
+**(b) 自己傳** —— 該 app 的 Overview → **Update**,到 **Packages** 上傳從 GitHub Release
+抓下來的 `Inkling_v<版本>.msixbundle`。**要先傳它** —— 底下好幾件事是套件上傳之後才長出來的
+(見下面第 3、4 點),先填別的會白填一輪。
+⚠ **這一步瀏覽器工具做不到**:檔案上傳有 10 MB 上限而 bundle 有 26 MB,而且合成的點擊
+叫不出原生檔案對話框。自己拖進去。
+
+包進去之後,不管走哪一條路,剩下的都一樣:
+1. **Store listing → What's new in this version**:手寫，從這次的 CHANGELOG 段落譯過去。
    **每次發版一定要動這個** —— 這是使用者在 Store 上唯一看得到「這版改了什麼」的地方。
    ⚠ **listing 有三個語言**(en-US / zh-Hant / zh-Hans)，所以這一欄要寫三次。
    第一個 submission 那次留空是對的(欄位旁邊就寫著 first submission 留空)。
-4. **通常不用動**:描述、關鍵字、定價、分類。畫面變了才換截圖(第 8 步已經重拍好了，
+2. **通常不用動**:描述、關鍵字、定價、分類。畫面變了才換截圖(第 8 步已經重拍好了，
    **記得傳 `.png` 那一組**)。
    **真要改描述、簡短描述或產品功能的話，先改 [`docs/copy.md`](copy.md) 再貼過來** ——
    那三個欄位的權威版本在 repo 裡，Partner Center 上的只是副本。三個語言各一份，
    一次改就三份一起改。
-5. **Notes for certification** —— 欄位不在 Submission Options 頁上，那裡只有一句話
+3. **Notes for certification** —— 欄位不在 Submission Options 頁上，那裡只有一句話
    把你導去 **Additional Testing Information** 頁(它在左欄最下面的 Supplemental info
    底下，而且**不屬於這次 submission，是 app 層級的**，填一次就一直在)。
    照抄同一段:說明這是 PowerToys Command Palette 的擴展，exe 是**純 COM server**
@@ -338,7 +348,7 @@ gh run watch
    manifest 刻意設 `AppListEntry="none"`，所以它**不會出現在開始功能表、直接啟動也不會
    有任何畫面**，後面附四步驟的實測方法。
    ⚠ **不寫的話審查員很可能把「點了沒反應」當成 bug 退件。**
-6. **`runFullTrust` 的理由欄在 Submission Options 頁的〈Restricted capabilities〉**,
+4. **`runFullTrust` 的理由欄在 Submission Options 頁的〈Restricted capabilities〉**,
    **而且要上傳套件之後才會出現**(Partner Center 掃 manifest 才知道你宣告了什麼)。
    它是必填，不填送不出去，而且**不是只有第一次要填** —— 微軟自己的答覆是這個欄位可能在
    後續更新裡再次要求，即使能力宣告一個字都沒變(來源:Microsoft Q&A
@@ -352,17 +362,17 @@ gh run watch
    ⚠ 這一節填完之後，Overview 上的 **Submission options 仍然顯示 Incomplete** ——
    那是「受限能力還沒被核准」的意思，**不擋送審**(Submit for certification 是亮的)。
    別為了把它變綠而去亂改別的東西。
-7. **`runFullTrust` 還會連帶逼出隱私權政策。** 上傳套件之後回頭看 Properties 頁:
+5. **`runFullTrust` 還會連帶逼出隱私權政策。** 上傳套件之後回頭看 Properties 頁:
    「Does this product access, collect, or transmit personal information?」會被
    **自動改成 Yes**，底下出現「Based on the capabilities your submission declares,
    a privacy policy URL is required.」—— 把答案改回 No 也躲不掉，那句話看的是能力不是答案。
    填 <https://github.com/1morr/Inkling/blob/master/PRIVACY.md>(政策本體在 repo 的
    [`PRIVACY.md`](../PRIVACY.md)，改了那個檔案 Store 上就跟著變，不用重送 submission)。
    **Properties 因此會從 Complete 掉回 Incomplete**，這是正常的，補完 URL 再存一次就好。
-8. 想控制風險就勾 **Roll out update gradually**，設一個初始百分比(例如 5%)。這只對 MSIX
+6. 想控制風險就勾 **Roll out update gradually**，設一個初始百分比(例如 5%)。這只對 MSIX
    有效。發佈後可以在 Overview 頁拉百分比或按 Halt，不用開新的 submission。
    **注意:開下一個 submission 之前必須先把這次的 rollout finalize 或 halt。**
-9. Submit to the Store。
+7. Submit to the Store。
 
 > **第一次上架比這一份多幾樣**(這些一輩子只做一次，之後的 submission 會沿用):
 > Pricing and availability(市場、可見度、排程、**售價選 `0` 就是免費**)、
