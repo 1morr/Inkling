@@ -2,7 +2,7 @@
   <img src="assets/gallery/icon.png" width="96" alt="Inkling">
 </p>
 <h1 align="center">Inkling</h1>
-<p align="center">Summon PowerToys Command Palette, type, press Enter — the thought is saved as a Markdown file in a folder you choose.</p>
+<p align="center">Take notes without leaving PowerToys Command Palette. Type your thought, press Enter, and it is saved as a Markdown file in a folder you choose.</p>
 <p align="center">
   <a href="https://github.com/1morr/Inkling/actions/workflows/ci.yml"><img src="https://github.com/1morr/Inkling/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/1morr/Inkling" alt="License: MIT"></a>
@@ -12,24 +12,18 @@
 <!-- This file and README.zh-Hant.md are the same document in two languages: change one,
      change the other (same sections, same table rows).
 
-     The English pitch above is the reference wording. It is NOT copied verbatim anywhere:
-     three slots say the same thing at three lengths, each cut to fit, and they are
-     deliberately different sentences —
-
-       1. this pitch (one line, em dash, room to name the file format);
-       2. docs/gallery/extension.json  shortDescription (two short sentences, reads
-          standalone on a gallery card);
-       3. Package.appxmanifest  uap:VisualElements/@Description (shortest; Windows shows
-          it in the app list, so it has to survive being truncated).
-
-     Change what the product claims and all three move together. Change the phrasing of
-     one and the others can stay.
+     Outward-facing copy has a single source: docs/copy.md. The pitch above, the Store listing
+     in three languages, the gallery card, and the manifest Description all live there — change
+     that file first, then carry the wording here. The rules that copy follows (an alias is
+     optional, not step one; say what it does, not why; keep implementation vocabulary out of
+     the Store) are at the top of the same file.
 
      The icon at the top is assets/gallery/icon.png straight from render-icons.ps1 —
      edit the SVG and rerun the script and this picks it up; do not add a second copy. -->
 
-Capture a thought in seconds without leaving the keyboard. Sync, mobile access, and editing
-come from whatever cloud drive and editor you already use; Inkling itself contains zero sync code.
+Inkling adds note taking to Command Palette: capture a thought in seconds, then browse, search,
+and edit your notes without opening another app. Sync, phone access, and heavier editing come
+from the cloud drive and editor you already use.
 
 ![Top-level commands](docs/images/top-level-commands.png)
 
@@ -53,39 +47,31 @@ the screenshots here were taken on an English system.
 
 ## Install
 
-**Not published yet.** There is no GitHub Release, no WinGet package, and no Microsoft Store
-listing so far — the Store submission is the next step.
+**Microsoft Store** — [Inkling Notes](https://apps.microsoft.com/detail/9NDGWN4JTXHH). The Store
+name is "Inkling Notes"; inside Command Palette the commands are just "Inkling".
 
-**Signing decides the order**, because Windows will not sideload an unsigned MSIX. The plan
-is Store first: it signs the package for you, which is what makes the other channels possible.
-Each one gets its instructions here as it lands:
+WinGet installs the same package: `winget install --source msstore --id 9NDGWN4JTXHH`.
 
-1. **Microsoft Store**, and from there the CmdPal Extension Gallery (the gallery needs a
-   Store or WinGet id).
-2. **WinGet** — `winget install <id>`, pointing at the signed package; it carries the
-   `windows-commandpalette-extension` tag, so it will also show up when you search from
-   inside Command Palette.
-3. **GitHub Releases** — the release workflow already builds a `.msixbundle` on every `v*`
-   tag, but **until there is a certificate those assets are unsigned**: they exist for Store
-   submission, not for sideloading.
-
-To use it today, build from source: [docs/development.md](docs/development.md)
-(Traditional Chinese) — `tools\deploy.ps1` builds, registers, and reloads in one command.
+The assets attached to GitHub Releases are built by CI for the Store submission and are **not
+signed**, so Windows will not sideload them. To build it yourself:
+[docs/development.md](docs/development.md) (Traditional Chinese) — `tools\deploy.ps1` builds,
+registers, and reloads in one command.
 
 ## Getting started
 
-Once installed, **set an alias first**; otherwise quick capture is a long scroll down from
-the main search box: CmdPal Settings → Extensions → Inkling → `Inkling: Quick capture` → Alias `!`.
+Summon Command Palette, type `Inkling`, and pick **Inkling: Quick capture**. Type your thought
+and press Enter. That is the whole loop.
 
-> **Pick punctuation, not a letter.** A letter collides with real searches (every query starting
-> with `n` would trigger it); punctuation does not. For even fewer keystrokes give it a global
-> hotkey and skip the `!` altogether. The notes list and New note can get aliases too
-> (the `#` and `@` on the right of the first screenshot).
+To write the body in the same breath, use the separator:
+`coffee machine idea;;Look up pour-over vs. espresso first`. Everything before `;;` is the title,
+everything after it is the body. The separator is optional; a title on its own is a perfectly
+good note.
 
-Then: summon Command Palette → type `!` and a space → the quick capture page opens →
-type `coffee machine idea;;Look up pour-over vs. espresso first` → Enter. Everything before
-the separator is the title, everything after it is the body. Saved, hands never left the
-keyboard — and the separator is optional, a title on its own is a perfectly good note.
+**Want it in fewer keystrokes?** Give Quick capture an alias: CmdPal Settings → Extensions →
+Inkling → `Inkling: Quick capture` → Alias. With `!` set, typing `!` and a space in the palette
+opens capture directly. Punctuation beats a letter here, because a letter collides with real
+searches. A global hotkey skips the search box entirely. The notes list and New note can have
+aliases too (the `#` and `@` on the right of the first screenshot).
 
 ![Quick capture](docs/images/quick-capture.gif)
 
@@ -93,18 +79,18 @@ keyboard — and the separator is optional, a title on its own is a perfectly go
 
 | | |
 |---|---|
-| Quick capture | Type and it is saved. To add a body in the same breath, type `<title>;;<body>` (the separator is configurable). Existing notes with similar titles are listed underneath so the same thing is not captured twice. When the clipboard holds multi-line text an extra row, "Body from the clipboard", gets around the single-line search box ([why](docs/design-notes.md#paste-multiline)) |
-| Preview after capture | After saving, stay on the note to check it, then press Enter once more to dismiss — that dismissal shows "Captured: title", the same message you get with this option turned off. On by default; switch it off in Settings |
-| New note (full form) | `Inkling: New note` opens a form with a multi-line body; `Ctrl+N` on the list page opens it too. Saving **says "Created: &lt;title&gt;" and dismisses the palette**, the same way quick capture does — editing an existing note is the opposite and stays put ([why](docs/design-notes.md#edit-form)) |
-| Browse and search | Titles and bodies are both searched, multiple words are AND-ed, title hits rank first; the subtitle is the first line of the body. No hits says so — "No matching notes" — and Enter jumps straight into quick capture ([the two empty states](docs/design-notes.md#empty-content)) |
-| Markdown preview | Select a note, press Enter to see it rendered. **A single newline you typed shows as a line break**, while the `.md` on disk is not touched ([why](docs/design-notes.md#preview-line-breaks)) |
-| Source view | `Ctrl+U` toggles between rendered and raw text; **the state is global and remembered**. Pasted HTML / SVG that vanishes when rendered is visible here ([details](docs/design-notes.md#source-mode)) |
-| Edit | Form-based editing (`Ctrl+E`), Tab to "Save" and press Enter; or "Open in default editor" (`Ctrl+O`) and edit outside |
-| Copy body / Open file location | `Ctrl+Shift+C` copies the body, without front matter. **The palette stays where it is** and a line at the bottom names the note it copied — the clipboard is invisible, so saying nothing is indistinguishable from a broken shortcut ([why that matters](docs/design-notes.md#copy-feedback)). `Ctrl+L` selects the `.md` in File Explorer |
-| After jumping out | After `Ctrl+O` or `Ctrl+L` hands off to another app, the palette only steps aside — the hotkey brings it back **on the same page** ([why](docs/design-notes.md#open-external-return)). Two pages are the exception and dismiss the palette instead: the edit form and the scratchpad, because both hold a copy you could still save over the file you just went out to edit. If the file was renamed or moved, or nothing is registered to open `.md`, the reason shows at the bottom instead of [silently doing nothing](docs/design-notes.md#open-external-silent) |
-| Scratchpad | `Inkling: Scratchpad` is one permanent sticky note: it opens with whatever you left there, no title required. **No autosave** (CmdPal cannot do it, [why](docs/design-notes.md#scratchpad-no-autosave)): `Tab` → `Enter` saves, **shows "Saved to scratchpad" and dismisses the palette by itself** (Discard changes says so too); `Ctrl+O` opens it in the system's default editor, where autosave lives |
-| Delete | `Ctrl+D` on the list page; after confirming, the file **goes to the Recycle Bin**, and a line at the bottom names what went. **The selection lands on the next note**, so deleting several in a row does not send you back to the top ([why that takes work](docs/design-notes.md#selection-survives-rebuild)). On a network drive, or a device without a Recycle Bin, Windows deletes it for good instead — the **Delete notes** page spells this out in its details pane |
-| Delete many / clear all | `Inkling: Delete notes` opens a page where `Enter` deletes (asks once) and `Ctrl+Enter` deletes immediately; "Delete all" on the same page lists which files it would remove first. Files not created by Inkling are always confirmed on both paths ([why those two keys](docs/design-notes.md#delete-keys)) |
+| Quick capture | Type and press Enter to save. `<title>;;<body>` writes both at once (the separator is configurable). Notes with similar titles are listed underneath so the same thing is not captured twice. When the clipboard holds multi-line text, an extra row uses it as the body ([why](docs/design-notes.md#paste-multiline)) |
+| Preview after capture | Saving keeps you on the note so you can check it; Enter again closes the palette and confirms what was saved. On by default, switchable in Settings |
+| New note (full form) | `Inkling: New note`, or `Ctrl+N` on the list page, opens a form with a multi-line body. Saving confirms and closes the palette; editing an existing note stays put instead ([why](docs/design-notes.md#edit-form)) |
+| Browse and search | Titles and bodies are both searched, multiple words are AND-ed, and title matches rank first. The subtitle is the first line of the body. With no matches, Enter goes straight to quick capture ([the two empty states](docs/design-notes.md#empty-content)) |
+| Markdown preview | Select a note and press Enter to see it rendered. A single newline you typed shows as a line break, and the file on disk is left alone ([why](docs/design-notes.md#preview-line-breaks)) |
+| Source view | `Ctrl+U` switches between rendered and raw text, and the choice is remembered. Pasted HTML or SVG that disappears when rendered is visible here ([details](docs/design-notes.md#source-mode)) |
+| Edit | `Ctrl+E` opens the built-in form: `Tab` to "Save", then `Enter`. `Ctrl+O` opens the file in your default editor instead |
+| Copy body / show file | `Ctrl+Shift+C` copies the body without the front matter and names the note it copied at the bottom of the palette ([why it says so](docs/design-notes.md#copy-feedback)). `Ctrl+L` shows the `.md` in File Explorer |
+| After jumping out | `Ctrl+O` and `Ctrl+L` hand off to another app and the palette steps aside; the hotkey brings it back on the same page ([why](docs/design-notes.md#open-external-return)). The edit form and the scratchpad close the palette instead, so an old copy on screen cannot overwrite what you just edited outside. If the file moved, or nothing is registered to open `.md`, the reason shows at the bottom |
+| Scratchpad | `Inkling: Scratchpad` is one permanent note for anything that does not need a title. There is no autosave ([why](docs/design-notes.md#scratchpad-no-autosave)): `Tab` then `Enter` saves and closes the palette. `Ctrl+O` opens it in your default editor |
+| Delete | `Ctrl+D` on the list page deletes after a confirmation, and the file goes to the Recycle Bin. The selection moves to the next note, so you can delete several in a row ([why that takes work](docs/design-notes.md#selection-survives-rebuild)). Network drives and devices without a Recycle Bin delete for good; the Delete notes page says so in its details pane |
+| Delete many / clear all | `Inkling: Delete notes` deletes with `Enter` (asks once) or `Ctrl+Enter` (immediately). "Delete all" lists the files it would remove first, and files not created by Inkling are always confirmed ([why those two keys](docs/design-notes.md#delete-keys)) |
 | UI language | English, Traditional Chinese, Simplified Chinese, following the Windows display language — [no setting](docs/design-notes.md#ui-language) |
 
 Archiving, tags, and pinning are not built yet. The `tags` field is understood, but is not written when empty.
@@ -126,9 +112,8 @@ On the list page and the preview page, with a note selected:
 | `Ctrl+D` | Delete (confirmation first) | ✅ | — |
 | `Ctrl+K` | Open the menu; every item shows its own key | ✅ | ✅ |
 
-**`Enter` and `Ctrl+Enter` are positional, not bound to a command**: they press the two fixed
-buttons in the bottom toolbar, and which commands sit there is decided by command order alone.
-So each page gives `Enter` the natural next step on that path:
+**`Enter` and `Ctrl+Enter` press the two buttons in the bottom toolbar**, so what they do depends
+on the page:
 
 | Page | `Enter` | `Ctrl+Enter` |
 |---|---|---|
@@ -139,20 +124,15 @@ So each page gives `Enter` the natural next step on that path:
 | Edit form | Keep editing (does nothing) | Open in default editor |
 | Scratchpad | Discard changes (inside the text box `Enter` is a newline — `Tab` out first) | Open in default editor |
 
-On the edit form, **saving is `Tab` to "Save", then `Enter`**, and the form **stays open** —
-press `Esc` to go back. `Enter` from the single-line title field is deliberately harmless there:
-it used to jump straight to the external editor and dismiss the palette, dropping whatever you
-had typed into the card.
+On the edit form, save with `Tab` to "Save" and then `Enter`; the form stays open, and `Esc` goes
+back. `Enter` in the title field does nothing on purpose. The scratchpad saves the same way and
+closes the palette, telling you what happened. Why the preview and capture-and-preview pages are
+deliberately mirrored: [design notes](docs/design-notes.md#secondary-command).
 
-On the scratchpad, **saving is `Tab` to "Save", then `Enter`**, and the palette dismisses itself;
-both exits say what just happened, because a vanishing palette alone cannot tell "saved" from
-"not saved". Why the preview and capture-and-preview pages are **deliberately mirrored**:
-[design notes, "two positional keys"](docs/design-notes.md#secondary-command).
-
-**Only Copy carries Shift**: `Ctrl+C` belongs to the search box. Which letters are off limits and
-why Delete is `Ctrl+D`: [design notes, "list page shortcuts"](docs/design-notes.md#list-shortcuts).
-**CmdPal does not let users rebind an extension's shortcuts**; only the aliases and global hotkeys
-of top-level commands are configurable.
+**Only Copy carries Shift**, because `Ctrl+C` belongs to the search box. Which letters are off
+limits and why Delete is `Ctrl+D`: [design notes](docs/design-notes.md#list-shortcuts).
+**CmdPal does not let users rebind an extension's shortcuts**; the aliases and global hotkeys of
+top-level commands are yours to configure.
 
 ## What a note looks like
 
@@ -167,34 +147,23 @@ updated: 2026-08-11T09:15:00+08:00
 Look up pour-over vs. espresso first.
 ```
 
-The data format is a promise. A few deliberate choices:
+The data format is a promise:
 
-- **`id` is the identity; the file name is only for humans.** Renaming a title does not rename
-  the file — frequent renames inside a cloud-synced folder are the top source of duplicate and
-  conflict copies. Which *file* a row acts on is decided by its path, not by `id`, so a cloud
-  conflict copy (same `id`, different file) stays independently editable.
-- **Dates it cannot read are left alone.** `created`/`updated` are written and read as ISO 8601
-  (`2026-08-10T14:30:52+08:00`). Anything else — `2024-01-05 (approx)`, or the ambiguous
-  `05/01/2024` — is kept verbatim instead of being guessed at and rewritten.
-- **Unknown front matter fields are preserved as-is.** `aliases` or `cssclass` added by Obsidian
-  or similar tools survive a round of editing in Inkling. An empty `tags` is not written.
-- **`.md` files without front matter still show up in the list**, with the title taken from the
-  first meaningful line of the body and the timestamps from the file. Point Inkling at an existing
-  notes folder and it just works. Such files are marked (`Note.IsExternal`): browsing treats them
-  the same, only the delete paths handle them separately ([why](docs/design-notes.md#delete-page)).
-  "Created by Inkling" means the `id` has the shape Inkling generates — an `id:` of your own
-  (Zettelkasten, Hugo, Obsidian) keeps the file on the *not mine* side, and Inkling never
-  overwrites it.
-- **Files must be UTF-8.** Anything else (Big5, GBK, Latin-1 without a BOM) is skipped rather
-  than read as garbage, and the list says how many were skipped. Files with a BOM — UTF-8,
-  UTF-16 LE/BE — read fine. This is on purpose: decoding such a file would replace every
-  non-ASCII byte with `` and a single edit in Inkling would write that back permanently.
-- Subfolders are scanned; new notes are always written to the root.
+- **The `id` is the note's identity, and the file name is only for humans.** Renaming a title does
+  not rename the file, which keeps cloud-synced folders out of trouble. Which *file* a row acts on
+  is decided by its path, so a cloud conflict copy stays independently editable.
+- **Front matter Inkling does not understand is kept as it is**, including dates it cannot parse
+  and fields such as `aliases` or `cssclass` added by Obsidian. `created` and `updated` are written
+  as ISO 8601, and an empty `tags` is not written at all.
+- **`.md` files without front matter show up in the list too**, with the title taken from the first
+  meaningful line and the timestamps from the file. Point Inkling at an existing notes folder and
+  it just works. Those files are never rewritten by Inkling, and the delete pages always confirm
+  before touching them ([why](docs/design-notes.md#delete-page)).
+- **Files must be UTF-8** (a BOM is fine). Anything else is skipped rather than read as garbage,
+  and the list says how many were skipped. Subfolders are scanned; new notes go in the root.
 - **The scratchpad is `scratchpad.md` in the root of the same folder**, plain text with no front
-  matter, so any other editor opens exactly what you typed. It **does not appear in the list or in
-  search**, but **only the top-level one** is special — a `scratchpad.md` inside a subfolder is
-  just a note. Switching the notes folder leaves the old scratchpad where it is; switch back and
-  it is still there.
+  matter, so any other editor opens exactly what you typed. It does not appear in the list or in
+  search, and a `scratchpad.md` inside a subfolder is just a note.
 
 ## Settings
 
@@ -203,51 +172,41 @@ Select the **Inkling** row in the main search box and press `Ctrl+K` → Setting
 
 | Setting | Default | Notes |
 |---|---|---|
-| Notes folder | `%OneDrive%\Inkling`, or `Documents\Inkling` when there is no OneDrive | **Full paths only** (a relative path rejects the whole save); a folder that does not exist yet is flagged immediately and created on first save. "Browse…" next to it opens the system folder picker and saves the choice on the spot |
-| Quick capture separator | `;;` | Title before it, body after. Any length; half-width and full-width count as the same; clearing it restores `;;`. A quick capture page that is already open picks up the change — no reload |
-| Preview after capture | On | Enter captures and stays on the note, a second Enter dismisses; off means capture and dismiss at once |
+| Notes folder | `%OneDrive%\Inkling`, or `Documents\Inkling` when there is no OneDrive | Full paths only. A folder that does not exist yet is created on first save. "Browse…" opens the system folder picker and saves your choice on the spot |
+| Quick capture separator | `;;` | Title before it, body after. Any length; half-width and full-width count as the same; clearing it restores `;;`. A quick capture page that is already open picks up the change |
+| Preview after capture | On | Enter captures and stays on the note, and a second Enter closes the palette. Off means capture and close at once |
 
-A successful save shows a toast and returns you to the main search box. A rejected one
-(relative path, write failure) keeps the form up with your values so you can fix it.
-
-Those three are all the form shows. `settings.json` has a fourth key, `Inkling.ShowSource`
-(source view), which `Ctrl+U` writes back itself — deliberately not in the form, because the
-toggle key is its interface. Where the settings file lives, its format, and whether it survives
-an update: [docs/development.md](docs/development.md#settings-file).
+A successful save shows a toast and returns you to the main search box. A rejected one (relative
+path, write failure) keeps the form up with your values so you can fix it. Where the settings file
+lives, its format, and whether it survives an update:
+[docs/development.md](docs/development.md#settings-file).
 
 ## Sync
 
-Inkling **does not sync**. It writes Markdown files into the folder you choose and leaves sync
-entirely to your cloud drive client — offline availability, conflict handling, and phone access
-are whatever OneDrive / Dropbox already give you. To read notes on your phone, install the
-OneDrive app; Obsidian or similar tools can point at the same folder.
+Inkling **does not sync**. It writes Markdown files into the folder you choose and leaves the rest
+to your cloud drive: offline availability, conflict handling, and phone access are whatever
+OneDrive or Dropbox already give you. To read your notes on a phone, install that drive's app;
+Obsidian and similar tools can point at the same folder.
 
 **OneDrive users**: mark the Inkling folder "Always keep on this device" (right-click the folder).
-With Files On-Demand, cloud-only placeholders trigger a download on read and search stalls.
-When two machines edit the same note at once OneDrive creates a `name-ComputerName.md` copy.
-Both files show up in the list, and because the copy carries the **same `id`** as the original,
-Inkling tags both rows **Conflict copy** so you can tell what happened. Editing or deleting a row
-acts on that row's own file — the two are independent. Inkling does not merge them: compare the
-two rows in the details pane, keep the one you want, and delete the other.
+With Files On-Demand, cloud-only placeholders trigger a download on read and search stalls. If two
+machines edit the same note at once, OneDrive creates a `name-ComputerName.md` copy; both rows show
+up in the list, tagged **Conflict copy**. Each row acts on its own file, so compare the two in the
+details pane, keep the one you want, and delete the other.
 
 ## Troubleshooting
 
 **Changed a setting and nothing happened** — close the settings page and reopen it. That page is
-bound to one extension instance; if a reload or redeploy happened in between, Save silently does nothing.
-
-**An extra "Inkling" row in search results that does nothing on Enter** — only if you are upgrading
-from a build made before the package stopped registering a Start menu entry. That row is the Windows
-app-list entry picked up by CmdPal's built-in app search, not a duplicate extension: the package's
-exe is a pure COM server, so "launching" it was never going to do anything. Reinstalling clears it.
+bound to one extension instance, so after a reload or a redeploy, Save silently does nothing.
 
 **Wrong UI language** — the language follows the Windows **display language** (not the "regional
-format" setting) and there is no override. After changing the display language, sign out and back in.
+format" setting) and there is no override. After changing it, sign out and back in.
 
 **Your settings went back to the defaults** — if `settings.json` was left in a state that is not
 valid JSON (an editor mishap, a crash mid-write), Inkling moves it aside as
 `settings.json.corrupt-<timestamp>` and starts from the defaults, so that saving works again
-instead of failing silently forever. The settings page says so at the top and names the file;
-the old values are still in it if you want to pick them back out.
+instead of failing silently forever. The settings page says so at the top and names the file; the
+old values are still in it if you want to pick them back out.
 
 Everything else (deploy, registration, trimming, the extension's own diagnostic log):
 [docs/development.md → troubleshooting](docs/development.md#troubleshooting).
@@ -260,6 +219,7 @@ The in-depth docs are written in Traditional Chinese.
 |---|---|
 | [docs/development.md](docs/development.md) | Build, deploy, project layout, troubleshooting |
 | [docs/design-notes.md](docs/design-notes.md) | The full "why" behind every decision (why quick capture is a page and not a fallback, why feedback has exactly three channels, why the confirm dialog's buttons have no color…), for maintainers and other CmdPal extension authors |
+| [docs/copy.md](docs/copy.md) | The source of every outward-facing string: Store listing, gallery card, manifest description |
 | [docs/known-issues.md](docs/known-issues.md) | Defects that are known and not yet fixed, each with a reproduction |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Read before changing this repo |
