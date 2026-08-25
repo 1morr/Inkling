@@ -1,22 +1,24 @@
-# Gallery 投稿素材(草稿)
+# Gallery 投稿素材
 
 這個資料夾是投稿 [microsoft/CmdPal-Extensions](https://github.com/microsoft/CmdPal-Extensions)
-gallery 的準備材料。**要等 Store 上架之後才能送。**
+gallery 的材料。**前提已經滿足，可以送了。**
 
-`installSources` 已經填上真的 Store product ID(`9NDGWN4JTXHH`,2026-08-23 在 Partner Center
-保留名稱時拿到的)，但**那個 listing 要通過認證才會活** ——
-<https://apps.microsoft.com/detail/9NDGWN4JTXHH> 在那之前是 404，而 gallery 的 CI 與人工審核
-都會去點它。順序是:Store 送審 → 通過並上架 → 才開這個 PR。
+gallery 的 `installSources` 只接受 msstore 或 WinGet 的 id，而且 CI 與人工審核都會去點那個
+listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 上架生效,
+`installSources` 填的 `9NDGWN4JTXHH` 現在是活的。
+
+**文案不要在這裡改。** `extension.json` 的 `shortDescription` 與 `description` 從
+[`docs/copy.md`](../copy.md) 抄過來，那一份是所有對外文案的來源。
 
 ⚠ **`title` 是 `Inkling Notes`，跟 Store 上的名字一致** —— `Inkling` 被商標擋下了
-(見 [`release-checklist.md` §1](../release-checklist.md))。CmdPal 面板裡的命令標題仍然是
+(見[設計考證〈套件身分凍結在 Partner Center 指派的那一組〉](../design-notes.md#package-identity))。CmdPal 面板裡的命令標題仍然是
 「Inkling」，那是 `.resx`，跟這裡無關。
 
 ## 檔案
 
-- `extension.json` — 投稿用中繼資料草稿。送出去之前要確認:
-  - `installSources`:換成真實的 WinGet package identifier 或 msstore product ID
-    (上架 Store / WinGet 之後才會有，先完成那一站再回來改這裡)。
+- `extension.json` — 投稿用的中繼資料。送出去之前再核一次:
+  - `installSources`:`msstore` / `9NDGWN4JTXHH`,**已經是真的**(2026-08-26 用
+    `winget show --id 9NDGWN4JTXHH --source msstore` 驗過查得到)。
   - `homepage`:`https://github.com/1morr/Inkling`,repo 已公開、路徑核對過。
   - `author.url`:`https://github.com/1morr`，帳號頁面存在。
   - `id` 是 `1morr.inkling`，對應投稿 repo 裡的資料夾 `extensions/1morr/inkling/`,
@@ -38,10 +40,7 @@ gallery 的準備材料。**要等 Store 上架之後才能送。**
 
 ## 投稿流程
 
-1. **先把擴展上架**:Store 或 WinGet 至少要有一個 —— gallery 的 `installSources`
-   只接受這兩種。**套件身分已經換成 Partner Center 指派的了**(2026-08-23，見
-   [`release-checklist.md` §1](../release-checklist.md));剩下的是把 msixbundle 送審、
-   等它通過。**通過之前不要開 PR** —— listing 還是 404。
+1. ✅ **先把擴展上架** —— Store 已經上架(2026-08-25),這一步做完了。
 2. Fork `microsoft/CmdPal-Extensions`。
 3. 建 `extensions/1morr/inkling/`，放入 `extension.json` 與 `icon.png`(可加 `screenshots/`)。
 4. 開 PR。第一次送 microsoft 的 repo 要簽 **Microsoft CLA**(CLA bot 會在 PR 裡提示，
