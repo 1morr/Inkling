@@ -15,6 +15,15 @@
 #      AZURE_AD_APPLICATION_SECRET / SELLER_ID。
 # 來源:https://learn.microsoft.com/windows/apps/publish/msstore-dev-cli/github-actions
 #
+# ⚠ **第 1 步的頁面在新版帳戶設定的選單裡找不到。** 2026-08-26 實測:齒輪 → Account settings
+# 進去的是 `/dashboard/v2/account-settings/overview`,那個選單的「Organization profile」
+# 底下只有 Legal info 與 Identifiers,**沒有 Tenants**。要直接開
+# `/dashboard/account/v3/tenantmanagement`(舊路由,選單會長出 User management / Tenants /
+# Enterprise associations 三項),上面才有「Create Microsoft Entra ID」與
+# 「Associate Microsoft Entra ID」。
+# **沒有關聯租戶之前,User management 頁那顆「Sign in with Microsoft Entra ID」按下去會轉回
+# 原頁,看起來像壞掉** —— 它不是壞掉,是還沒有租戶可以登入。
+#
 # ⚠ Learn 上 `msstore publish` 的 `--inputFile` 只寫 `.msix` 與 `.msixupload`,
 # 但那份文檔不完整 —— msstore-cli 的 MSIXProjectPublisher.PackageFilesExtensionInclude
 # 三種都收(`.msix` / `.msixbundle` / `.msixupload`),所以我們的 bundle 餵得進去。
