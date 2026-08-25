@@ -52,6 +52,35 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// </summary>
     private readonly VersionedItemsCache<(int Version, bool ShowSource)> _cache = new();
 
+    /// <summary>
+    /// 筆記那幾列的項目物件分配。**這一頁最需要它** —— 使用者進來就是要一則一則刪,
+    /// 而每次重建都給全新的 <see cref="ListItem"/> 的話,刪完一則選取就被推回第一列,
+    /// 也就是「刪除全部」那一列上。規則見 <see cref="NoteItemSlots"/>。
+    /// </summary>
+    private readonly NoteItemSlots _slots = new();
+
+    /// <summary>
+    /// 上面那兩列動作與最後那列提示。**跟筆記那幾列同樣要是長壽物件**:
+    /// 它們的標題帶著數字,每刪一則就得改,而每次重做一個等於告訴 CmdPal
+    /// 「這一列被移除又插回來」—— 選取停在上面時會被踢走。
+    /// 內容改由 Apply* 就地寫進去。
+    /// </summary>
+    private readonly ListItem _deleteEverything = new(Placeholder) { Icon = Icons.Delete };
+
+    private readonly ListItem _deleteMine = new(Placeholder) { Icon = Icons.Note };
+
+    private readonly ListItem _truncatedNotice = new(new NoOpCommand())
+    {
+        Subtitle = Resources.DeleteMoreNotesSubtitle,
+        Icon = Icons.External,
+    };
+
+    /// <summary>
+    /// <see cref="ListItem"/> 的建構子非給一個命令不可,而真正的命令要到 Apply* 才裝得起來。
+    /// 這個實例只活到那一行為止。
+    /// </summary>
+    private static readonly NoOpCommand Placeholder = new();
+
     private bool _disposed;
 
     public DeleteNotesPage(INoteRepository repository, InklingOptions options, ISourceModeStore sourceMode)
@@ -102,47 +131,54 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
         if (notes.Count == 0)
         {
             DiagnosticLog.Write("DeleteNotesPage.BuildItems: no notes, falling back to EmptyContent");
+
+            // 清單空了也要讓槽位狀態跟著空掉,否則下一次有筆記時它還拿著一份
+            // 對不上任何東西的舊佈局。
+            _slots.Assign([], n => CreateNoteItem(n, showSource), (item, n) => ApplyNote(item, n, showSource));
             return [];
         }
 
         var external = notes.Count(n => n.IsExternal);
 
         // 動作在最上面 —— 使用者是為了它才進來的。
+        ApplyDeleteEverything(notes.Count, external);
+
         var items = new List<IListItem>(Math.Min(notes.Count, _options.MaxResults) + 3)
         {
-            CreateDeleteEverythingItem(notes.Count, external),
+            _deleteEverything,
         };
 
         // 全部都是外來檔案時這條路等於什麼都不刪,不要放一列點下去沒反應的東西。
         if (external > 0 && external < notes.Count)
         {
-            items.Add(CreateDeleteMineItem(notes.Count - external, external));
+            ApplyDeleteMine(notes.Count - external, external);
+            items.Add(_deleteMine);
         }
 
         // 外來檔案排最前面:那正是使用者最需要先看到的一批。
         // 兩邊各自維持 GetAll 的排序(最後更新的在前)。
-        var ordered = notes.Where(n => n.IsExternal).Concat(notes.Where(n => !n.IsExternal));
+        var ordered = notes
+            .Where(n => n.IsExternal)
+            .Concat(notes.Where(n => !n.IsExternal))
+            .Take(_options.MaxResults)
+            .ToArray();
 
         // **這裡沒有分節標頭,而且做不到。** CmdPal 的清單是扁平的,ListItem.Section
         // 只有在那一列**沒有命令**時才會被當成標頭文字用(ListItemViewModel.EvaluateType)——
         // 有命令的列上設它,畫面上什麼都不會發生,也不會有任何錯誤。這一頁曾經在五個地方
         // 設過 Section,從來沒有一個顯示出來。外來與自己的分別現在只靠排序(外來排前面)
         // 與圖示(Icons.External)。考證見 docs/design-notes.md〈分節標頭〉。
-        foreach (var note in ordered.Take(_options.MaxResults))
-        {
-            items.Add(CreateNoteItem(note, showSource));
-        }
+        items.AddRange(
+            _slots.Assign(ordered, n => CreateNoteItem(n, showSource), (item, n) => ApplyNote(item, n, showSource)));
 
         // 列不完的時候一定要講,而且要講清楚「沒列出來不等於不會刪」 ——
         // 這一頁的用途就是讓人看見範圍,含糊的截斷反而製造新的誤會。
         if (notes.Count > _options.MaxResults)
         {
-            items.Add(new ListItem(new NoOpCommand())
-            {
-                Title = Strings.Format(Resources.DeleteMoreNotes, notes.Count - _options.MaxResults),
-                Subtitle = Resources.DeleteMoreNotesSubtitle,
-                Icon = Icons.External,
-            });
+            _truncatedNotice.Title =
+                Strings.Format(Resources.DeleteMoreNotes, notes.Count - _options.MaxResults);
+
+            items.Add(_truncatedNotice);
         }
 
         DiagnosticLog.Write($"DeleteNotesPage.BuildItems: {notes.Count} notes, {external} external");
@@ -155,13 +191,31 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// 預覽降到選單第二項:這一頁 <c>ShowDetails</c> 是開的,右邊的詳細窗格本來就在顯示
     /// 標題與內文,預覽頁多出來的只有 Markdown 渲染 —— 不值得佔著前面那兩個鍵位。
     /// </summary>
-    private ListItem CreateNoteItem(Note note, bool showSource) => new(CreateConfirmedDelete(note))
+    private ListItem CreateNoteItem(Note note, bool showSource)
     {
-        Title = note.Title,
-        Subtitle = Path.GetRelativePath(_options.NotesDirectory, note.FilePath),
-        Icon = note.IsExternal ? Icons.External : Icons.Note,
-        Details = NoteDetails.For(note, showSource),
-        MoreCommands = [
+        var item = new ListItem(Placeholder);
+
+        ApplyNote(item, note, showSource);
+        return item;
+    }
+
+    /// <summary>
+    /// 把一則筆記寫進某一列 —— **可能是剛做好的,也可能是上一輪留下來、這一輪換人坐的槽**
+    /// (見 <see cref="NoteItemSlots"/>)。所以每一項都要設一遍,圖示也包含在內:
+    /// 這一頁的圖示分內外(<see cref="Icons.External"/> / <see cref="Icons.Note"/>),
+    /// 漏掉它就會出現「外來檔案的圖示配自己筆記的內容」。
+    ///
+    /// 少設任何一項的症狀都是同一種:那一列顯示甲、命令卻還綁著乙,而且靜悄悄的 ——
+    /// 在一個**刪檔案**的頁面上,那是這份程式碼裡最貴的一種 bug。
+    /// </summary>
+    private void ApplyNote(ListItem item, Note note, bool showSource)
+    {
+        item.Command = CreateConfirmedDelete(note);
+        item.Title = note.Title;
+        item.Subtitle = Path.GetRelativePath(_options.NotesDirectory, note.FilePath);
+        item.Icon = note.IsExternal ? Icons.External : Icons.Note;
+        item.Details = NoteDetails.For(note, showSource);
+        item.MoreCommands = [
             // 第一個會被 CmdPal 當成次要命令放上底部工具列(Ctrl+Enter)。
             CreateQuickDeleteItem(note),
             new CommandContextItem(new NotePreviewPage(_repository, note, _sourceMode))
@@ -169,8 +223,8 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
                 Title = Resources.CommandPreview,
                 Icon = Icons.Preview,
             },
-        ],
-    };
+        ];
+    }
 
     /// <summary>
     /// <c>Enter</c> 走的路:跳確認框,按下主要按鈕才真的刪。
@@ -242,14 +296,17 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// <summary>
     /// 「刪除全部」。這一頁破壞力最大的一列,而且**排在第一位**。
     ///
-    /// 那個位置有代價,寫下來免得日後當成沒想過:進到這一頁時預設選中的就是它,而 0.11
-    /// 刪掉一列之後焦點很可能也跳回第一列(沒有 <c>main</c> 那套 sticky selection,
-    /// byte-scan 掃不到 <c>_stickySelectedItem</c>)—— 也就是說「想刪下一則而順手按 Enter」
-    /// 有機會落在這一列上。三道防線:它一定會跳確認框、標題明著寫「刪除全部 N 則筆記?」、
-    /// 刪掉的檔案進資源回收筒。**而連著按 <c>Ctrl+Enter</c> 清理的那條路完全踩不到它** ——
-    /// 這一列沒有次要命令,焦點跳過來時 <c>Ctrl+Enter</c> 什麼都不會發生。
+    /// 那個位置以前有一個額外的代價,現在沒有了,但值得記著怎麼消掉的:刪掉一列之後
+    /// 焦點會跳回第一列,也就是這一列身上 —— 於是「想刪下一則而順手按 Enter」
+    /// 有機會落在「刪除全部」上。那個跳法是我們自己造成的(每次重建都給全新的項目物件),
+    /// 現在筆記那幾列走 <see cref="NoteItemSlots"/>,刪完選取落在下一則。
+    ///
+    /// 防線照樣留著,不因為少了一條路就拆:它一定會跳確認框、確認框的預設按鈕是「取消」、
+    /// 標題明著寫「刪除全部 N 則筆記?」、刪掉的檔案進資源回收筒。
+    /// **而連著按 <c>Ctrl+Enter</c> 清理的那條路本來就踩不到它** —— 這一列沒有次要命令,
+    /// 焦點跳過來時 <c>Ctrl+Enter</c> 什麼都不會發生。
     /// </summary>
-    private ListItem CreateDeleteEverythingItem(int total, int external)
+    private void ApplyDeleteEverything(int total, int external)
     {
         var description = external > 0
             ? Strings.Format(
@@ -276,19 +333,16 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
             }),
         };
 
-        return new ListItem(command)
-        {
-            Title = Strings.Format(Resources.DeleteAllItemTitle, total),
-            Subtitle = Strings.Format(Resources.DeleteAllItemSubtitle, _options.NotesDirectory),
-            Icon = Icons.Delete,
-            Details = BuildDetails(Strings.Format(Resources.DeleteAllScope, total)
-                + (external > 0
-                    ? Strings.Format(Resources.DeleteAllScopeExternalSuffix, external)
-                    : string.Empty)),
-        };
+        _deleteEverything.Command = command;
+        _deleteEverything.Title = Strings.Format(Resources.DeleteAllItemTitle, total);
+        _deleteEverything.Subtitle = Strings.Format(Resources.DeleteAllItemSubtitle, _options.NotesDirectory);
+        _deleteEverything.Details = BuildDetails(Strings.Format(Resources.DeleteAllScope, total)
+            + (external > 0
+                ? Strings.Format(Resources.DeleteAllScopeExternalSuffix, external)
+                : string.Empty));
     }
 
-    private ListItem CreateDeleteMineItem(int mine, int external)
+    private void ApplyDeleteMine(int mine, int external)
     {
         var command = new AnonymousCommand(() => { })
         {
@@ -303,13 +357,10 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
             }),
         };
 
-        return new ListItem(command)
-        {
-            Title = Strings.Format(Resources.DeleteMineItemTitle, mine),
-            Subtitle = Strings.Format(Resources.DeleteMineItemSubtitle, external),
-            Icon = Icons.Note,
-            Details = BuildDetails(Strings.Format(Resources.DeleteMineScope, mine + external, mine, external)),
-        };
+        _deleteMine.Command = command;
+        _deleteMine.Title = Strings.Format(Resources.DeleteMineItemTitle, mine);
+        _deleteMine.Subtitle = Strings.Format(Resources.DeleteMineItemSubtitle, external);
+        _deleteMine.Details = BuildDetails(Strings.Format(Resources.DeleteMineScope, mine + external, mine, external));
     }
 
     /// <summary>
@@ -329,7 +380,10 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     private void OnRepositoryChanged(object? sender, EventArgs e)
     {
         // Version 已經讓下一次 GetItems 自己重建了;這裡是主動通知 CmdPal 立刻來拿。
-        RaiseItemsChanged();
+        //
+        // **參數不能省。** 預設值會讓 CmdPal 順手把選取推回第一列 —— 在這一頁就是
+        // 每刪一則都被丟回「刪除全部」上。見 CmdPalRefresh。
+        RaiseItemsChanged(CmdPalRefresh.KeepSelection);
     }
 
     public void Dispose()

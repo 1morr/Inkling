@@ -362,7 +362,7 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
        Windows 是直接刪除,那句話會變成假的(刪除頁的詳細窗格已經講明這個差別)。 -->
   <data name="DeleteDone" xml:space="preserve">
     <value>Deleted: {0}</value>
-    <comment>{0} 是筆記標題。刪完焦點會跳到第一列,視覺錨點沒了,標題是「剛才刪的是哪一則」的唯一線索。</comment>
+    <comment>{0} 是筆記標題。刪完焦點會移到下一則,視覺錨點沒了,標題是「剛才刪的是哪一則」的唯一線索。</comment>
   </data>
   <data name="DeleteAllDone" xml:space="preserve">
     <value>Deleted {0} notes</value>

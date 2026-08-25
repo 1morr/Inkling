@@ -121,6 +121,15 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"   # 先確認資料夾�
 否則事件收到了、拿到的還是舊結果(「筆記明明存好了,清單卻說還沒有」就是漏帶
 Version 的症狀)。
 
+**重建清單時不可以整批換掉項目物件** —— CmdPal 的選取跟著 `IListItem` 的**參考**走,
+換一批就等於宣告「整份清單換人了」,選取每一次都被推回第一列。清單頁與刪除頁因此走
+`NoteItemSlots`:還在的筆記沿用自己上一輪的 `ListItem`,消失的那一則把物件讓給後繼者。
+配套是 `RaiseItemsChanged(CmdPalRefresh.KeepSelection)` —— **兩件事缺一不可**,
+只做一件完全沒有效果。代價是 `ApplyNote` 那類方法**每一項都要設一遍**
+(命令、標題、副標、圖示、詳細窗格、選單、標籤),因為那個物件可能是上一輪別則筆記用的;
+漏一項的症狀是「顯示甲、命令綁著乙」而且完全靜默。加新的清單頁時記得一起走這條路,
+見第 13 條與[設計考證〈刪掉一則之後,選取落在哪〉](docs/design-notes.md#selection-survives-rebuild)。
+
 同一則筆記的 `Ctrl+K` 選單項(編輯 / 複製內文 / 在編輯器開啟 / 開啟檔案位置)收在
 `NoteCommands`,清單頁、預覽頁、記下並預覽頁三個畫面共用 —— 鍵位與圖示跨頁要一致,
 曾經各頁各刻一份而且已經漂移過(其中一份用了預設 `ShowToast` 的 `CopyTextCommand`,
@@ -329,6 +338,16 @@ Version 的症狀)。
     死宣告(線畫不出來,顏色與粗細擴展碰不到),也已經換成 `spacing: medium`。
     見 [設計考證〈分節標頭:`Section` 不是分組鍵〉](docs/design-notes.md#section-not-grouping)
     與[〈設定卡片上沒有分隔線〉](docs/design-notes.md#settings-no-separator)。
+13. **選取跟著 `IListItem` 的參考走,而 `RaiseItemsChanged()` 的預設參數會把它推回第一列。**
+    兩件事要一起做才有效果:(a) repository 變動觸發的重整要傳
+    `CmdPalRefresh.KeepSelection`(就是 `-2`,CmdPal 的 `IncrementalRefresh`;
+    toolkit 的預設 `-1` 會走 `forceFirstItem`),(b) 重建清單時**沿用既有的 `ListItem`
+    物件**(`NoteItemSlots`)—— CmdPal 拿參考相等查它的 view model 快取
+    (`ProxyReferenceEqualityComparer`),全新的物件必然落空,`-2` 也救不回來。
+    **打字造成的重整刻意維持預設值**:搜尋結果換了一批,選取本來就該回最上面。
+    症狀不只出現在刪除 —— 別台機器同步下來一則、或外部編輯器改了任何一則,
+    正在看的那一列一樣會被踢走。考證見
+    [設計考證〈刪掉一則之後,選取落在哪〉](docs/design-notes.md#selection-survives-rebuild)。
 
 ## 慣例
 
@@ -504,13 +523,22 @@ $bytes = [System.IO.File]::ReadAllBytes("$d\resources.pri")
   順帶一提**按鈕的顏色擴展仍然碰不到**:`ConfirmationArgs` 只有四個屬性,而 CmdPal 那段把
   主要按鈕標紅的樣式是註解掉的 TODO —— 那部分沒有被推翻。
   見 [設計考證〈確認框的按鈕沒有顏色,也沒有「危險」樣式〉](docs/design-notes.md#confirm-dialog-colors)。
-- `ListItemsView` 的 sticky selection —— `main` 在清單更新後會盡量把選中項留在原處
-  (`_stickySelectedItem`),留不住才退回 `GetFirstSelectableIndex()` 選第一個可選項;
-  安裝版 `_stickySelectedItem` / `firstUsefulIndex` / `ensureSelectionVisible` **一個都掃不到**。
-  也就是說**刪掉當前那一列之後焦點落在哪,在使用者手上沒有保證**,舊版大概率就是跳第一列。
-  刪除頁「刪除全部」排第一就是踩在這上面 —— 順手按 Enter 有機會落到它身上,靠確認框擋;
-  而 `Ctrl+Enter` 那條連續刪的路踩不到(那一列沒有次要命令)。
-  見 [設計考證〈「刪除全部」排第一的代價〉](docs/design-notes.md#delete-all-first)。
+- **~~`ListItemsView` 的 sticky selection~~ —— 這一條也是錯的,2026-08-25 推翻。**
+  這裡以前寫著「安裝版 `_stickySelectedItem` / `firstUsefulIndex` /
+  `ensureSelectionVisible` 一個都掃不到,所以刪掉當前那一列之後焦點落在哪沒有保證」。
+  **那三個全是欄位名、區域變數名與參數名** —— NativeAOT 保留方法名(給 stack trace 用)
+  但一律裁掉這些,掃不到是必然的,跟那段程式碼在不在無關。改掃**方法名**之後
+  `TrySetSelectionAfterUpdate` / `RequestFetch` / `PushSelectionToVm` /
+  `SuppressSelectionChangedScope` / `ScrollToItem` / `ResetScrollToTop` 全部命中,
+  類型名 `ProxyReferenceEqualityComparer` 也命中。
+  **「刪一則就跳回第一列」是我們自己造成的**(每次重建都給全新的項目物件,
+  而且 `RaiseItemsChanged` 沒帶 `-2`),已經修掉,見第 13 條。
+  **這一條留著不刪,它跟上面那條 `set_DefaultButton` 是同一個陷阱的第二次發作。**
+
+**所以 byte-scan 一個識別名之前,先問它是哪一種。** 型別名與方法名掃得到才有意義;
+欄位、區域變數、參數、`const`(會被 inline 成立即數)**一律不能拿來當證據** ——
+它們掃不到是編譯的必然結果。上面那張對照表裡的 `get_IsCritical` 是方法名、
+`windows-commandpalette-extension` 是字串常量,兩個都在「掃得到才有意義」的那一類。
 
 這就是為什麼每個從原始碼得到的結論都要 byte-scan 對照一次再寫進文檔。
 

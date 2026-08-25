@@ -53,6 +53,30 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     private (Note Note, ListItem Item)[] _shown = [];
 
     /// <summary>
+    /// 清單項物件的分配。**每次重建清單都給一批全新的 <see cref="ListItem"/> 的話,
+    /// 選取每一次都會被推回第一列** —— CmdPal 認的是物件識別,不是我們的筆記身分。
+    /// 規則與踩過的坑寫在 <see cref="NoteItemSlots"/>。
+    /// </summary>
+    private readonly NoteItemSlots _slots = new();
+
+    /// <summary>
+    /// 尾端那兩列提示。**跟筆記那幾列一樣要是長壽物件**:每次重建都新做一個的話,
+    /// CmdPal 眼中那一列就是「被移除又插回來」,選取正好停在上面時會被踢走。
+    /// 副標是固定的資源字串,只有標題帶著數字,所以只有標題要就地更新。
+    /// </summary>
+    private readonly ListItem _truncatedNotice = new(new NoOpCommand())
+    {
+        Subtitle = Resources.ListPageMoreResultsSubtitle,
+        Icon = Icons.Note,
+    };
+
+    private readonly ListItem _skippedNotice = new(new NoOpCommand())
+    {
+        Subtitle = Resources.ListPageSkippedFilesSubtitle,
+        Icon = Icons.Note,
+    };
+
+    /// <summary>
     /// 空白狀態那一列。留著參照是為了依查詢就地換文案(見 UpdateEmptyContent)——
     /// <c>ICommandItem</c> 在 IDL 裡就繼承 <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,
     /// 走這條一定收得到(<c>IDetails</c> 就不行,見 RefreshDetails)。
@@ -112,6 +136,9 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         }
 
         _query = newSearch;
+
+        // 這裡**刻意**用預設值(也就是「更新完順便選第一列」)。使用者剛改了搜尋字,
+        // 結果換了一批,選取本來就該回到最上面 —— 對照 OnRepositoryChanged。
         RaiseItemsChanged();
     }
 
@@ -133,29 +160,29 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
 
         UpdateEmptyContent(query, matches.Count);
 
-        var items = new List<IListItem>(Math.Min(matches.Count, _options.MaxResults) + 1);
-        var shown = new List<(Note, ListItem)>(items.Capacity);
+        // 先定案要列哪幾則,再交給 NoteItemSlots 決定每一則坐哪一個既有的項目物件。
+        var listed = matches.Take(_options.MaxResults).ToArray();
+        var slots = _slots.Assign(listed, CreateItem, ApplyNote);
 
-        foreach (var note in matches.Take(_options.MaxResults))
+        var items = new List<IListItem>(slots.Length + 2);
+        var shown = new (Note, ListItem)[slots.Length];
+
+        for (var i = 0; i < slots.Length; i++)
         {
-            var item = CreateItem(note);
-
-            items.Add(item);
-            shown.Add((note, item));
+            items.Add(slots[i]);
+            shown[i] = (listed[i], slots[i]);
         }
 
-        _shown = [.. shown];
-        DiagnosticLog.Write($"BuildItems: query='{query}' matched {matches.Count}, listed {shown.Count}");
+        _shown = shown;
+        DiagnosticLog.Write($"BuildItems: query='{query}' matched {matches.Count}, listed {slots.Length}");
 
         // 被截掉就明講,不要讓使用者以為筆記不見了。
         if (matches.Count > _options.MaxResults)
         {
-            items.Add(new ListItem(new NoOpCommand())
-            {
-                Title = Strings.Format(Resources.ListPageMoreResults, matches.Count - _options.MaxResults),
-                Subtitle = Resources.ListPageMoreResultsSubtitle,
-                Icon = Icons.Note,
-            });
+            _truncatedNotice.Title =
+                Strings.Format(Resources.ListPageMoreResults, matches.Count - _options.MaxResults);
+
+            items.Add(_truncatedNotice);
         }
 
         // 讀不出來的檔案同理,而且更需要講:那一則是真的存在、只是這次讀不到
@@ -165,12 +192,10 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         // **不受查詢字影響**:讀不出來就不知道它的標題,篩不了,所以永遠掛在最後一列。
         if (_repository.SkippedFileCount > 0)
         {
-            items.Add(new ListItem(new NoOpCommand())
-            {
-                Title = Strings.Format(Resources.ListPageSkippedFiles, _repository.SkippedFileCount),
-                Subtitle = Resources.ListPageSkippedFilesSubtitle,
-                Icon = Icons.Note,
-            });
+            _skippedNotice.Title =
+                Strings.Format(Resources.ListPageSkippedFiles, _repository.SkippedFileCount);
+
+            items.Add(_skippedNotice);
         }
 
         return [.. items];
@@ -197,13 +222,44 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
             : Strings.Format(Resources.ListPageEmptySubtitle, Resources.ProviderCapturePageTitle);
     }
 
-    private ListItem CreateItem(Note note) => new(new NotePreviewPage(_repository, note, _sourceMode))
+    /// <summary>
+    /// <see cref="ListItem"/> 的建構子非給一個命令不可,而真正的命令要到
+    /// <see cref="ApplyNote"/> 才裝得起來。這個實例只活到那一行為止。
+    /// </summary>
+    private static readonly NoOpCommand Placeholder = new();
+
+    /// <summary>
+    /// 新做一列。圖示在這裡設而不在 <see cref="ApplyNote"/> 裡 —— 這一頁每一列都是同一個,
+    /// 放進去只會讓每次重整都多發一次跨進程通知。(刪除頁不一樣,那裡圖示分內外。)
+    /// </summary>
+    private ListItem CreateItem(Note note)
     {
-        Title = note.Title,
-        Subtitle = note.Summary,
-        Icon = Icons.Note,
-        Details = BuildDetails(note),
-        MoreCommands = BuildCommands(note),
+        var item = new ListItem(Placeholder) { Icon = Icons.Note };
+
+        ApplyNote(item, note);
+        return item;
+    }
+
+    /// <summary>
+    /// 把一則筆記的內容寫進某一列 —— **可能是剛做好的,也可能是上一輪留下來、
+    /// 這一輪換人坐的槽**(見 <see cref="NoteItemSlots"/>)。所以「這一列長什麼樣、
+    /// 按下去做什麼」**每一項都要設一遍**,不能假設誰沒變:漏掉一項的症狀是
+    /// 那一列顯示甲、命令卻還綁著乙,而且靜悄悄的。
+    ///
+    /// 就地改這幾個屬性跨進程是通的:<c>ICommandItem</c> 在 IDL 裡就繼承
+    /// <c>INotifyPropChanged</c>,CmdPal 對它無條件訂閱,而 <c>Command</c> 與
+    /// <c>MoreCommands</c> 在它的 <c>CommandItemViewModel.FetchProperty</c> 裡
+    /// 各有一條重建路徑(<c>ReplaceCommand</c> / <c>BuildAndInitMoreCommands</c>,
+    /// 安裝版都掃得到)。<c>Details</c> 是唯一的例外,**只能整個換掉**
+    /// (理由見 <see cref="RefreshDetails"/>)—— 而這裡本來就是整個換。
+    /// </summary>
+    private void ApplyNote(ListItem item, Note note)
+    {
+        item.Command = new NotePreviewPage(_repository, note, _sourceMode);
+        item.Title = note.Title;
+        item.Subtitle = note.Summary;
+        item.Details = BuildDetails(note);
+        item.MoreCommands = BuildCommands(note);
 
         // 同一個 id 出現在兩個檔案上 = 雲端硬碟的衝突副本(見 Note.HasDuplicateId)。
         // 兩列的標題與內文可能一模一樣,不標的話使用者根本不會發現多了一份。
@@ -211,8 +267,8 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
         // —— 跟 ListItem.Details 相反(見 RefreshDetails):ICommandItem 在 IDL 裡就繼承
         // INotifyPropChanged,CmdPal 對它無條件訂閱,而且安裝版的 UpdateTags /
         // VisibleTags / TagViewModel 都掃得到。
-        Tags = BaseTags(note),
-    };
+        item.Tags = BaseTags(note);
+    }
 
     /// <summary>
     /// 一列平常掛著的標籤。目前只有「衝突副本」一種。
@@ -362,7 +418,10 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     {
         // Version 已經讓下一次 GetItems 自己重建了;這裡的重點是主動通知 CmdPal
         // 立刻來拿新的清單,讓正開著的頁面即時更新。
-        RaiseItemsChanged();
+        //
+        // **參數不能省。** 預設值會讓 CmdPal 順手把選取推回第一列 —— 刪掉一則、
+        // 或別台機器同步下來一則,使用者正看著的那一列就這樣沒了。見 CmdPalRefresh。
+        RaiseItemsChanged(CmdPalRefresh.KeepSelection);
     }
 
     public void Dispose()
