@@ -1861,7 +1861,7 @@ settings.json 裡曾經留下兩個 Inkling fallback 條目，把其中一個的
 **上面那個決定只撐到第一個公開版本之前。** 前綴換成 `Inkling.`,`Publisher` 也從
 `CN=Notelet Development` 換掉，舊名字整個從 repo 消失。(隔天上架時 `Publisher` 又換成
 Partner Center 指派的 `CN=<GUID>` —— 中間那個值沒發出去過，見
-[`release-checklist.md` §1](release-checklist.md)。)
+[〈套件身分凍結在 Partner Center 指派的那一組〉](#package-identity)。)
 
 翻案的理由不是「看起來一致」，是**那個保證保的東西當時等於零**:安裝基數是作者一台機器，
 一版都還沒發出去。實際盤點過 CmdPal 的 settings.json，會被清掉的只有三個 alias
@@ -1884,6 +1884,77 @@ Partner Center 指派的 `CN=<GUID>` —— 中間那個值沒發出去過，見
 > `<PFN>!<Application Id>!<AppExtension Id>`，第三段來自 manifest,**改
 > `CommandIds.Provider` 不會動到那個鍵，反之亦然**。改名前這兩個值長得不一樣
 > (`Notelet` vs `Inkling`)，陷阱是看得見的;現在它們重疊了，所以這句話要寫死在文檔裡。
+
+<a id="package-identity"></a>
+
+### 套件身分凍結在 Partner Center 指派的那一組
+
+`Package.appxmanifest` 帶的是 2026-08-23 從 Partner Center 的**產品管理 → 產品標識**
+抄回來的值，**四個字串一個都不能再動**:
+
+| Partner Center 的值 | 去哪裡 |
+|---|---|
+| `CPPt.InklingNotes` | `Identity/@Name` |
+| `CN=CCDB8684-D6F1-4A3A-BF5C-F31F3FE830E9` | `Identity/@Publisher` |
+| `CPPt` | `Properties/PublisherDisplayName` |
+| 保留的名字 `Inkling Notes` | `Properties/DisplayName` 與 `uap:VisualElements/@DisplayName` |
+
+對不上的話 `makeappx pack` 與 CI **都不會報錯**，只有上傳 Partner Center 那一刻才被退。
+Store 的 product ID 是 `9NDGWN4JTXHH`,listing 在
+<https://apps.microsoft.com/detail/9NDGWN4JTXHH>。
+
+**Store 上的名字是「Inkling Notes」,CmdPal 裡看到的仍然是「Inkling」** ——
+後者走 `.resx`，跟保留名稱無關。`Inkling` 在 Store 被商標擋下(Inkling Systems /
+inkling.com)，而且那條路連 `reportapp@microsoft.com` 都救不了(那是給持有商標的人用的),
+所以上架名加了 Notes;命令標題沒有跟著加，短的比較好按。
+
+#### 為什麼只能定一次
+
+`Name` + `Publisher` 決定 package family name(PFN，目前是
+`CPPt.InklingNotes_fsn608qftpbpp`)。**後綴那串雜湊只由 `Publisher` 決定，而且算不出來** ——
+只能註冊一次之後用 `(Get-AppxPackage '*Inkling*').PackageFamilyName` 量
+(實測與產品標識頁預告的 PFN 一字不差)。Windows 按 PFN 隔離
+`%LOCALAPPDATA%\Packages\<PFN>\LocalState\`,PFN 一變，擴展自己的 `settings.json`
+就變成孤兒 —— 筆記資料夾、分隔符與預覽開關全部退回預設，而檔案都還在，清單卻是空的。
+CmdPal 端的 `ProviderSettings` 與 `PinnedCommands` 用
+`<PFN>!<Application Id>!<AppExtension Id>` 當鍵，一樣孤兒化;只有 `Aliases` 不帶 PFN,
+所以 alias 撐得過換身分(見上一節)。
+
+#### 換過三次，全部在第一個公開版本之前
+
+- **2026-08-20 改名 Notelet → Inkling**:只動 `Identity/@Name`,`Publisher` 刻意不動,
+  所以 PFN 的雜湊後綴沒變(`Notelet_bf0n0751x5hse` → `Inkling_bf0n0751x5hse`)。
+- **2026-08-22 把舊名字整個清掉**:`Publisher` 換成 `CN=Inkling Development`,命令 Id
+  前綴換成 `Inkling.`。PFN 變成 `Inkling_b83qevkfx7m2r` —— **那是過渡值，隔天就被取代了,
+  不要拿它去對任何東西。**
+- **2026-08-23 換成 Partner Center 指派的那一組**:最後一次。擴展的 `settings.json`
+  又孤兒化一次，alias 沒事(命令 Id 沒動)。
+
+⚠ **換 `Publisher` 之後第一次部署要先顯式移除舊套件**:
+`Get-AppxPackage '*Inkling*' | Remove-AppxPackage -PreserveApplicationData`。
+`deploy.ps1` 自己的移除分支**只在 `InstallLocation` 不同時才觸發**，而換身分時佈局路徑沒變,
+那個分支會被跳過。⚠ 換完之後**主搜尋框可能變成十列，兩組五列** —— 那是 CmdPal 在套件
+安裝事件上沒有去重(CLAUDE.md 第 6 條的第一種)，不是真的裝了兩個;停掉
+`Microsoft.CmdPal.UI` 讓它重啟就好。
+
+#### 憑證:走 Store 代簽，repo 裡不會有任何憑證
+
+Store 在通過認證之後用微軟的憑證重簽，本機部署走 `Add-AppxPackage -Register`
+(開發者模式的 loose-file 註冊)，兩條路都不需要我們自己簽。**只有要給人側載、
+或要上 winget-pkgs 才需要買憑證** —— 公開信任的 OV 程式碼簽章憑證約每年 USD 70–400,
+而且 `Publisher` 要改成憑證的完整 DN,**那等於再換一次身分**,所以現在已經不可能了。
+EV 能立刻取得 SmartScreen 信譽但貴得多;OV 要慢慢累積。`release.yml` 的簽章步驟只在
+repo secret `SIGNING_CERT_BASE64` 存在時才啟用。
+
+**什麼變了才該重新考慮**:要正式走 winget-pkgs 或直接散佈 msix 的話會重新評估買憑證,
+但**`Identity/@Publisher` 仍然不能動** —— 那會洗掉所有使用者的設定。
+
+#### PFN 不要再寫死進文檔
+
+那個字串以前硬編碼在八處(五個檔案)，換身分後全部靜靜失效 —— 讀不到檔案不會報錯,
+只會讓驗證失明。現在文檔一律寫 `%LOCALAPPDATA%\Packages\<PFN>\LocalState`,腳本內插
+`(Get-AppxPackage '*Inkling*').PackageFamilyName`。唯一留著字面值的就是這一節,
+因為這裡的重點正是那個字串本身。
 
 <a id="app-list-entry"></a>
 

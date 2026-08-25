@@ -3,8 +3,10 @@
 **適用範圍:第一個公開版本已經上架、套件身分(`Identity` 的 `Name` / `Publisher`)已經凍結
 之後，要發下一個版本時跑這一份。**
 
-第一次上架本身走 [`release-checklist.md`](release-checklist.md) —— 那是一次性的身分定案與
-通路開通清單，裡面很多事一輩子只做一次。這一份是**每次都要跑**的。
+第一次上架那些一輩子只做一次的事(身分定案、憑證怎麼選、名字為什麼是 Inkling Notes)
+已經做完了，考證收在
+[設計考證〈套件身分凍結在 Partner Center 指派的那一組〉](design-notes.md#package-identity)。
+這一份是**每次都要跑**的。
 
 標記:`[自動]` = 指令或 CI 做得完;`[人工]` = 要到某個網站點，或只能靠眼睛。
 
@@ -55,7 +57,8 @@ git diff <上一個 tag>..HEAD -- src/Inkling/Package.appxmanifest
 後兩個容易被忽略:CmdPal 用的鍵是 `<PFN>!<Application Id>!<AppExtension Id>`，實測是
 `CPPt.InklingNotes_fsn608qftpbpp!App!Inkling`。注意**第三段不是 `CommandIds.Provider`,
 即使兩個現在都是 `Inkling`** —— 那是巧合，第三段來自 manifest，改哪一邊都不會動到另一邊
-(同一段警告在 [`release-checklist.md`](release-checklist.md) §1 也有一份，兩邊要一致)。
+(那四個值從哪裡來、為什麼只能定一次，見
+[設計考證〈套件身分凍結在 Partner Center 指派的那一組〉](design-notes.md#package-identity))。
 
 `Aliases` 因為只用純命令 Id 當鍵，四個都不受影響 —— 但也只有 alias 不受影響。
 (唯一的例外是 2026-08-22 那次連命令 Id 一起換的身分變更，見第 1 步的方框。)
@@ -510,26 +513,14 @@ loose-file 佈局跟 Store 裝的**是同一個套件身分**。`deploy.ps1` 會
 
 「查過、量過，然後決定不做」的進 [設計考證〈評估過但沒有做〉](design-notes.md#deferred),
 每一條要寫「什麼變了才該重新考慮」;還沒修的缺陷進 [`known-issues.md`](known-issues.md);
-發版流程本身踩到的坑寫回這一份與 [`release-checklist.md`](release-checklist.md)。
+發版流程本身踩到的坑寫回這一份。
 
 這是這個 repo 的既有規則，發版這條路特別適用 —— 它一年跑不了幾次，忘得最快。
 
-**第一個公開版本跑完之後，還要多做一件事:把 `release-checklist.md` 收掉。**
-那份的定位是**一次性**的(身分定案與通路開通)，而它的發版流程 / WinGet / Gallery
-三節跟這一份的第 3、7、8 部分講的是同一件事 —— 兩份並存的話，下次發版第一個問題
-就會是「該翻哪一份」，而先過期的那一份不會有任何東西報錯。
-
-**重複的四節 2026-08-23 已經刪掉了**，那裡現在只剩一張指回這一份的對照表。
-剩下的收尾:
-
-1. §1 那張已定案的身分表(`Identity` 的四個欄位、Store ID、PFN)搬進這一份的**步驟 2**,
-   它本來就在引用那張表。
-2. §3〈公開 repo 之前的最後檢查〉是一次性的，首版上架之後不再適用，直接刪 ——
-   **前提是那兩項還沒打勾的先做完**(兩份 README 的〈安裝〉章節、GitHub 的 social preview)。
-3. 兩步都做完就把整份 `release-checklist.md` 移除，並改掉指向它的連結
-   (`grep -rn release-checklist` 當下重查一次，以下是 2026-08-23 的清單):
-   `CLAUDE.md`(文檔表那一列 + 硬規則 1)、`docs/development.md`(文檔表 + 兩處內文)、
-   `docs/design-notes.md`、`docs/gallery/README.md`、
-   `.claude/skills/publish-extension/SKILL.md`、`.github/workflows/release.yml` 的註解，
-   以及這一份自己的步驟 1、2。**`CHANGELOG.md` 裡的不要動** —— 那是已發生的歷史，
-   連結指向一份當時存在的文檔，改掉等於竄改記錄。
+> **`release-checklist.md` 2026-08-26 已經移除。** 那份是首次上架用的一次性清單,
+> 首版上架之後每一節都不再適用，而它的發版流程與這一份講的是同一件事 —— 兩份並存的話,
+> 下次發版第一個問題就會是「該翻哪一份」，而先過期的那一份不會有任何東西報錯。
+> 身分那一節搬進了
+> [設計考證〈套件身分凍結在 Partner Center 指派的那一組〉](design-notes.md#package-identity),
+> 其餘整組刪掉。**`CHANGELOG.md` 裡指向它的連結刻意留著** —— 那是已發生的歷史,
+> 連結指向一份當時存在的文檔，改掉等於竄改記錄。

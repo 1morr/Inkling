@@ -229,7 +229,7 @@ tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
                      stage-layout.ps1(組出可註冊 / 可打包的套件佈局;
                      deploy.ps1 與 release.yml 共用同一份)
 docs/                design-notes.md(設計考證)、development.md(這一份)、
-                     manual-test-checklist.md、release-checklist.md、
+                     manual-test-checklist.md、release-runbook.md、copy.md、
                      images/(兩份 README 共用的截圖與 GIF,真機拍的,重拍流程見上方)、
                      gallery/(CmdPal Extension Gallery 的投稿草稿)
 .github/             workflows/ci.yml 與 workflows/release.yml(見下一節)、
@@ -312,7 +312,8 @@ docs/                design-notes.md(設計考證)、development.md(這一份)�
 **真的會弄丟設定的只有兩件事**:改 `Identity` 的 `Name` 或 `Publisher`，以及不帶
 `-PreserveApplicationData` 的 `Remove-AppxPackage`。前者**已經用掉了** ——
 2026-08-23 換成 Partner Center 指派的身分那一次(見
-[`release-checklist.md` §1](release-checklist.md))，身分就此凍結，不會再有下一次。
+[設計考證〈套件身分凍結在 Partner Center 指派的那一組〉](design-notes.md#package-identity))，
+身分就此凍結，不會再有下一次。
 (套件家族名是從 `Publisher` **字串**算的，所以同 subject 換發或更新憑證不影響。)
 想重置回預設，把 `settings.json` 刪掉再 Reload 即可。
 
@@ -458,5 +459,6 @@ UTF-8 與 UTF-16 都要掃)與已知落差清單見 [CLAUDE.md](../CLAUDE.md) �
 | [README.md](../README.md) / [README.zh-Hant.md](../README.zh-Hant.md) | 使用者文檔的兩個語言版本，改一份就改另一份 |
 | [design-notes.md](design-notes.md) | 「為什麼是這樣」的完整考證 |
 | [manual-test-checklist.md](manual-test-checklist.md) | 只能靠眼睛驗的項目 |
-| [release-checklist.md](release-checklist.md) | 首次公開發佈、套件身分與簽章 |
+| [release-runbook.md](release-runbook.md) | 每次發版都要跑的流程 |
+| [copy.md](copy.md) | 所有對外文案的來源:Store listing、gallery 卡片、manifest 的描述 |
 | [gallery/](gallery/) | 投稿 CmdPal Extension Gallery 的素材草稿 |

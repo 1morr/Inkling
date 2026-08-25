@@ -130,7 +130,7 @@ Inkling 让你在 PowerToys Command Palette 里直接记笔记。叫出面板，
 ## Gallery(`docs/gallery/extension.json`)
 
 `title` 是 `Inkling Notes`，跟 Store 上的名字一致，不要改成 `Inkling`
-(商標問題，見 [`release-checklist.md`](release-checklist.md))。
+(商標問題，見[設計考證](design-notes.md#package-identity))。
 
 **shortDescription**(上限 200 字)
 

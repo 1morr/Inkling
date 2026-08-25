@@ -82,7 +82,8 @@ jobs:
         run: |
           # -p:AppxPackageVersion 對這套單專案 MSIX 目標沒有作用(本機實測:產生的
           # AppxManifest.xml 仍是 manifest 裡的 0.1.0.0)，所以直接改 manifest 的
-          # Version 屬性。身分欄位(Name / Publisher)不碰 —— 見 docs/release-checklist.md。
+          # Version 屬性。身分欄位(Name / Publisher)不碰 —— 見 docs/design-notes.md 的
+          # 〈套件身分凍結在 Partner Center 指派的那一組〉。
           # 這個改動只發生在 CI 的 checkout 上，不會 commit 回去。
           $path = 'src/Inkling/Package.appxmanifest'
           [xml]$m = Get-Content $path
@@ -128,7 +129,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "makeappx pack 失敗($LASTEXITCODE)" }
 
       - name: Sign .msix
-        # 需要憑證:目前還沒有公開信任的程式碼簽章憑證(決策見 docs/release-checklist.md)。
+        # 需要憑證:目前還沒有公開信任的程式碼簽章憑證(決策見 docs/design-notes.md 的
+        # 〈套件身分凍結在 Partner Center 指派的那一組〉)。
         # 未設定 secret 時這一步整個跳過，產出的是未簽章套件 —— 只能拿去 Store 送審
         # (Store 會代簽)，不能給一般使用者側載(Windows 會以 0x800B0109 擋下)。
         if: env.HAS_SIGNING_CERT == 'true'

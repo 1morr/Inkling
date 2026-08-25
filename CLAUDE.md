@@ -448,7 +448,6 @@ Version 的症狀)。
   | `docs/design-notes.md` | 「為什麼是這樣」的考證 —— **已經決定的**取捨 |
   | [`docs/copy.md`](docs/copy.md) | **所有對外文案的來源**:Store 三個語言的 listing、gallery 卡片、manifest 的 `Description`、README 頂部那一句。改文案先改它 |
   | [`docs/known-issues.md`](docs/known-issues.md) | **「這樣是錯的，只是還沒修」** —— 每條附重現步驟與建議修法。**修掉一條就從那裡刪掉**，修好的東西留著比沒寫更糟 |
-  | [`docs/release-checklist.md`](docs/release-checklist.md) | **一次性**的:身分為什麼凍結、公開 repo 前的最後檢查。每次發版的流程**不在這裡**，在 runbook |
   | [`docs/release-runbook.md`](docs/release-runbook.md) | **每次發版都要跑**的重複流程 |
   | `CONTRIBUTING.md`(英文) | 對外的薄入口，只指路、不重複規則 —— 規則在這份與 `docs/development.md`,README 的文檔表對外列的是它而不是這份 |
 

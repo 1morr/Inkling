@@ -9,9 +9,9 @@ description: >-
 
 > **這份是 CmdPal 官方擴展模板附的 skill，正文原封不動搬進來。**
 >
-> **本專案走的是 Microsoft Store 代簽，身分已經定案(2026-08-23)，還沒送出第一次審核。**
-> 實際要填的值、走到哪一步了，以
-> [`docs/release-checklist.md`](../../../docs/release-checklist.md) §1 為準;每次發版照
+> **本專案走的是 Microsoft Store 代簽，身分已經定案(2026-08-23),第一個版本 2026-08-25
+> 上架。** 那四個身分字串與為什麼不能再動，見
+> [`docs/design-notes.md`](../../../docs/design-notes.md#package-identity);每次發版照
 > [`docs/release-runbook.md`](../../../docs/release-runbook.md) 跑。下面幾條是正文跟本專案
 > 對不上的地方:
 >
