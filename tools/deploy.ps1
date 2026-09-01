@@ -90,8 +90,11 @@ if ($devMode -ne 1) {
 
 # --- 停掉還在跑的擴展進程 --------------------------------------------------
 # CmdPal 會把擴展的 COM server 進程留著，不先停掉 build 會因檔案被佔用而失敗。
-$running = Get-Process -Name $processName -ErrorAction SilentlyContinue
-if ($running) {
+# @() 是必要的:只有一個進程時 Get-Process 回的是純量,而 Set-StrictMode -Version
+# Latest 之下純量沒有合成的 .Count,下一行會直接拋。剛好只有一個擴展進程在跑正是
+# -SkipBuild 重新註冊時的常態,所以這條路徑每次都會炸。檔案裡其他集合都已經包了。
+$running = @(Get-Process -Name $processName -ErrorAction SilentlyContinue)
+if ($running.Count -gt 0) {
     Write-Step "停止還在執行的 $processName 進程(共 $($running.Count) 個)"
     $running | Stop-Process -Force
     $deadline = (Get-Date).AddSeconds(5)
