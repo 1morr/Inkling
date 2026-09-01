@@ -70,8 +70,14 @@ jobs:
       - name: Download the bundle from the release
         env:
           GH_TOKEN: ${{ github.token }}
+          # **不要把 ${{ }} 直接內插進 PowerShell 原始碼。** 跟 release.yml 同一條規則
+          # (見那邊「Resolve version from tag」步驟上的說明):內插是在 shell 看到腳本
+          # 之前就做完的字串替換，值裡有引號就會改變程式的結構。TAG 尤其是使用者從
+          # workflow_dispatch 表單手打的自由字串，不能假設它乾淨。
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
         run: |
-          gh release download "${{ inputs.tag }}" --repo "${{ github.repository }}" `
+          gh release download "$env:TAG" --repo "$env:REPO" `
             --pattern '*.msixbundle' --dir bundle
           $bundle = Get-ChildItem bundle -Filter *.msixbundle
           if ($bundle.Count -ne 1) { throw "預期剛好一個 msixbundle，實際 $($bundle.Count) 個" }
@@ -82,12 +88,18 @@ jobs:
         uses: microsoft/microsoft-store-apppublisher@v1.4
 
       - name: Configure Partner Center credentials
+        # 四個都是密鑰，一樣不直接內插進 run: —— 經由 env 傳進去，同一條規則。
+        env:
+          TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          SELLER_ID: ${{ secrets.SELLER_ID }}
+          CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
         run: >
           msstore reconfigure
-          --tenantId ${{ secrets.AZURE_AD_TENANT_ID }}
-          --sellerId ${{ secrets.SELLER_ID }}
-          --clientId ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
-          --clientSecret ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
+          --tenantId $env:TENANT_ID
+          --sellerId $env:SELLER_ID
+          --clientId $env:CLIENT_ID
+          --clientSecret $env:CLIENT_SECRET
 
       - name: Publish to the Store
         run: |

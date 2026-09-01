@@ -1,11 +1,28 @@
 bin/
 obj/
 .vs/
+.vscode/
+.idea/
 *.user
 *.suo
 TestResults/
 AppPackages/
 BundleArtifacts/
+
+# 建置與測試工具留下的雜物。
+*.binlog
+msbuild.log
+coverage*.xml
+*.cobertura.xml
+
+# 作業系統自己產生的雜物。
+Thumbs.db
+.DS_Store
+
+# 合併/修補留下的殘檔。
+*.orig
+*.rej
+*.swp
 
 # 打包與簽章產出物。*.pfx / *.p12 裡是私鑰 —— 一個 git add . 就可能把它送進
 # 公開 repo，事後刪檔也已外洩，憑證只能作廢重辦。要分享公開憑證指紋時
@@ -22,7 +39,14 @@ bundle_mapping.txt
 # CI 上是乾淨機器所以不影響，但在本機重現打包步驟時它會整包冒出來。
 artifacts/
 
+# CmdPal gallery 投稿用的 .jpg,是 tools/make-store-screenshots.ps1 從 docs/images 合成出來的
+# 建置產物(-Format Jpeg,預設值),沒有任何渲染出來的文件引用它 —— 不必進版控。
+# 同一支腳本另外產的 assets/store/*.png(Store listing 用,-Format Png)**不要**忽略,
+# 見 docs/release-runbook.md。
+assets/store/*.jpg
+
 _ReSharper*/
+*.DotSettings
 *.DotSettings.user
 
 # Claude Code 的本機設定。裡面會有這台機器專屬的東西(API endpoint、權限允許清單),

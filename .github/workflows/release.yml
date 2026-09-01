@@ -18,9 +18,48 @@ on:
 permissions:
   contents: read
 
+# group 帶 ref:真的推 tag 的路每個 tag 都是不同的 ref，天生不會撞;會撞的是同一個
+# 分支上連續兩次 workflow_dispatch 試跑。cancel-in-progress 刻意是 false —— 這條路
+# 中途會簽章、建 GitHub Release,砍掉跑到一半的 run 換來的是半成品產出物，
+# 排隊等前一個跑完比較安全。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build:
+  # Core 與擴展層的測試以前各自複製一份在 build job 的 {x64, arm64} matrix 裡 ——
+  # 兩者都跟 CPU 架構無關(dotnet test 只建測試專案本身，不受 matrix.platform 影響),
+  # 結果是同一組測試每次發版都白跑兩遍。抽成獨立 job,build 再 needs 它。
+  test:
     runs-on: windows-latest
+    # dotnet test 兩個專案，量過幾十秒等級;抓寬一點防卡住的 runner 佔線。
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      # tag 可能打在沒跑過 ci.yml 的 commit 上(或 ci 之後又推了東西),
+      # 所以發版這條路自己再驗一次 —— Core 的測試三秒跑完，比事後撤回一個版本便宜。
+      - name: Test
+        run: dotnet test --nologo
+
+      # 擴展層的測試專案**刻意不在 Inkling.slnx 裡**:它引用 MSIX 專案，所以必須是
+      # x64 且 self-contained，而方案層級走 AnyCPU —— 加進去只會讓每次 dotnet test
+      # 都印一個 NETSDK1150。要跑它就指定專案。
+      - name: Test extension layer
+        run: dotnet test tests/Inkling.Tests/Inkling.Tests.csproj -p:Platform=x64 --nologo
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    # publish(trimmed)+ stage + makeappx pack + 簽章，兩個架構平行跑;
+    # 單一 leg 本機量過幾分鐘等級，這裡抓寬防卡住。
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +84,8 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Resolve version from tag
         id: ver
@@ -90,16 +131,8 @@ jobs:
           $m.Package.Identity.Version = '${{ steps.ver.outputs.appx_version }}'
           $m.Save((Resolve-Path $path).Path)
 
-      # tag 可能打在沒跑過 ci.yml 的 commit 上(或 ci 之後又推了東西),
-      # 所以發版這條路自己再驗一次 —— Core 的測試三秒跑完，比事後撤回一個版本便宜。
-      - name: Test
-        run: dotnet test --nologo
-
-      # 擴展層的測試專案**刻意不在 Inkling.slnx 裡**:它引用 MSIX 專案，所以必須是
-      # x64 且 self-contained，而方案層級走 AnyCPU —— 加進去只會讓每次 dotnet test
-      # 都印一個 NETSDK1150。要跑它就指定專案。
-      - name: Test extension layer
-        run: dotnet test tests/Inkling.Tests/Inkling.Tests.csproj -p:Platform=x64 --nologo
+      # 測試已經在 test job 裡跑過一次(這個 job needs: test)—— 以前這兩步複製在這裡，
+      # 跟 CPU 架構完全無關的東西在 {x64, arm64} matrix 裡白跑了兩遍。
 
       - name: Publish (Release, trimmed)
         run: dotnet publish src/Inkling/Inkling.csproj -c Release -p:Platform=${{ matrix.platform }} -p:PublishProfile=${{ matrix.profile }}
@@ -154,6 +187,21 @@ jobs:
             Remove-Item $pfx.FullName -Force -ErrorAction SilentlyContinue
           }
 
+      - name: Verify .msix signature
+        # signtool sign 的 $LASTEXITCODE 只講「簽章這個動作有沒有跑完」，不保證簽出來的
+        # 東西真的能過信任鏈驗證(過期的時間戳伺服器、憑證鏈不完整都可能簽出一個
+        # Windows 側載時仍然拒絕的套件)。/pa(Default Authenticode Verification Policy)
+        # 驗的正是使用者雙擊安裝時 Windows 會做的那一套 —— 在這裡先擋，總比使用者
+        # 下載回去才踩到 0x800B0109 好。沒有憑證的路整步跳過:未簽章的套件本來就
+        # 驗不過，不是這一步要抓的目標(它是給 Store 代簽用的，見上面 Sign .msix 的說明)。
+        if: env.HAS_SIGNING_CERT == 'true'
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          & $signtool verify /pa "artifacts/out/Inkling_${{ steps.ver.outputs.appx_version }}_win-${{ matrix.arch }}.msix"
+          if ($LASTEXITCODE -ne 0) { throw "signtool verify 失敗($LASTEXITCODE)" }
+
       - uses: actions/upload-artifact@v7
         with:
           name: msix-${{ matrix.arch }}
@@ -163,6 +211,8 @@ jobs:
   release:
     needs: build
     runs-on: windows-latest
+    # 下載兩個架構的 .msix、bundle、簽章、建 GitHub Release,本機量過幾分鐘等級。
+    timeout-minutes: 20
     permissions:
       contents: write
     env:
@@ -233,6 +283,18 @@ jobs:
           finally {
             Remove-Item $pfx.FullName -Force -ErrorAction SilentlyContinue
           }
+
+      - name: Verify .msixbundle signature
+        # 跟 build job 的「Verify .msix signature」同一個理由:簽章步驟的回傳碼只講
+        # 「有沒有跑完」，不保證能過信任鏈驗證 —— 在附到 Release 之前先用 /pa
+        # (Windows 側載安裝時實際會做的那一套)驗一次。
+        if: env.HAS_SIGNING_CERT == 'true'
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          & $signtool verify /pa "artifacts/Inkling_${{ steps.ver.outputs.tag_name }}.msixbundle"
+          if ($LASTEXITCODE -ne 0) { throw "signtool verify 失敗($LASTEXITCODE)" }
 
       - name: Create GitHub Release
         # 試跑到這裡就停:前面已經把 stage → pack → bundle 整條路跑過一遍，那才是要驗的。

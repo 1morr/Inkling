@@ -10,15 +10,35 @@ on:
 permissions:
   contents: read
 
+# 同一個 PR 又推了新 commit 時，把還在跑的舊 run 取消 —— 不然跑到一半的舊結果跟新
+# commit 對不上，只是白佔 runner 時間。group 帶 ref 是因為 push 到 master/main
+# 不該互相取消(那兩條分支各自的最新狀態都要看得到)。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test:
     runs-on: windows-latest
+    # 建置 + 測試 + 兩個 RID 的 trimmed publish + pack 驗證，Windows runner 上量過
+    # 沒到過 15 分鐘;這裡抓寬一點，卡住的 runner 不該無限期佔著。
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+          # NuGet 套件跨 run 快取 —— 這個 repo 的還原量不大，但 windows-latest 的
+          # runner 本來就比 ubuntu 慢，省下的還原時間划得來。
+          #
+          # cache: true 靠雜湊 packages.lock.json 當快取鍵，找不到就直接丟錯(不是
+          # 退化成不快取)——這個 repo 是多專案的 monorepo,每個專案的鎖檔都在自己的
+          # 資料夾裡,不在 repo 根目錄,所以一定要明講 cache-dependency-path,
+          # 不能靠它預設只找根目錄那一份。鎖檔本身靠 Directory.Build.props 的
+          # RestorePackagesWithLockFile 產生，六個專案各一份，都進版控。
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       # 方案層級不能建:src/Inkling 是 MSIX 專案(Platforms 只有 x64;ARM64),
       # 方案檔沒有對應的組態對應，PublishSingleFile 與 MSIX 打包目標在方案層

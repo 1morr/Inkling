@@ -12,5 +12,12 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>Recommended</AnalysisMode>
     <NuGetAuditMode>direct</NuGetAuditMode>
+
+    <!--
+      每個專案各自的 packages.lock.json 進版控:actions/setup-dotnet 的 cache: true
+      要靠雜湊這份檔案當快取鍵，沒有它會直接丟錯(不是退化成不快取)。CI 因此也才鎖得住
+      「還原到的版本」，不會被上游套件的新 patch 版悄悄換掉。
+    -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 </Project>
