@@ -9,8 +9,10 @@
 |---|---|
 | Windows | 10.0.19041 以上 |
 | Command Palette | 0.11 以上(獨立 MSIX 套件 `Microsoft.CommandPalette`) |
-| .NET SDK | 10.0 以上 |
+| .NET SDK | 10.0 以上(`global.json` 釘了 SDK 頻道，版本落差會在 `dotnet` 任何指令上直接報錯，不會悄悄跑錯版本) |
 | Developer Mode | 必須開啟。設定 → 系統 → 開發人員專用 |
+| Windows 10/11 SDK | 只有想在本機重現 CI 的打包 / 簽章步驟才需要;`windows-latest` runner 上已經預裝，`dotnet restore` 不會幫你裝。少了它,`tools/deploy.ps1`(Release 組態)、`ci.yml` 的打包驗證、`release.yml` 的簽章步驟都會在找 `makeappx.exe` / `signtool.exe` 時直接丟錯(路徑固定在 `C:\Program Files (x86)\Windows Kits\10\bin\*\x64\`)。Debug 部署與 `dotnet test` 不需要它 |
+| Chrome 或 Edge | 只有想重跑 `tools/render-icons.ps1` 才需要 —— 它拿瀏覽器當無頭 SVG 渲染器(這台機器沒有 ImageMagick / Inkscape / rsvg,.NET 本身也不解 SVG)。少了它,那支腳本會在找不到 `chrome.exe` / `msedge.exe` 時直接丟錯;沒有要動圖示就用不到 |
 
 不需要 Visual Studio，整套流程走 dotnet CLI。
 

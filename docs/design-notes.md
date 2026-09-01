@@ -2173,8 +2173,11 @@ byte-scan 都掃得到，SDK 的 winmd 也有 `ICommandProvider2` —— **技�
 也不證明使用者沒開 dock 時不會白佔一個註冊。
 
 要重新考慮的前提:有人真的提出需求，或 dock 變成 CmdPal 的主要入口。
-真要做的時候不必從頭查 —— 做法已經寫在 `.claude/skills/add-dock-band/`,
-那份 skill 留著的原因就是這個:**沒做不等於沒查過**。
+真要做的時候不必從頭查:CmdPal 的「建立擴展」功能產生出來的專案裡
+(`.github/skills/add-dock-band/`)就附了操作指南，用那個產生器重新出一份模板就找得到 ——
+**沒做不等於沒查過**。(這份 repo 曾經把那份指南連同其餘模板文件一起搬進
+`.claude/skills/`,後來認定那是原封不動的上游文件、不該進一個原創作品的 repo，
+已經刪掉，見 `.claude/skills/README.md` 的說明。)
 
 <a id="two-translations"></a>
 
