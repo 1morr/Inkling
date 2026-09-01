@@ -63,6 +63,17 @@ internal sealed partial class RecycleBinFileDeleter : IFileDeleter
                 throw new IOException(
                     FormattableString.Invariant($"Could not move the file to the Recycle Bin (SHFileOperation returned 0x{result:X})."));
             }
+
+            // **回傳 0 不等於真的刪掉了。** SHFileOperation 可以回 0 但
+            // AnyOperationsAborted == TRUE(例如使用者在系統確認框上按了取消 ——
+            // 雖然我們傳了 FOF_NOCONFIRMATION，殼層仍可能為某些情境彈出自己的提示)。
+            // 不查這個欄位的話，呼叫端(FileSystemNoteRepository.DeleteMany)會把
+            // 還躺在磁碟上的檔案算成「已刪除」。
+            if (operation.AnyOperationsAborted != 0)
+            {
+                throw new IOException(
+                    "Could not move the file to the Recycle Bin (the operation was aborted).");
+            }
         }
         finally
         {

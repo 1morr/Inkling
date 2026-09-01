@@ -83,7 +83,7 @@ internal sealed partial class NoteListPage : DynamicListPage, IDisposable
     /// </summary>
     private readonly CommandItem _emptyContent;
 
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public NoteListPage(
         INoteRepository repository,

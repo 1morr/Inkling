@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Inkling.Core;
@@ -57,7 +58,17 @@ internal sealed partial class ScratchpadFormContent : FormContent
 
     public override CommandResult SubmitForm(string inputs)
     {
-        var form = JsonNode.Parse(inputs)?.AsObject();
+        // inputs 是 CmdPal 送過來的原始字串，不保證是合法 JSON 或合法物件 ——
+        // 解析要跟其他外部輸入一樣包在 try 裡，不能讓例外直接穿過 COM 邊界。
+        JsonObject? form;
+        try
+        {
+            form = JsonNode.Parse(inputs)?.AsObject();
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentNullException or InvalidOperationException)
+        {
+            return CommandResult.KeepOpen();
+        }
 
         if (form is null)
         {

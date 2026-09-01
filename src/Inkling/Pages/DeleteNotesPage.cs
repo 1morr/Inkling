@@ -81,7 +81,7 @@ internal sealed partial class DeleteNotesPage : ListPage, IDisposable
     /// </summary>
     private static readonly NoOpCommand Placeholder = new();
 
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public DeleteNotesPage(INoteRepository repository, InklingOptions options, ISourceModeStore sourceMode)
     {

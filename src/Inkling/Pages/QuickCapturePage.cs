@@ -61,7 +61,15 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     /// </summary>
     private readonly VersionedItemsCache<(int Version, string Query, string Separator, bool Preview, string? Clipboard)> _cache = new();
 
-    private bool _disposed;
+    /// <summary>剪貼簿快取的存活時間，見 <see cref="GetCachedClipboardText"/>。</summary>
+    private const int ClipboardCacheTtlMs = 500;
+
+    private string? _cachedClipboard;
+
+    /// <summary><see cref="Environment.TickCount64"/>,null 代表還沒讀過。</summary>
+    private long? _clipboardCachedAtMs;
+
+    private volatile bool _disposed;
 
     public QuickCapturePage(
         INoteRepository repository,
@@ -151,7 +159,15 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
         //
         // 讀一次就往下傳，不要讓 BuildItems 再讀第二次:兩次讀取之間剪貼簿可能已經變了，
         // 那會讓「鍵」與「內容」對不上 —— 快取最糟的失效方式，因為它會一直錯下去。
-        var clipboard = TryGetClipboardText();
+        //
+        // **這裡讀的是快取過的值，不是每次都真的問一次剪貼簿**(見
+        // <see cref="GetCachedClipboardText"/>)——`UpdateSearchText` 每個按鍵都叫
+        // `RaiseItemsChanged`,CmdPal 因此每個字元都重新呼叫 `GetItems`,而剪貼簿讀取要
+        // 跨 COM 邊界、切到 STA 執行緒，逐字打字時疊起來是使用者感覺得到的卡頓 ——
+        // CLAUDE.md 開頭那條「不能拖慢主搜尋框」說的正是這個。TTL 保住了上面那段的正確性
+        // 論證(過期的剪貼簿會存錯內文):落差縮小到最多 500 ms,不是縮小到零，
+        // 但也不需要縮小到零 —— 使用者不可能在半秒內複製、切回來、又剛好按下這一列。
+        var clipboard = GetCachedClipboardText();
 
         return _cache.Get(
             (_repository.Version, _query, separator, preview, clipboard),
@@ -298,6 +314,32 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
             preview,
             Strings.Format(Resources.QuickCaptureClipboardSubtitle, lineCount),
             Icons.Paste);
+    }
+
+    /// <summary>
+    /// 帶 TTL 的剪貼簿讀取。第一次呼叫(<see cref="_clipboardCachedAtMs"/> 還是 null,
+    /// 等於「進頁」)與往後每滿 <see cref="ClipboardCacheTtlMs"/> 才會真的問一次剪貼簿,
+    /// 這段時間裡的每一次 <see cref="GetItems"/>(=使用者的每一個按鍵)都沿用同一份快照。
+    ///
+    /// 不能每個按鍵都真的讀:剪貼簿讀取跨 COM 邊界又要切到 STA 執行緒
+    /// (見 <see cref="ClipboardHelper"/>)，逐字打字時疊起來是使用者感覺得到的卡頓 ——
+    /// <c>UpdateSearchText</c> 每個按鍵都叫 <c>RaiseItemsChanged</c>,CmdPal 因此每個字元
+    /// 都重新呼叫 <c>GetItems</c>。也不能整頁只讀一次:使用者可能離開這一頁去別的視窗複製
+    /// 東西，剪貼簿本身不會發事件通知我們，太長的 TTL 等於讓「內文取自剪貼簿」那一列
+    /// 長期卡住舊內容。500 ms 是兩邊各退一步 —— 打字時完全不觸發跨進程呼叫，
+    /// 而剪貼簿真的變了，最多半秒後就會反映在畫面上。
+    /// </summary>
+    private string? GetCachedClipboardText()
+    {
+        var now = Environment.TickCount64;
+
+        if (_clipboardCachedAtMs is not { } cachedAt || now - cachedAt >= ClipboardCacheTtlMs)
+        {
+            _cachedClipboard = TryGetClipboardText();
+            _clipboardCachedAtMs = now;
+        }
+
+        return _cachedClipboard;
     }
 
     /// <summary>

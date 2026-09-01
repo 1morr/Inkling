@@ -105,8 +105,20 @@ internal static partial class FolderPicker
             Name = "Inkling folder picker",
         };
 
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
+        try
+        {
+            // 這兩行擋在執行緒本體外面 —— 拋出的話 finally(:99)永遠不會跑到，
+            // _open 會卡在 1 一輩子:整個 COM server 活著的期間，「瀏覽…」都靜靜地回 false。
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLog.Failure($"FolderPicker: failed to start dialog thread ({ex.GetType().Name})", ex.ToString());
+            Volatile.Write(ref _open, 0);
+            failed?.Invoke();
+            return false;
+        }
 
         return true;
     }
