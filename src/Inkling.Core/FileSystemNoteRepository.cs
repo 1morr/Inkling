@@ -40,12 +40,6 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     /// </summary>
     internal const int SelfWriteEchoWindowMs = 1500;
 
-    /// <summary>
-    /// 讀筆記用的解碼器:無效位元組**丟例外**，不要默默換成 U+FFFD。
-    /// 為什麼非這樣不可，見 <see cref="TryReadAllText"/>。
-    /// </summary>
-    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-
     private readonly string _directory;
     private readonly TimeProvider _timeProvider;
     private readonly IFileDeleter _fileDeleter;
@@ -133,7 +127,15 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
     public int Version => Volatile.Read(ref _version);
 
     /// <inheritdoc />
-    public int SkippedFileCount { get; private set; }
+    public int SkippedFileCount => _skippedFileCount;
+
+    /// <summary>
+    /// 寫入端(<see cref="Load"/>)全程在 <see cref="_gate"/> 裡跑，本身不需要 <c>volatile</c>
+    /// 才寫得對;但 <see cref="NoteListPage.BuildItems"/> 是不拿鎖直接讀這個值的
+    /// (跟讀 <see cref="Version"/> 同一個理由 —— 每次都拿鎖太重)，所以要 <c>volatile</c>
+    /// 才能保證讀到的不是過期的、還沒發佈出去的值。跟 <see cref="_version"/> 同一套規矩。
+    /// </summary>
+    private volatile int _skippedFileCount;
 
     public IReadOnlyList<Note> GetAll()
     {
@@ -205,11 +207,13 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
             Id = GenerateUniqueId(now),
             Title = title.Trim(),
 
-            // 正規化要在**回傳的物件上**做，不能只在寫檔那一頭做:Serialize 會 ToLf,
-            // 所以磁碟上永遠是 LF，再讀回來也是 LF。這裡不做的話，剛存好那一則
-            // 在記憶體裡帶著呼叫端給的 CRLF(Adaptive Cards 甚至是裸 CR),
-            // 跟從磁碟讀回來的同一則不相等 —— 預覽頁比對「內文是否已含標題」、
-            // 快取比對這類地方就會得到莫名其妙的結果。
+            // 正規化要在**回傳的物件上**做，不能只在寫檔那一頭做:Serialize 最後會
+            // ToCrlf,磁碟上的檔案因此**刻意**是 CRLF(見 NoteFile.Serialize 的註解 ——
+            // Windows 上的編輯器對 CRLF 比較友善)，但 Parse 會把讀進來的內容再 ToLf 一次,
+            // 所以記憶體裡的約定永遠是 LF。這裡不做的話，剛存好那一則在記憶體裡帶著
+            // 呼叫端給的 CRLF(Adaptive Cards 甚至是裸 CR),跟從磁碟讀回來、經過 Parse
+            // 正規化的同一則不相等 —— 預覽頁比對「內文是否已含標題」、快取比對這類地方
+            // 就會得到莫名其妙的結果。
             Body = Newlines.ToLf(body),
             Created = now,
             Updated = now,
@@ -366,7 +370,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
 
     private List<Note> Load()
     {
-        SkippedFileCount = 0;
+        _skippedFileCount = 0;
 
         if (!Directory.Exists(_directory))
         {
@@ -405,7 +409,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
                 }
                 else
                 {
-                    SkippedFileCount++;
+                    _skippedFileCount++;
                 }
             }
         }
@@ -519,7 +523,7 @@ public sealed class FileSystemNoteRepository : INoteRepository, IDisposable
                 //
                 // 有 BOM 的檔案不受影響:StreamReader 仍然會先照 BOM 判編碼
                 // (UTF-8 / UTF-16 LE / BE 都認得)，這個編碼只是「沒有 BOM 時的假設」。
-                return File.ReadAllText(path, StrictUtf8);
+                return File.ReadAllText(path, StrictUtf8.Encoding);
             }
             catch (DecoderFallbackException)
             {

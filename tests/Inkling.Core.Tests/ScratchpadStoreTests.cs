@@ -208,4 +208,63 @@ public class ScratchpadStoreTests
 
         Assert.Equal(expected, ScratchpadStore.IsScratchpad(temp.Path, path));
     }
+
+    /// <summary>
+    /// 「# 」加上 Big5 的「好」(0xA6 0x6E)。跟
+    /// <c>DataIntegrityTests.GetAll_NonUtf8File_IsSkippedInsteadOfMangled</c> 是同一顆位元組
+    /// 樣本 —— 直接寫位元組而不是用 <c>Encoding.GetEncoding(950)</c>,那個編碼要另外掛
+    /// <c>System.Text.Encoding.CodePages</c>，這裡要的只是「一段不是合法 UTF-8 的位元組」。
+    /// 0xA6 當開頭在 UTF-8 裡是非法的續行位元組。
+    /// </summary>
+    private static readonly byte[] Big5Bytes = [0x23, 0x20, 0xA6, 0x6E];
+
+    /// <summary>
+    /// 以前用 <c>File.ReadAllText</c> 的預設(寬鬆)解碼器，讀出來會是一串 U+FFFD —— 使用者
+    /// 什麼都沒改，畫面上看到的已經是亂碼。現在整份讀不出來，回空字串，磁碟上的原始位元組
+    /// 完全不受影響。
+    /// </summary>
+    [Fact]
+    public void Read_NonUtf8File_ReturnsEmptyInsteadOfMangled()
+    {
+        using var temp = new TempDirectory();
+        var store = new ScratchpadStore(temp.Options);
+
+        File.WriteAllBytes(store.FilePath, Big5Bytes);
+
+        Assert.Equal(string.Empty, store.Read());
+        Assert.Equal(Big5Bytes, File.ReadAllBytes(store.FilePath));
+    }
+
+    /// <summary>
+    /// 這是這一條缺陷真正會弄丟資料的那一步:<see cref="ScratchpadFormContent"/> 建構時
+    /// 讀一次填進卡片(讀不到所以卡片顯示空白)，使用者在空白的文字框裡打了新內容按下
+    /// <c>Enter</c>,<c>Write</c> 這時候拿到的是**新打的文字，不是讀到的舊內容** —— 只看
+    /// <c>Read</c> 那一頭的防線擋不住，一定要在 <c>Write</c> 自己重新驗一次磁碟上現有的檔案。
+    /// </summary>
+    [Fact]
+    public void Write_OverNonUtf8File_RefusesAndLeavesOriginalBytesIntact()
+    {
+        using var temp = new TempDirectory();
+        var store = new ScratchpadStore(temp.Options);
+
+        File.WriteAllBytes(store.FilePath, Big5Bytes);
+
+        Assert.Throws<IOException>(() => store.Write("使用者在空白文字框裡打的新內容"));
+
+        // 最重要的一條:拒寫之後，原始位元組要原封不動留在磁碟上。
+        Assert.Equal(Big5Bytes, File.ReadAllBytes(store.FilePath));
+    }
+
+    /// <summary>合法 UTF-8(即使不是 ASCII)不該被誤判，正常覆寫要照樣成立。</summary>
+    [Fact]
+    public void Write_OverValidUtf8File_StillOverwrites()
+    {
+        using var temp = new TempDirectory();
+        var store = new ScratchpadStore(temp.Options);
+        store.Write("舊內容");
+
+        store.Write("新內容");
+
+        Assert.Equal("新內容", store.Read());
+    }
 }

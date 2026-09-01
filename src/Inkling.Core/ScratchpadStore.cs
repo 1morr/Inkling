@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Inkling.Core;
 
 /// <summary>
@@ -42,9 +44,16 @@ public sealed class ScratchpadStore
     /// 檔尾那個換行是格式不是內容，跟 <see cref="Write"/> 對稱地拿掉 ——
     /// 不然每存一次就多長一行。
     ///
-    /// <b>讀不到一律回空字串，不丟例外</b> —— 沒寫過、資料夾被搬走、OneDrive 正好鎖著檔案，
-    /// 對使用者來說都只是「隨手草稿現在是空的」，而讓例外從 <c>GetContent()</c> 穿出去
-    /// 會把整頁變成擴展錯誤。
+    /// <b>讀不到一律回空字串，不丟例外</b> —— 沒寫過、資料夾被搬走、OneDrive 正好鎖著檔案、
+    /// 檔案不是合法 UTF-8，對使用者來說都只是「隨手草稿現在是空的」，而讓例外從
+    /// <c>GetContent()</c> 穿出去會把整頁變成擴展錯誤。
+    ///
+    /// <b>一定要用會丟例外的 <see cref="StrictUtf8"/>。</b>預設的寬鬆解碼器會把無效位元組
+    /// 默默換成 U+FFFD —— 使用者按 <c>Ctrl+O</c> 用外部編輯器存回一份 Big5 / GBK / Latin-1
+    /// 的草稿，這裡讀成一串 �，<see cref="Write"/> 再原樣寫回去的話，原始位元組就永久消失了
+    /// (沒有備份、沒有提示、資源回收筒裡什麼都沒有)。整份讀不出來至少不會覆寫掉任何東西 ——
+    /// <see cref="Write"/> 那一頭另外會擋一次，見那邊的說明。跟
+    /// <see cref="FileSystemNoteRepository.TryReadAllText"/> 是同一個理由、同一顆解碼器。
     /// </summary>
     public string Read()
     {
@@ -55,9 +64,15 @@ public sealed class ScratchpadStore
                 return string.Empty;
             }
 
-            var text = Newlines.ToLf(File.ReadAllText(FilePath));
+            var text = Newlines.ToLf(File.ReadAllText(FilePath, StrictUtf8.Encoding));
 
             return text.EndsWith('\n') ? text[..^1] : text;
+        }
+        catch (DecoderFallbackException)
+        {
+            // 檔案不是合法 UTF-8。回空字串是刻意的 —— 顯示一串 U+FFFD 只會讓使用者以為
+            // 那就是檔案內容，下一次存檔反而把它坐實。真正的拒寫在 Write() 那一頭。
+            return string.Empty;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -74,10 +89,24 @@ public sealed class ScratchpadStore
     /// 使用者按 <c>Ctrl+O</c> 用外部編輯器打開會看到擠成一行的一大塊字 ——
     /// 而「跳到外部編輯器」正是這個功能拿來替代自動儲存的那條路，不能壞。
     /// 筆記走 <see cref="NoteFile.Serialize"/> 時做的是同一件事。
+    ///
+    /// <b>寫之前重新驗一次磁碟上現有的檔案是不是合法 UTF-8。</b>單靠 <see cref="Read"/>
+    /// 那一頭的防線不夠:<c>ScratchpadFormContent</c> 在建構時讀一次填進卡片，使用者
+    /// 送出表單時才呼叫這裡 —— 兩次呼叫之間檔案完全有機會被外部編輯器換成別的編碼。
+    /// 這裡就地重讀一次現有內容，讀不動(<see cref="DecoderFallbackException"/>)就整個
+    /// 拒寫，丟 <see cref="IOException"/> 讓呼叫端當成一般存檔失敗處理、顯示給使用者看 ——
+    /// 不然使用者在(因為 <see cref="Read"/> 讀不到而顯示空白的)文字框裡打的新內容，
+    /// 一按 Enter 就把原始位元組永久蓋掉。
     /// </summary>
     public void Write(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
+
+        if (ExistingFileIsNotValidUtf8())
+        {
+            throw new IOException(
+                $"The scratchpad file at '{FilePath}' is not valid UTF-8. Refusing to overwrite it to avoid destroying the original bytes.");
+        }
 
         var lf = Newlines.ToLf(text);
 
@@ -88,6 +117,33 @@ public sealed class ScratchpadStore
         }
 
         AtomicFile.Write(FilePath, Newlines.ToCrlf(lf));
+    }
+
+    /// <summary>
+    /// 磁碟上現有的草稿檔是不是無效的 UTF-8。檔案不存在、讀不到(IO 錯誤)都不算 ——
+    /// 那些情況該由 <see cref="AtomicFile.Write"/> 自己去踩，這裡只擋「讀得到但編碼不對」
+    /// 這一種,唯一會真的弄丟資料的情況。
+    /// </summary>
+    private bool ExistingFileIsNotValidUtf8()
+    {
+        if (!File.Exists(FilePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            File.ReadAllText(FilePath, StrictUtf8.Encoding);
+            return false;
+        }
+        catch (DecoderFallbackException)
+        {
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
