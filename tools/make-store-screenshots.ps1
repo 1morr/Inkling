@@ -66,6 +66,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 Add-Type -AssemblyName System.Drawing
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')

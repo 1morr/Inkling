@@ -1,3 +1,4 @@
+#requires -Version 7.0
 <#
 .SYNOPSIS
     Build 並把 Inkling 擴展部署到本機 Command Palette，然後驗證註冊確實生效。
@@ -59,6 +60,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $extensionProject = Join-Path $repoRoot 'src\Inkling\Inkling.csproj'

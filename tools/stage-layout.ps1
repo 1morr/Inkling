@@ -1,3 +1,4 @@
+#requires -Version 7.0
 <#
 .SYNOPSIS
     把 publish 輸出與 build 佈局併成一個可註冊 / 可打包的套件佈局。
@@ -41,6 +42,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 if (-not (Test-Path $PublishDir)) {
     throw "找不到 publish 輸出:$PublishDir`n(dotnet publish 有跑過嗎?)"

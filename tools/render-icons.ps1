@@ -1,3 +1,4 @@
+#requires -Version 7.0
 <#
 .SYNOPSIS
     把 assets/icon 底下的 SVG 渲染成 MSIX 套件要的那幾張 PNG。
@@ -34,6 +35,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $svgDir = Join-Path $repoRoot 'assets\icon'
@@ -122,7 +124,13 @@ try {
         # !important 是必要的:SVG 檔案自己帶 style="color:..."(讓它單獨開起來看得見),
         # 而行內樣式的優先權高過選擇器 —— 少了 !important 這一行完全沒作用，
         # 而且不會報錯，只會兩張 PNG 長得一模一樣。
-        $fgRule = if ($target.Fg) { "svg{color:$($target.Fg) !important}" } else { '' }
+        #
+        # **一定要用中括號 `$target['Fg']`,不能用 `$target.Fg`。** Set-StrictMode -Version
+        # Latest 底下，雜湊表用點記法讀一個不存在的鍵會直接丟例外(「The property 'Fg'
+        # cannot be found on this object」)—— 套件磚那幾筆本來就沒設 Fg,是刻意的
+        # (見上面那句「套件磚沒有 Fg」)，不是漏寫。中括號索引不受影響，鍵不存在就是 $null。
+        # Dir / MaxKB 是同一個模式,底下兩處一起改。
+        $fgRule = if ($target['Fg']) { "svg{color:$($target['Fg']) !important}" } else { '' }
         $html = @"
 <!doctype html><meta charset="utf-8">
 <style>html,body{margin:0;padding:0;overflow:hidden;background:transparent}
@@ -133,7 +141,7 @@ $svg
         $htmlPath = Join-Path $work ($target.Name + '.html')
         Set-Content -Path $htmlPath -Value $html -Encoding UTF8
 
-        $targetDir = if ($target.Dir) { $target.Dir } else { $outDir }
+        $targetDir = if ($target['Dir']) { $target['Dir'] } else { $outDir }
         if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
         $outPath = Join-Path $targetDir $target.Name
 
@@ -169,10 +177,10 @@ $svg
             throw "$($target.Name) 尺寸不對:實際 ${width}x${height}，預期 $($target.W)x$($target.H)"
         }
 
-        if ($target.MaxKB) {
+        if ($target['MaxKB']) {
             $kb = $bytes.Length / 1KB
-            if ($kb -gt $target.MaxKB) {
-                throw "$($target.Name) 太大:$([math]::Round($kb, 1)) KB，超過 gallery 上限 $($target.MaxKB) KB"
+            if ($kb -gt $target['MaxKB']) {
+                throw "$($target.Name) 太大:$([math]::Round($kb, 1)) KB，超過 gallery 上限 $($target['MaxKB']) KB"
             }
             Write-Host ("  {0,-52} {1}x{2}  ({3:N1} KB)" -f $target.Name, $width, $height, $kb) -ForegroundColor DarkGray
         } else {
