@@ -62,7 +62,7 @@ Simplified Chinese. Screenshots here were taken on an English system.
 | Markdown preview | Enter renders the note. `Ctrl+U` toggles raw source and remembers the choice — useful for pasted HTML that vanishes when rendered |
 | Edit | `Ctrl+E` opens the built-in form; `Ctrl+O` opens the file in your default editor instead |
 | Copy and locate | `Ctrl+Shift+C` copies the body without the front matter; `Ctrl+L` shows the `.md` in File Explorer |
-| Scratchpad | One permanent note for anything that needs no title. No autosave ([why](docs/design-notes.md#scratchpad-no-autosave)) — `Tab` then `Enter` saves and closes |
+| Scratchpad | A note that is always there, for anything that needs no title. No autosave ([why](docs/design-notes.md#scratchpad-no-autosave)) — `Tab` then `Enter` saves and closes |
 | Delete | `Ctrl+D` deletes after confirming, and the file goes to the Recycle Bin. `Inkling: Delete notes` handles many at once and always confirms before touching files Inkling did not create |
 
 Archiving, tags, and pinning are not built yet.

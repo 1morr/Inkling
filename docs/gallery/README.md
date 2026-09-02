@@ -23,6 +23,17 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
   - `author.url`:`https://github.com/1morr`，帳號頁面存在。
   - `id` 是 `1morr.inkling`，對應投稿 repo 裡的資料夾 `extensions/1morr/inkling/`,
     兩邊必須一致(CI 會驗)。
+  - `tags` 是**搜尋用的關鍵字，不是形容詞**。gallery 網站與 CmdPal 應用內都做子字串比對，
+    網站那邊**不比對 `description`**(只比 title / shortDescription / author / tags /
+    categories)—— 所以只出現在描述裡的字，在網站上搜不到。`writing` 曾經佔一格，
+    2026-09-03 換成 `scratchpad`:前者 80 個既有擴展裡 0 人用、也不是我們的功能，
+    後者是我們自己的功能名，而且是網站搜得到它的唯一途徑。
+  - `categories` 只給 `productivity`,**這是刻意的**。80 個既有擴展裡 55 個給兩個，
+    最常見的第二個是 `utilities-and-tools`(62 次)，而最直接的競品 `qqshi13.quick-notes`
+    兩個桶都在 —— 也就是說使用者在那一頁瀏覽看得到它、看不到我們。但上游分類表裡
+    `productivity` 的定義明著寫了 "note-taking",`utilities-and-tools` 是
+    "Calculators, converters, file managers"，我們不是。**用曝光換分類正確性的代價太隱形，
+    要改的話先想清楚。**
 - `icon.png` 不放在這裡 —— 由 `tools\render-icons.ps1` 產生在 `assets\gallery\icon.png`
   (256×256 PNG、≤100 KB，腳本會驗尺寸與大小)。投稿時複製過去，跟 `extension.json`
   放同一個資料夾。

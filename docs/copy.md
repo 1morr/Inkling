@@ -43,7 +43,7 @@ Take notes without leaving Command Palette. Type your thought, press Enter, and 
 **Description**
 
 ```
-Inkling lets you take notes inside PowerToys Command Palette. Summon the palette, type your thought, press Enter. The note is saved.
+Inkling lets you take notes inside PowerToys Command Palette. Summon the palette, type Inkling, and pick Quick capture. Type your thought, press Enter, and the note is saved.
 
 Your notes are ordinary Markdown files in a folder you pick. Open them in any editor, sync them with OneDrive or any other cloud drive, or drop your existing .md files into the folder and they show up in the list right away.
 
@@ -55,11 +55,11 @@ The interface follows your Windows display language (English, Traditional Chines
 **Product features**(一行一條)
 
 ```
-Quick capture: type your thought, press Enter, and it is saved. A separator you choose writes the title and the body in one line.
-Notes list: search, preview, edit, copy the body, open in your editor, show the file, or delete (to the Recycle Bin, on drives that have one).
-Scratchpad: one permanent note for thoughts that do not need a title yet. It opens with whatever you left there last time.
+Quick capture: type a title and press Enter. Add ;; after the title to write the body in the same line.
+Notes list: search, preview, edit, copy the body, open a note in your editor, show it in File Explorer, or delete it to the Recycle Bin.
+Scratchpad: a single note that is always there, for anything that needs no title. It opens with whatever you left in it last time.
 Plain Markdown: front matter fields Inkling does not know are left untouched, so it coexists with Obsidian, VS Code, and anything else that reads .md.
-Keyboard-first: every action has a shortcut.
+Keyboard-first: the common actions have shortcuts, and Ctrl+K shows the rest.
 Optional shortcut: assign an alias or a global hotkey to Quick capture in Command Palette settings to jump straight in.
 ```
 
@@ -74,7 +74,7 @@ Optional shortcut: assign an alias or a global hotkey to Quick capture in Comman
 **描述**
 
 ```
-Inkling 讓你在 PowerToys Command Palette 裡直接記筆記。叫出面板，打字，按 Enter，筆記就存好了。
+Inkling 讓你在 PowerToys Command Palette 裡直接記筆記。叫出面板，打 Inkling，選「快速記下」，接著打字、按 Enter，筆記就存好了。
 
 筆記是普通的 Markdown 檔，放在你自己指定的資料夾裡。你可以用任何編輯器打開它們，用 OneDrive 之類的雲端硬碟同步;把手上既有的 .md 檔放進那個資料夾，它們也會直接出現在清單裡。
 
@@ -86,11 +86,11 @@ Inkling 讓你在 PowerToys Command Palette 裡直接記筆記。叫出面板，
 **產品功能**
 
 ```
-快速記下:打完字按 Enter 就存成一則筆記。想連內文一起寫，用你設的分隔符一行寫完標題和內文。
+快速記下:打完字按 Enter 就存成一則筆記。想連內文一起寫，在標題後面打 ;; 接著寫。
 筆記清單:搜尋、預覽、編輯、複製內文、在編輯器開啟、開啟檔案位置，或刪除(送資源回收筒)。
 隨手草稿:一則常駐的便條，給還沒成形、不必取標題的想法。打開就是你上次留在那裡的內容。
 純 Markdown:不認得的 front matter 欄位原樣保留，跟 Obsidian、VS Code 之類的工具並存沒問題。
-全鍵盤操作:常用的動作都有快速鍵。
+全鍵盤操作:常用的動作都有快速鍵，其餘的按 Ctrl+K 看得到。
 想更快可以設快速鍵:在 Command Palette 設定裡給「快速記下」設一個 alias 或全域快速鍵，一步就跳進去。
 ```
 
@@ -105,7 +105,7 @@ Inkling 讓你在 PowerToys Command Palette 裡直接記筆記。叫出面板，
 **描述**
 
 ```
-Inkling 让你在 PowerToys Command Palette 里直接记笔记。叫出面板，输入，按 Enter，笔记就存好了。
+Inkling 让你在 PowerToys Command Palette 里直接记笔记。叫出面板，输入 Inkling，选“快速记录”，接着输入、按 Enter，笔记就存好了。
 
 笔记是普通的 Markdown 文件，放在你自己指定的文件夹里。你可以用任何编辑器打开它们，用 OneDrive 之类的云盘同步;把手上已有的 .md 文件放进那个文件夹，它们也会直接出现在列表里。
 
@@ -117,11 +117,11 @@ Inkling 让你在 PowerToys Command Palette 里直接记笔记。叫出面板，
 **產品功能**
 
 ```
-快速记录:输入完按 Enter 就存成一条笔记。想连正文一起写，用你设的分隔符一行写完标题和正文。
+快速记录:输入完按 Enter 就存成一条笔记。想连正文一起写，在标题后面输入 ;; 接着写。
 笔记列表:搜索、预览、编辑、复制正文、在编辑器中打开、打开文件位置，或删除(送回收站)。
 随手草稿:一条常驻的便签，给还没成形、不必取标题的想法。打开就是你上次留在那里的内容。
 纯 Markdown:不认识的 front matter 字段原样保留，跟 Obsidian、VS Code 之类的工具并存没问题。
-全键盘操作:常用的动作都有快捷键。
+全键盘操作:常用的动作都有快捷键，其余的按 Ctrl+K 看得到。
 想更快可以设快捷键:在 Command Palette 设置里给“快速记录”设一个 alias 或全局快捷键，一步就跳进去。
 ```
 
@@ -141,15 +141,18 @@ Take notes without leaving Command Palette. Type your thought, press Enter, and 
 **description**(上限 3000 字)
 
 ```
-Inkling lets you take notes inside PowerToys Command Palette. Summon the palette, type your thought, press Enter. The note is saved.
+Inkling lets you take notes inside PowerToys Command Palette. Summon the palette, type Inkling, and pick Quick capture. Type your thought, press Enter, and the note is saved.
 
 Your notes are ordinary Markdown files in a folder you pick. Open them in any editor, sync them with OneDrive or any other cloud drive, or drop your existing .md files into the folder and they show up in the list right away.
 
-- Quick capture: type your thought, press Enter, and it is saved. A separator you choose writes the title and the body in one line.
-- Notes list: search, preview, edit, copy the body, open in your editor, show the file, or delete (to the Recycle Bin, on drives that have one).
-- Scratchpad: one permanent note for thoughts that do not need a title yet.
+- Quick capture: type a title and press Enter. Add ;; after the title to write the body in the same line.
+- Notes list: search, preview, edit, copy the body, open a note in your editor, show it in File Explorer, or delete it to the Recycle Bin.
+- Scratchpad: a single note that is always there, for anything that needs no title. It opens with whatever you left in it last time.
 - Plain Markdown: front matter fields Inkling does not know are left untouched, so it coexists with Obsidian, VS Code, and anything else that reads .md.
-- Keyboard-first: every action has a shortcut. Assign an alias or a global hotkey to Quick capture if you want to jump straight in.
+- Keyboard-first: the common actions have shortcuts, and Ctrl+K shows the rest.
+- Optional: assign an alias or a global hotkey to Quick capture to jump straight in.
+
+Your notes stay on your PC. Inkling collects nothing and sends nothing.
 ```
 
 ---
