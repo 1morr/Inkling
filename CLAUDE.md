@@ -289,8 +289,9 @@ Version 的症狀)。
    所以不是我們的程式沒走到那一行。`main` 的 switch 裡是有 `case CommandResultKind.GoBack`
    的，但那是 `main`,byte-scan 對 NativeAOT 影像證否不了(見〈查證 CmdPal 的行為〉)。
    **能用的只有 `GoHome` / `Dismiss` / `KeepOpen` / `Confirm` / `ShowToast`。**
-   repo 裡兩處 `GoBack()` 已經全部拿掉:編輯表單存完明著回 `KeepOpen()`(卡片底部
-   提示「按 Esc 回上一頁」)，記下並預覽頁失敗時那顆「回上一步」換成就地「再試一次」。
+   repo 裡兩處 `GoBack()` 已經全部拿掉:編輯表單存完走 `Dismiss`(2026-09-03 起跟新增
+   同一種收尾，見下面〈存檔一律收面板〉)，記下並預覽頁失敗時那顆「回上一步」換成
+   就地「再試一次」。
    **不要再寫回去** —— 留一個看起來會導頁、實際上不會的回傳值，下一個人只會往錯的方向查。
    唯一還通的路是讓那一列的命令**本身就是一個 `IPage`** ——
    CmdPal 對頁面的處理是導覽而不是 `Invoke`，副作用因此得寫在 `GetContent()` 裡

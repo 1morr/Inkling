@@ -165,25 +165,29 @@ internal sealed partial class NoteFormContent : FormContent
                 // 綁在當下這一頁的 view model 上，導覽時連同訊息一起拆掉。
                 // Enter 之後 400 / 900 / 1500 / 2500 ms 四次截圖都沒有徽章。
                 //
-                // 收工的四條路(這裡、快速記下、記下並預覽頁的「完成」、隨手草稿的存檔
-                // 與捨棄)全部走 `Done`，不再有例外可以照抄錯。
+                // 收工的五條路(這裡、下面的編輯、快速記下、記下並預覽頁的「完成」、
+                // 隨手草稿的存檔與捨棄)全部走 `Done`，不再有例外可以照抄錯。
                 return Feedback.Done(Strings.Format(Resources.NoteCreated, title));
             }
 
             _repository.Update(editing, title, body);
 
-            // **編輯這條路相反，絕對不能收面板** —— 卡片上還壓著使用者剛打的字，
-            // 所以走 `Stay`(留在原地 + 底部 InfoBar)。
-            // 留在原地是明著選的:以前是 `CommandResult.GoBack()`,
-            // 而那個回傳值在 0.11.11762.0 安裝版上**完全不動** —— 2026-08-22 實機驗過，
-            // 存完畫面停在編輯頁，等五秒也一樣;跟 `GoToPage` 是同一類的空殼。
-            // **也不改成 `GoHome()`**:那會把使用者丟回主搜尋框，比停在原地更遠
-            // (他剛從清單裡找到這一則)。留在原地 + 底部 InfoBar 的「已儲存:標題」
-            // 是可用的結果，而 `Esc` 本來就回得去 —— 卡片底部那行提示把這件事講出來。
             // 上一頁不會因為導覽回來就重新取內容，所以一定要通知(見 NotePreviewContent)。
             _onSaved?.Invoke();
 
-            return Feedback.Stay(Strings.Format(Resources.NoteSaved, title));
+            // **編輯跟新增同一種收尾。** 判準是型別註解那句「使用者接下來還要不要看著
+            // 這個面板」—— 表單填完按儲存就是收工，改一則既有的跟新建一則沒有差別。
+            //
+            // 2026-09-03 之前這裡是 `Stay`(留在原地 + 底部 InfoBar)，而那個不對稱
+            // **不是設計出來的，是繞路留下的**:原本回 `CommandResult.GoBack()`,
+            // 而那個回傳值在 0.11.11762.0 安裝版上完全不動(2026-08-22 實機驗過，
+            // 存完停在編輯頁，等五秒也一樣;跟 `GoToPage` 是同一類的空殼)。
+            // 當時在「停在原地」與「`GoHome()` 丟回主搜尋框」之間選了前者，
+            // 理由寫著「卡片上還壓著使用者剛打的字」—— 但那對新增一樣成立，
+            // 而新增選的是收面板，所以那個理由分不開這兩條路。
+            //
+            // `GoBack` 仍然不能用，`Dismiss` 是我們手上唯一能讓使用者離開表單的回傳值。
+            return Feedback.Done(Strings.Format(Resources.NoteSaved, title));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NoteNotFoundException)
         {

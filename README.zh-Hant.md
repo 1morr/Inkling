@@ -55,7 +55,7 @@ Inkling → `Inkling: Quick capture` → Alias。設成 `!` 之後，打 `!` 加
 | 記下後先看一眼 | 存檔後停留在筆記上，方便確認內容;再按一次 Enter 才收起面板。可在設定裡切換 |
 | 瀏覽與搜尋 | 標題與內文都會被搜尋，多個關鍵字之間是 AND 的關係，標題命中排在前面。搜不到時按 Enter 直接進快速記下 |
 | Markdown 預覽 | 按 Enter 渲染這則筆記。`Ctrl+U` 在渲染結果與原始文字之間切換，並記住你的選擇 —— 貼進來的 HTML 渲染後會消失，這時很有用 |
-| 編輯 | `Ctrl+E` 開啟內建表單;`Ctrl+O` 則用你預設的編輯器開啟檔案 |
+| 編輯 | `Ctrl+E` 開啟內建表單;`Ctrl+O` 則用你預設的編輯器開啟檔案。存檔後面板收起來，跟新增筆記一樣 |
 | 複製與定位 | `Ctrl+Shift+C` 複製內文(不含 front matter);`Ctrl+L` 在檔案總管裡顯示這個 `.md` 檔 |
 | 隨手草稿 | 一則永遠都在、不需要標題的筆記。沒有自動儲存([為什麼](docs/design-notes.md#scratchpad-no-autosave))—— `Tab` 再按 `Enter` 即可儲存並關閉 |
 | 刪除 | `Ctrl+D` 確認後刪除，檔案會進資源回收筒。`Inkling: Delete notes` 可以一次處理多則，且動到非 Inkling 建立的檔案前一律會先確認 |
@@ -84,7 +84,7 @@ Inkling → `Inkling: Quick capture` → Alias。設成 `!` 之後，打 `!` 加
 
 `Enter` 與 `Ctrl+Enter` 按的是底部工具列的兩顆按鈕，所以它們做什麼取決於你在哪一頁 ——
 工具列一律會顯示當下這一對按鈕。在編輯表單上，按 `Tab` 到「儲存」再按 `Enter` 完成儲存;
-`Esc` 則會返回上一頁。
+`Esc` 則是不存檔直接離開。
 [為什麼這兩個頁面刻意互為鏡像](docs/design-notes.md#secondary-command)。
 
 CmdPal 不讓使用者重新綁定擴充功能的快速鍵。頂層命令的 alias 與全域快速鍵，

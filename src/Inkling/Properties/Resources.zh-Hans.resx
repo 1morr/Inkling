@@ -360,7 +360,7 @@
     <value>细节、链接、待办…</value>
   </data>
   <data name="FormCaretHint" xml:space="preserve">
-    <value>光标落在正文开头。按 Ctrl+End 跳到最后接着写。保存之后这一页会留着，按 Esc 回上一页。</value>
+    <value>光标落在正文开头。按 Ctrl+End 跳到最后接着写。</value>
   </data>
   <data name="FormSave" xml:space="preserve">
     <value>保存</value>

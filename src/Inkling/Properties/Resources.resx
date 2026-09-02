@@ -412,7 +412,7 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
     <value>Details, links, to-dos…</value>
   </data>
   <data name="FormCaretHint" xml:space="preserve">
-    <value>The cursor starts at the beginning of the body. Press Ctrl+End to jump to the end. Saving keeps this page open — press Esc to go back.</value>
+    <value>The cursor starts at the beginning of the body. Press Ctrl+End to jump to the end.</value>
     <comment>游標位置擴展指定不了，所以改成把鍵位講出來 —— 見 NoteFormContent.CaretHint。</comment>
   </data>
   <data name="FormSave" xml:space="preserve">

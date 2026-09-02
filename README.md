@@ -60,7 +60,7 @@ Simplified Chinese. Screenshots here were taken on an English system.
 | Preview after capture | Saving keeps you on the note so you can check it; Enter again closes the palette. Switchable in Settings |
 | Browse and search | Titles and bodies are both searched, multiple words are AND-ed, title matches rank first. With no matches, Enter goes straight to quick capture |
 | Markdown preview | Enter renders the note. `Ctrl+U` toggles raw source and remembers the choice — useful for pasted HTML that vanishes when rendered |
-| Edit | `Ctrl+E` opens the built-in form; `Ctrl+O` opens the file in your default editor instead |
+| Edit | `Ctrl+E` opens the built-in form; `Ctrl+O` opens the file in your default editor instead. Saving closes the palette, the same as creating a note |
 | Copy and locate | `Ctrl+Shift+C` copies the body without the front matter; `Ctrl+L` shows the `.md` in File Explorer |
 | Scratchpad | A note that is always there, for anything that needs no title. No autosave ([why](docs/design-notes.md#scratchpad-no-autosave)) — `Tab` then `Enter` saves and closes |
 | Delete | `Ctrl+D` deletes after confirming, and the file goes to the Recycle Bin. `Inkling: Delete notes` handles many at once and always confirms before touching files Inkling did not create |
@@ -89,7 +89,7 @@ Only Copy carries Shift, because `Ctrl+C` belongs to the search box.
 
 `Enter` and `Ctrl+Enter` press the two buttons in the bottom toolbar, so what
 they do depends on the page — the toolbar always shows the current pair. On the
-edit form, save with `Tab` to "Save" then `Enter`; `Esc` goes back.
+edit form, save with `Tab` to "Save" then `Enter`; `Esc` leaves without saving.
 [Why the pages are deliberately mirrored](docs/design-notes.md#secondary-command).
 
 CmdPal does not let users rebind an extension's shortcuts. The aliases and
