@@ -35,8 +35,10 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
 - `tags` 最多 5 個、每個 ≤30 字。
 - `icon`:PNG 或 JPEG(**SVG 不收**)、≤100 KB、建議 256×256，檔名要跟 `icon` 欄位一致。
 - 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張,**GIF 不收**。
-  檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。用的是 Store 那三張
-  `assets/store/*.jpg`,檔名已經帶好前綴。
+  檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。用的是 `assets/store/*.jpg`,
+  檔名已經帶好前綴。**那三張是 gitignore 掉的建置產物** —— 需要時跑
+  `pwsh -NoProfile -File tools\make-store-screenshots.ps1`(預設就是 `-Format Jpeg`)
+  重新產出來;同名的 PNG 是 Store listing 用的，每張逼近 1 MB 上限，不要拿去送。
 
 ## 投稿流程
 
@@ -45,8 +47,7 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
    的 `add-1morr-inkling`，一個 commit:`Add 1morr.inkling to gallery`。
 3. ✅ **檔案** —— `extensions/1morr/inkling/` 底下是 `extension.json`、`icon.png`
    (複製自 `assets/gallery/icon.png`)與 `screenshots/01..03`(複製自
-   `assets/store/*.jpg`)。**截圖用 JPG 那一組**，各約 200 KB;同名的 PNG 每張都逼近
-   1 MB 上限，不要拿去送。
+   `assets/store/*.jpg`，各約 200 KB)。那三張 JPG 沒有進版控，要重產見上一節。
 4. ⬜ **開 PR** —— 這一步留給人按:
    <https://github.com/microsoft/CmdPal-Extensions/compare/main...1morr:CmdPal-Extensions:add-1morr-inkling>
    target 選 `main`。PR 範本是一張七項的 checklist，逐項都已經符合。
