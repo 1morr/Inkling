@@ -441,6 +441,10 @@ Expand-Archive 'Inkling_v1.1.0.msixbundle' $tmp -Force
 
 ### 20. `[人工]` 絕大多數版本這一步什麼都不用做
 
+**前提是條目已經在 gallery 上。** 首次投稿的進度看
+[`docs/gallery/README.md`](gallery/README.md) 的〈投稿流程〉—— 那個 PR 還沒 merge 的話，
+這一步要做的是把它送完，不是「什麼都不用做」。
+
 `docs/gallery/extension.json` 整份**沒有 version 欄位**，上游 schema 也沒有。gallery 的
 條目只是指到 Store 或 WinGet，實際的散佈與版本都由那兩個通路處理 —— 也就是說
 **新版本會自動被 gallery 的使用者拿到**。

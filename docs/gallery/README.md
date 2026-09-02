@@ -4,7 +4,7 @@
 gallery 的材料。**分支已經推上去了，只差開 PR** —— 見下面〈投稿流程〉。
 
 gallery 的 `installSources` 只接受 msstore 或 WinGet 的 id，而且 CI 與人工審核都會去點那個
-listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 上架生效,
+listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 上架生效，
 `installSources` 填的 `9NDGWN4JTXHH` 現在是活的。
 
 **文案不要在這裡改。** `extension.json` 的 `shortDescription` 與 `description` 從
@@ -34,7 +34,7 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
 - `categories` 最多 3 個，只能從固定清單挑;Inkling 用 `productivity`。
 - `tags` 最多 5 個、每個 ≤30 字。
 - `icon`:PNG 或 JPEG(**SVG 不收**)、≤100 KB、建議 256×256，檔名要跟 `icon` 欄位一致。
-- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張,**GIF 不收**。
+- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張，**GIF 不收**。
   檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。用的是 `assets/store/*.jpg`,
   檔名已經帶好前綴。**那三張是 gitignore 掉的建置產物** —— 需要時跑
   `pwsh -NoProfile -File tools\make-store-screenshots.ps1`(預設就是 `-Format Jpeg`)
@@ -51,12 +51,18 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
 4. ⬜ **開 PR** —— 這一步留給人按:
    <https://github.com/microsoft/CmdPal-Extensions/compare/main...1morr:CmdPal-Extensions:add-1morr-inkling>
    target 選 `main`。PR 範本是一張七項的 checklist，逐項都已經符合。
-   第一次送 microsoft 的 repo 要簽 **Microsoft CLA**(CLA bot 會在 PR 裡留言，照著做即可)。
-5. CI 自動驗 schema(欄位、字數、類別清單、id 與資料夾路徑一致、圖示格式與大小)。
+   第一次送 microsoft 的 repo 要簽 **Microsoft CLA**。CLA bot 會在 PR 裡留言，
+   **簽法是回一則留言**，內容就是 `@microsoft-github-policy-service agree`
+   (代表公司的話後面加 `company="..."`)。不簽不會 merge。
+5. (上游)CI 自動驗 schema(欄位、字數、類別清單、id 與資料夾路徑一致、圖示格式與大小)。
    同一支腳本可以先在本機跑，見下一節。
-6. CmdPal 團隊人工審核。**merge 之後還不會馬上出現在 gallery 裡** —— 維護者要另外開一個
-   PR 重產根目錄的 `extensions.json`，那一份 merge 了才生效(上游的
+6. (上游)CmdPal 團隊人工審核。**merge 之後還不會馬上出現在 gallery 裡** —— 維護者要
+   另外開一個 PR 重產根目錄的 `extensions.json`，那一份 merge 了才生效(上游的
    `docs/CONTRIBUTING.md` 第 9 步)。
+
+**真正的關卡是 CI，不是人工審核。** 2026-09-03 翻過上游最近 30 個 PR:投稿類幾乎都是
+維護者直接 Approve、當天或隔天 merge，沒有人被要求改描述或截圖。兩件沒 merge 的都不是
+品質問題 —— #109 是資料夾用了大寫又沒回應被關掉，#134 是一張截圖超過 1 MB(換掉就過了)。
 
 **之後要改條目**(換描述、換圖示、加截圖)走同一條路:在 fork 開新分支，改
 `extensions/1morr/inkling/` 底下的檔案，再開一個 PR。文案一樣先改
@@ -71,6 +77,9 @@ python -m pip install jsonschema
 $env:PYTHONIOENCODING = 'utf-8'   # 少了它，腳本印 ✅ 會在 cp950 主控台上炸掉
 python .github\scripts\validate.py extensions\1morr\inkling\extension.json
 ```
+
+(那個環境變數是為了輸出被導向檔案或管線的情況:那時 Python 退回 locale 編碼，
+cp950 印不出 ✅ 會直接 `UnicodeEncodeError`。直接在主控台跑通常不會踩到，設著比較穩。)
 
 它除了驗 schema，還會抓 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 的 `og:title`
 來跟 `title` 比。**對不上只是 warning**，但那正是 `title` 得跟 Store 上的名字一致的理由。
