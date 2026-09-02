@@ -1,7 +1,7 @@
 # Gallery 投稿素材
 
 這個資料夾是投稿 [microsoft/CmdPal-Extensions](https://github.com/microsoft/CmdPal-Extensions)
-gallery 的材料。**前提已經滿足，可以送了。**
+gallery 的材料。**分支已經推上去了，只差開 PR** —— 見下面〈投稿流程〉。
 
 gallery 的 `installSources` 只接受 msstore 或 WinGet 的 id，而且 CI 與人工審核都會去點那個
 listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 上架生效,
@@ -27,26 +27,53 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
   (256×256 PNG、≤100 KB，腳本會驗尺寸與大小)。投稿時複製過去，跟 `extension.json`
   放同一個資料夾。
 
-## 欄位規則(對岸 CI 會擋的)
+## 欄位規則(投稿 repo 的 CI 會擋的)
 
 - `title` ≤100 字，**不可含 “for Command Palette”**(gallery 裡那是冗贅)。
 - `shortDescription` ≤200 字;`description` ≤3000 字。
 - `categories` 最多 3 個，只能從固定清單挑;Inkling 用 `productivity`。
 - `tags` 最多 5 個、每個 ≤30 字。
 - `icon`:PNG 或 JPEG(**SVG 不收**)、≤100 KB、建議 256×256，檔名要跟 `icon` 欄位一致。
-- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張
-  (README 用的 `docs/images/*.png` 直接拿得來用，投稿時複製過去並加前綴;GIF 不收),
-  檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。
+- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張,**GIF 不收**。
+  檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。用的是 Store 那三張
+  `assets/store/*.jpg`,檔名已經帶好前綴。
 
 ## 投稿流程
 
-1. ✅ **先把擴展上架** —— Store 已經上架(2026-08-25),這一步做完了。
-2. Fork `microsoft/CmdPal-Extensions`。
-3. 建 `extensions/1morr/inkling/`，放入 `extension.json` 與 `icon.png`(可加 `screenshots/`)。
-4. 開 PR。第一次送 microsoft 的 repo 要簽 **Microsoft CLA**(CLA bot 會在 PR 裡提示，
-   照著做即可)。
+1. ✅ **先把擴展上架** —— Store 2026-08-25 上架，這一步做完了。
+2. ✅ **Fork 與分支**(2026-09-03)—— <https://github.com/1morr/CmdPal-Extensions>
+   的 `add-1morr-inkling`，一個 commit:`Add 1morr.inkling to gallery`。
+3. ✅ **檔案** —— `extensions/1morr/inkling/` 底下是 `extension.json`、`icon.png`
+   (複製自 `assets/gallery/icon.png`)與 `screenshots/01..03`(複製自
+   `assets/store/*.jpg`)。**截圖用 JPG 那一組**，各約 200 KB;同名的 PNG 每張都逼近
+   1 MB 上限，不要拿去送。
+4. ⬜ **開 PR** —— 這一步留給人按:
+   <https://github.com/microsoft/CmdPal-Extensions/compare/main...1morr:CmdPal-Extensions:add-1morr-inkling>
+   target 選 `main`。PR 範本是一張七項的 checklist，逐項都已經符合。
+   第一次送 microsoft 的 repo 要簽 **Microsoft CLA**(CLA bot 會在 PR 裡留言，照著做即可)。
 5. CI 自動驗 schema(欄位、字數、類別清單、id 與資料夾路徑一致、圖示格式與大小)。
-6. CmdPal 團隊人工審核，merge 之後擴展出現在 gallery。
+   同一支腳本可以先在本機跑，見下一節。
+6. CmdPal 團隊人工審核。**merge 之後還不會馬上出現在 gallery 裡** —— 維護者要另外開一個
+   PR 重產根目錄的 `extensions.json`，那一份 merge 了才生效(上游的
+   `docs/CONTRIBUTING.md` 第 9 步)。
+
+**之後要改條目**(換描述、換圖示、加截圖)走同一條路:在 fork 開新分支，改
+`extensions/1morr/inkling/` 底下的檔案，再開一個 PR。文案一樣先改
+[`docs/copy.md`](../copy.md)。
+
+## 送出前自己驗一次
+
+投稿 repo 自己帶著 CI 用的那支腳本，clone 下來就能跑同一份:
+
+```powershell
+python -m pip install jsonschema
+$env:PYTHONIOENCODING = 'utf-8'   # 少了它，腳本印 ✅ 會在 cp950 主控台上炸掉
+python .github\scripts\validate.py extensions\1morr\inkling\extension.json
+```
+
+它除了驗 schema，還會抓 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 的 `og:title`
+來跟 `title` 比。**對不上只是 warning**，但那正是 `title` 得跟 Store 上的名字一致的理由。
+2026-09-03 跑過，零錯誤零 warning。
 
 **`extension.json` 的 `$schema` 在這個 repo 裡是指不到的，那是正常的。**
 那個相對路徑(`../../../.github/schemas/extension.schema.json`)是以**投稿之後的位置**
