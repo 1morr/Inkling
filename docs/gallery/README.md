@@ -1,7 +1,9 @@
 # Gallery 投稿素材
 
 這個資料夾是投稿 [microsoft/CmdPal-Extensions](https://github.com/microsoft/CmdPal-Extensions)
-gallery 的材料。**分支已經推上去了，只差開 PR** —— 見下面〈投稿流程〉。
+gallery 的材料。**[PR #165](https://github.com/microsoft/CmdPal-Extensions/pull/165)
+2026-09-04 已經 merge**,但條目還沒出現在 gallery 裡 —— 見〈投稿流程〉第 6 步。
+之後要改條目走同一條路，材料留在這裡。
 
 gallery 的 `installSources` 只接受 msstore 或 WinGet 的 id，而且 CI 與人工審核都會去點那個
 listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 上架生效，
@@ -83,17 +85,25 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
 3. ✅ **檔案** —— `extensions/1morr/inkling/` 底下是 `extension.json`、`icon.png`
    與 `screenshots/01..03`,全部複製自 `assets/gallery/`(那個資料夾裡就是這四個檔)。
    截圖 2026-09-04 從 1920×1080 的合成圖換成裸面板，理由見上一節。
-4. ⬜ **開 PR** —— 這一步留給人按:
-   <https://github.com/microsoft/CmdPal-Extensions/compare/main...1morr:CmdPal-Extensions:add-1morr-inkling>
-   target 選 `main`。PR 範本是一張七項的 checklist，逐項都已經符合。
-   第一次送 microsoft 的 repo 要簽 **Microsoft CLA**。CLA bot 會在 PR 裡留言，
-   **簽法是回一則留言**，內容就是 `@microsoft-github-policy-service agree`
-   (代表公司的話後面加 `company="..."`)。不簽不會 merge。
-5. (上游)CI 自動驗 schema(欄位、字數、類別清單、id 與資料夾路徑一致、圖示格式與大小)。
-   同一支腳本可以先在本機跑，見下一節。
-6. (上游)CmdPal 團隊人工審核。**merge 之後還不會馬上出現在 gallery 裡** —— 維護者要
-   另外開一個 PR 重產根目錄的 `extensions.json`，那一份 merge 了才生效(上游的
-   `docs/CONTRIBUTING.md` 第 9 步)。
+4. ✅ **開 PR**(2026-09-04)—— [#165](https://github.com/microsoft/CmdPal-Extensions/pull/165),
+   target `main`,PR 範本那張七項 checklist 逐項符合。
+   第一次送 microsoft 的 repo 要簽 **Microsoft CLA**,**簽法是在 PR 裡回一則留言**,
+   內容就是 `@microsoft-github-policy-service agree`(代表公司的話後面加 `company="..."`)。
+
+   ⚠ **CLA 在這個 repo 不是硬關卡。** 實際發生的是:`license/cla` 開始跑之後 **70 秒**,
+   維護者就 approve + merge 了,那個 check 從此卡在 `queued`、永遠不會變綠 ——
+   PR 列表上因此掛著一個黃點。翻過另外四個已 merge 的投稿(#157、#156、#151、#149),
+   CLA 檢查一個都沒有。**已 merge 的 PR 上的黃點不必理**,要看的是 `validate`。
+5. ✅ (上游)CI 自動驗 schema(欄位、字數、類別清單、id 與資料夾路徑一致、圖示格式與大小)。
+   `validate` 11 秒通過。同一支腳本可以先在本機跑，見下一節。
+   同一次 merge 觸發的 **`Deploy extension gallery to GitHub Pages` 會失敗，那不是我們的問題**
+   —— `build` 成功、`deploy` 拿到 404(`Ensure GitHub Pages has been enabled`),
+   而且這個 workflow **從 2026-08-13 建立以來 11 次全失敗、零成功**。別被它嚇到。
+6. ⬜ **等維護者重產 `extensions.json`** —— **merge 之後不會馬上出現在 gallery 裡**。
+   根目錄那份 feed(2026-09-04 當下 80 個條目，還沒有 Inkling)要維護者另外開一個
+   `Update extensions.json` 的 PR 重產，那一份 merge 了才生效(上游
+   `docs/CONTRIBUTING.md` 第 9 步)。歷史上的 #161、#152、#150 都是這種 PR,
+   所以接下來盯的是下一個 `Update extensions.json`,不是 #165。
 
 **真正的關卡是 CI，不是人工審核。** 2026-09-03 翻過上游最近 30 個 PR:投稿類幾乎都是
 維護者直接 Approve、當天或隔天 merge，沒有人被要求改描述或截圖。兩件沒 merge 的都不是
