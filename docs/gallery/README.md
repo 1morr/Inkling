@@ -55,7 +55,21 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
 
 1. ✅ **先把擴展上架** —— Store 2026-08-25 上架，這一步做完了。
 2. ✅ **Fork 與分支**(2026-09-03)—— <https://github.com/1morr/CmdPal-Extensions>
-   的 `add-1morr-inkling`，一個 commit:`Add 1morr.inkling to gallery`。
+   的 `add-1morr-inkling`,**單一 commit** `Add 1morr.inkling to the gallery`,
+   直接坐在上游 `main` 上(ahead 1 / behind 0)。
+
+   那個分支**當天重建過一次**:原本是兩個 commit,第一個把操作路徑寫錯了(見
+   [`docs/copy.md`](../copy.md) 那一輪的修正)，留在 PR 裡只會讓 reviewer 讀到一份
+   錯的中間狀態。做法是先 `gh repo sync` 把 fork 的 `main` 追上上游，再從它開一個
+   乾淨的分支重放同樣的檔案，然後 `--force-with-lease` 換掉舊的。
+   舊的 tip 留在同一個 fork 的 `backup/add-1morr-inkling-20260903` 上,
+   PR 開好、merge 之後就可以刪。
+
+   ⚠ **本來想整個 fork 刪掉重來，但 `gh` 的 token 沒有 `delete_repo` scope**
+   (`gh auth status` 看得到:`gist, read:org, repo, workflow`)。要真的重 fork 得先
+   `gh auth refresh -h github.com -s delete_repo`,那一步會開瀏覽器。
+   **重建分支達成的是同一件事** —— PR 看到的是單一 commit,而 fork 本身在 PR 裡
+   不會留下任何痕跡。
 3. ✅ **檔案** —— `extensions/1morr/inkling/` 底下是 `extension.json`、`icon.png`
    (複製自 `assets/gallery/icon.png`)與 `screenshots/01..03`(複製自
    `assets/store/*.jpg`，各約 200 KB)。那三張 JPG 沒有進版控，要重產見上一節。
