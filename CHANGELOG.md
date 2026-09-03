@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+### 變更
+
+- **gallery 投稿的截圖換成裸面板，不再鋪桌面背景。** Store listing 的那一組是
+  1920×1080 的合成圖，鋪 Windows 桌布再補陰影 —— 那是為了滿足 Store 的 1366×768
+  下限才做的。gallery 沒有下限(上游的 schema 與 `validate.py` 只驗格式、每張 ≤1 MB、
+  最多 5 張)，而它的卡片本來就只有面板那麼大，鋪一張桌面等於把面板縮到更小。
+  52 個有截圖的既有擴展裡有 31 個用面板尺寸的裁切圖，包括官方的
+  `microsoft/sample-extension` 與 CmdPal 開發者自己的 `zadjii/virtual-desktops`。
+  新的一組約 1178×709、70-90 KB，收在 `assets/gallery/`,跟 `icon.png` 放在一起。
+- **`make-store-screenshots.ps1` 的 JPEG 輸出移除了。** 它存在的唯一理由是「帶桌布的
+  PNG 一張要 ~1000 KB，離 gallery 的 1 MB 上限只剩不到 3%」—— 裸面板之後那個問題
+  不存在了。現在兩種模式都只出 PNG(Store 本來就只收 PNG)，`-Format` 與
+  `-JpegQuality` 一併拿掉，改用 `-Bare` 切模式。
+
 ## [1.1.0] - 2026-09-03
 
 ### 修正

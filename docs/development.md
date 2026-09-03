@@ -228,8 +228,8 @@ tests/               Inkling.Core.Tests(xUnit,跟著方案跑)、
 tools/               deploy.ps1(build→註冊→驗證)、VerifyRegistration、
                      ApiDump(印 SDK 型別的實際簽章)、cmdpal-ui.ps1(真機驅動
                      CmdPal 畫面)、render-icons.ps1(SVG→PNG)、
-                     make-store-screenshots.ps1(把 docs/images 的面板截圖
-                     放大成 Store / gallery 用的 1920x1080)、
+                     make-store-screenshots.ps1(Store 用的 1920x1080 合成圖;
+                     -Bare 出 gallery 用的裸面板)、
                      stage-layout.ps1(組出可註冊 / 可打包的套件佈局;
                      deploy.ps1 與 release.yml 共用同一份)
 docs/                design-notes.md(設計考證)、development.md(這一份)、

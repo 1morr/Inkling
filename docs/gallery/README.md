@@ -45,11 +45,19 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
 - `categories` 最多 3 個，只能從固定清單挑;Inkling 用 `productivity`。
 - `tags` 最多 5 個、每個 ≤30 字。
 - `icon`:PNG 或 JPEG(**SVG 不收**)、≤100 KB、建議 256×256，檔名要跟 `icon` 欄位一致。
-- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張，**GIF 不收**。
-  檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。用的是 `assets/store/*.jpg`,
-  檔名已經帶好前綴。**那三張是 gitignore 掉的建置產物** —— 需要時跑
-  `pwsh -NoProfile -File tools\make-store-screenshots.ps1`(預設就是 `-Format Jpeg`)
-  重新產出來;同名的 PNG 是 Store listing 用的，每張逼近 1 MB 上限，不要拿去送。
+- 可選 `screenshots/` 子資料夾:PNG/JPEG、每張 ≤1 MB、最多 5 張，**GIF 不收**,
+  而且**尺寸與比例完全沒有規定** —— schema 與上游的 `validate.py` 都沒有驗。
+  檔名按字母序決定順序(用 `01-`、`02-` 前綴控制)。用的是 `assets/gallery/*.png`,
+  檔名已經帶好前綴，跟 `icon.png` 放在同一個資料夾，投稿時整包複製過去就好。
+  三張都進版控，平常不必重產;改了 `docs/images/` 的來源截圖才跑
+  `pwsh -NoProfile -File tools\make-store-screenshots.ps1 -Bare`。
+
+  ⚠ **不要拿 `assets/store/*.png` 去送。** 那一組是 1920×1080、鋪了 Windows 桌布的
+  合成圖，存在的唯一理由是 Store listing 的 1366×768 下限 —— gallery 沒有下限，
+  而它的卡片本來就只有面板那麼大，鋪一張桌面等於把面板縮到更小(而且那三張每張
+  逼近 1 MB 上限)。gallery 這一組是 `-Bare` 出來的裸面板，約 1178×709、70-90 KB,
+  跟 52 個有截圖的既有擴展裡那 31 個的做法一致，包括官方的
+  `microsoft/sample-extension` 與 CmdPal 開發者自己的 `zadjii/virtual-desktops`。
 
 ## 投稿流程
 
@@ -73,8 +81,8 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
    一字未改 —— 前提是本機的 clone 還在。它放在暫存目錄裡，**刪 fork 之前先確認
    它沒被清掉**，否則五個檔案要重放、commit 訊息要重寫。
 3. ✅ **檔案** —— `extensions/1morr/inkling/` 底下是 `extension.json`、`icon.png`
-   (複製自 `assets/gallery/icon.png`)與 `screenshots/01..03`(複製自
-   `assets/store/*.jpg`，各約 200 KB)。那三張 JPG 沒有進版控，要重產見上一節。
+   與 `screenshots/01..03`,全部複製自 `assets/gallery/`(那個資料夾裡就是這四個檔)。
+   截圖 2026-09-04 從 1920×1080 的合成圖換成裸面板，理由見上一節。
 4. ⬜ **開 PR** —— 這一步留給人按:
    <https://github.com/microsoft/CmdPal-Extensions/compare/main...1morr:CmdPal-Extensions:add-1morr-inkling>
    target 選 `main`。PR 範本是一張七項的 checklist，逐項都已經符合。

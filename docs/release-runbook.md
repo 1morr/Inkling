@@ -160,26 +160,32 @@ manifest 還原回舊的 CN,`makeappx pack` 與 CI **都不會報錯**,Partner C
   Windows 顯示語言，而 listing 的正文已經寫明「介面語言跟著 Windows 走」,
   換來的清晰度不值那個成本。
   要換內容就先重拍 `docs/images/` 再跑這支，不要另外維護一套。
-  ⚠ **兩個通路要的格式不一樣，所以兩份都要產** —— 跑兩次，`assets/store/` 同時放得下:
+  ⚠ **兩個通路要的圖不一樣，所以兩份都要產** —— 跑兩次，輸出到不同資料夾:
 
   ```powershell
-  pwsh -NoProfile -File tools\make-store-screenshots.ps1                # gallery 用的 .jpg
-  pwsh -NoProfile -File tools\make-store-screenshots.ps1 -Format Png    # Store 用的 .png
+  pwsh -NoProfile -File tools\make-store-screenshots.ps1          # Store   -> assets/store/*.png
+  pwsh -NoProfile -File tools\make-store-screenshots.ps1 -Bare    # gallery -> assets/gallery/*.png
   ```
 
-  | 通路 | 格式 | 大小 |
+  | 通路 | 要什麼 | 限制 |
   |---|---|---|
-  | Microsoft Store listing | **只收 PNG** | 上限 50 MB/張，不是問題(我們約 1 MB) |
-  | CmdPal gallery 的 `screenshots/` | JPEG(PNG 太大) | **上限 1 MB/張** |
+  | Microsoft Store listing | 1920×1080 合成圖(桌布 + 陰影) | **只收 PNG**、下限 1366×768、上限 50 MB/張 |
+  | CmdPal gallery 的 `screenshots/` | **裸面板**，約 1178×709 | PNG/JPEG、上限 1 MB/張、最多 5 張、**沒有尺寸下限** |
 
   **「Store 也收 JPEG」是錯的，2026-08-23 上傳時被擋掉才發現** —— Partner Center
   跳一個對話框說 `The file "01-top-level-commands.jpg" is not a valid .png file`,
   而那個欄位旁邊的說明本來就寫著 `Accepted file types: .png`。
-  gallery 那邊反過來:換成照片式背景之後 PNG 一張約 1000 KB，離 1 MB 上限只剩不到 3%,
-  換一張桌布就爆;JPEG 品質 95 約 195 KB，文字區塊與 PNG 的最大單通道差是 9/255
-  (平均 0.95),1:1 看不出來。腳本超過 1 MB 會自己警告。
-  `assets/store/` **不進 MSIX**(套件圖示在 `src/Inkling/Assets/`),
-  檔名前綴就是上傳順序。
+
+  **gallery 反過來:不要鋪桌面背景。** 上游的 schema 與 validator 只管格式、大小、
+  張數，一個尺寸或比例的規定都沒有;而 52 個有截圖的既有擴展裡有 31 個用面板尺寸的
+  裁切圖，包括官方的 `microsoft/sample-extension`(960×640)與 CmdPal 開發者自己的
+  `zadjii/virtual-desktops`(766×555)。gallery 的卡片本來就只有面板那麼大，
+  鋪一張 1920×1080 的桌面等於把面板縮到更小。
+  裸面板順帶把大小問題也解決了:約 70-90 KB，離 1 MB 上限遠得很 —— 腳本以前那條
+  「帶桌布的 PNG 要 ~1000 KB，只剩不到 3% 餘裕，所以改出 JPEG」的路因此在 2026-09-04
+  移除，現在兩種模式都只出 PNG。
+  `assets/store/` 與 `assets/gallery/` 都**不進 MSIX**(套件圖示在
+  `src/Inkling/Assets/`),檔名前綴就是上傳順序。
 
 ### 9. `[自動]` 圖示改過就重產 PNG
 

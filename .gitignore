@@ -39,12 +39,6 @@ bundle_mapping.txt
 # CI 上是乾淨機器所以不影響，但在本機重現打包步驟時它會整包冒出來。
 artifacts/
 
-# CmdPal gallery 投稿用的 .jpg,是 tools/make-store-screenshots.ps1 從 docs/images 合成出來的
-# 建置產物(-Format Jpeg,預設值),沒有任何渲染出來的文件引用它 —— 不必進版控。
-# 同一支腳本另外產的 assets/store/*.png(Store listing 用,-Format Png)**不要**忽略,
-# 見 docs/release-runbook.md。
-assets/store/*.jpg
-
 _ReSharper*/
 *.DotSettings
 *.DotSettings.user
