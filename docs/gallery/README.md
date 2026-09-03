@@ -58,18 +58,20 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
    的 `add-1morr-inkling`,**單一 commit** `Add 1morr.inkling to the gallery`,
    直接坐在上游 `main` 上(ahead 1 / behind 0)。
 
-   那個分支**當天重建過一次**:原本是兩個 commit,第一個把操作路徑寫錯了(見
-   [`docs/copy.md`](../copy.md) 那一輪的修正)，留在 PR 裡只會讓 reviewer 讀到一份
-   錯的中間狀態。做法是先 `gh repo sync` 把 fork 的 `main` 追上上游，再從它開一個
-   乾淨的分支重放同樣的檔案，然後 `--force-with-lease` 換掉舊的。
-   舊的 tip 留在同一個 fork 的 `backup/add-1morr-inkling-20260903` 上,
-   PR 開好、merge 之後就可以刪。
+   這個 fork 是**當天第二次建的**。第一次那個分支上有兩個 commit,第一個把操作路徑
+   寫錯了(見 [`docs/copy.md`](../copy.md) 那一輪的修正)，留在 PR 裡只會讓 reviewer
+   讀到一份錯的中間狀態。整個 fork 砍掉重建之後，遠端只剩正確的那一個 commit。
 
-   ⚠ **本來想整個 fork 刪掉重來，但 `gh` 的 token 沒有 `delete_repo` scope**
-   (`gh auth status` 看得到:`gist, read:org, repo, workflow`)。要真的重 fork 得先
-   `gh auth refresh -h github.com -s delete_repo`,那一步會開瀏覽器。
-   **重建分支達成的是同一件事** —— PR 看到的是單一 commit,而 fork 本身在 PR 裡
-   不會留下任何痕跡。
+   ⚠ **刪 fork `gh` 做不到，得上網頁。** token 沒有 `delete_repo` scope
+   (`gh auth status` 看得到:`gist, read:org, repo, workflow`)，而
+   `gh auth refresh -h github.com -s delete_repo` 會開瀏覽器。網頁上的位置是 fork 的
+   Settings → 最下面的 Danger Zone。重建就是
+   `gh repo fork microsoft/CmdPal-Extensions --clone=false`。
+
+   ⚠ **刪 fork 會連遠端分支一起帶走，本機那份 clone 是唯一的救生索。**
+   這次重來只花一行 `git push -u origin add-1morr-inkling`,commit 內容與訊息
+   一字未改 —— 前提是本機的 clone 還在。它放在暫存目錄裡，**刪 fork 之前先確認
+   它沒被清掉**，否則五個檔案要重放、commit 訊息要重寫。
 3. ✅ **檔案** —— `extensions/1morr/inkling/` 底下是 `extension.json`、`icon.png`
    (複製自 `assets/gallery/icon.png`)與 `screenshots/01..03`(複製自
    `assets/store/*.jpg`，各約 200 KB)。那三張 JPG 沒有進版控，要重產見上一節。
