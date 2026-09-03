@@ -48,7 +48,7 @@ body:
     attributes:
       label: Inkling version
       description: Output of `(Get-AppxPackage *Inkling*).Version` in PowerShell.
-      placeholder: 1.0.0.0
+      placeholder: 1.1.0.0
     validations:
       required: true
 
