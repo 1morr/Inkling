@@ -127,14 +127,8 @@
   <data name="ProviderScratchpadSubtitle" xml:space="preserve">
     <value>打開就接著上次寫，不必取標題</value>
   </data>
-  <data name="ScratchpadDiscard" xml:space="preserve">
-    <value>捨棄變更</value>
-  </data>
   <data name="ScratchpadSaved" xml:space="preserve">
     <value>已存到隨手草稿</value>
-  </data>
-  <data name="ScratchpadDiscarded" xml:space="preserve">
-    <value>已捨棄這次的變更</value>
   </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
     <value>挑幾則刪掉，或整個清空</value>

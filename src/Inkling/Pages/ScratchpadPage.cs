@@ -29,53 +29,21 @@ internal sealed partial class ScratchpadPage : ContentPage
         Title = Resources.ScratchpadPageTitle;
         Name = Resources.CommandOpen;
 
-        // **前兩項的位置有語意**(見 NoteCommands):Commands[0] 坐 Enter、Commands[1] 坐
-        // Ctrl+Enter，跟命令自己的 RequestedShortcut 無關。
+        // **只有一顆命令，而且刻意不加守衛。** 編輯頁的 Commands[0] 是一顆什麼都不做的
+        // 「繼續編輯」，用來擋掉誤按的 Enter;這一頁不需要 —— 卡片上只有一個**多行**
+        // 文字框，而 2026-09-03 的量測證實位置鍵(Enter / Ctrl+Enter)在多行輸入框裡
+        // 會被輸入框吃掉，鍵盤永遠打不到底部工具列。加一顆無害命令在這裡只會是
+        // 一顆按不到也不做事的按鈕。滑鼠仍然點得到這一顆，但它做的就是字面上那件事。
+        // 量測表與機制見 docs/design-notes.md〈位置鍵打不打得到工具列〉。
         //
-        // 這一頁沒有「編輯」可放 —— 它本身就是編輯狀態。Ctrl+Enter 因此給「跳到外部編輯器」,
-        // 那正是這一頁語意上的「再進一步編輯」，跟另外兩個 ContentPage 對得起來。
-        // **不要在前兩個位置插新東西。**
-        //
-        // Commands[0] 也**不能**是「儲存」，不管多想這麼做:底部工具列的按鈕走的是
+        // Commands[0] **不能**是「儲存」，不管多想這麼做:底部工具列的按鈕走的是
         // ICommand.Invoke()，沒有參數，拿不到使用者剛打的字 —— 存檔只有卡片裡那顆
         // Action.Submit 一條路(見 ScratchpadFormContent)。放上去只會是一顆假按鈕。
-        Commands = [
-            new CommandContextItem(Discard()),
-            NoteCommands.OpenInEditor(_store.FilePath, dismiss: true),
-        ];
+        //
+        // 「捨棄變更」2026-09-03 移除:`Esc` 就是不存離開(退出去再進來，上次**存下**的
+        // 內容原封不動)，再按一次 `Esc` 就收面板 —— 跟那一顆完全等價。同一件事不留兩個出口。
+        Commands = [NoteCommands.OpenInEditor(_store.FilePath, dismiss: true)];
     }
-
-    /// <summary>
-    /// 「捨棄變更」:收起面板，這一趟打的字不存。
-    ///
-    /// 沒有沿用 <see cref="NoteCommands.Done"/> 的「完成」，雖然行為完全一樣 ——
-    /// 那個字在別的頁面上是「看完了，收工」，在這一頁會被讀成「存檔並結束」,
-    /// 而它一個字都不會存。**存檔成功本來就會自己關掉面板**(見
-    /// <see cref="ScratchpadFormContent.SubmitForm"/>)，所以還會走到這一顆的，
-    /// 就只有「不想存」那一種情形，名字要照那個講。
-    ///
-    /// 講「變更」而不是「草稿」是刻意的:被丟掉的是**這一次的編輯**,
-    /// 不是已經存在檔案裡的草稿 —— 那份東西誰都不會動它。
-    ///
-    /// 實務上很難誤按:焦點在文字框裡時 <c>Enter</c> 是換行，碰不到底部工具列，
-    /// 而 <c>Tab</c> 的第一站是「儲存」。
-    /// </summary>
-    private static AnonymousCommand Discard() => new(() => { })
-    {
-        Name = Resources.ScratchpadDiscard,
-        Icon = Icons.Discard,
-
-        // 帶一句話再收工。這一顆最容易被誤讀成「存檔並結束」，而它一個字都不會存 ——
-        // 名字只在按下去**之前**看得到，真正需要確認的是按下去**之後**「剛才那些字沒進檔案」。
-        //
-        // 訊息刻意只有一行:曾經在後面接「—— 存著的草稿沒有動」，實機看過就知道太長，
-        // toast 是一瞥的東西。要保住的區分由「這次的」帶(丟掉的是這一次的編輯，
-        // 不是檔案裡的草稿)。
-        //
-        // 面板本來就要關，所以下面明著回 `Dismiss()`，而 toast 在面板收掉之後還留得住
-        // (同一個判斷見 ScratchpadFormContent 的存檔路徑與 CapturedNotePage 的「完成」)。
-        Result = Feedback.Done(Resources.ScratchpadDiscarded),
-    };
 
     public override IContent[] GetContent()
     {

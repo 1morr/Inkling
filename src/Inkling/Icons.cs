@@ -77,14 +77,6 @@ internal static class Icons
     public static IconInfo Add => Glyph(0xE710);
 
     /// <summary>
-    /// Cancel — 隨手草稿的「捨棄變更」。
-    ///
-    /// 不用 <see cref="Done"/> 的勾勾:那個符號說的是「成功了」，而按下去什麼都不會存。
-    /// 也不用 <see cref="Delete"/> 的垃圾桶 —— 沒有東西被刪掉，檔案裡的草稿原封不動。
-    /// </summary>
-    public static IconInfo Discard => Glyph(0xE711);
-
-    /// <summary>
     /// Document — 隨手草稿那一頁本身(頂層那一列走 <see cref="TopLevelScratchpad"/>)。
     ///
     /// 沒有沿用 <see cref="Note"/> 的 QuickNote:隨手草稿不是一則筆記，兩者在

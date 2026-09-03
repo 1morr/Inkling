@@ -61,27 +61,15 @@ public class PageCommandOrderTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void NoPageBindsTheSameShortcutTwice(bool captured)
+    [InlineData("preview")]
+    [InlineData("captured")]
+    [InlineData("edit")]
+    [InlineData("scratchpad")]
+    public void NoPageBindsTheSameShortcutTwice(string page)
     {
         // 同一個選單裡撞鍵**不會報錯** —— CmdPal 用 TryAdd，第二個被靜靜丟掉，
         // 只在它自己的 log 留一行 warning。所以只能靠這裡擋。
-        var (repository, settings) = Fixture();
-        var note = repository.Add("標題", "內文");
-
-        IContextItem[] commands;
-        if (captured)
-        {
-            var page = new CapturedNotePage(repository, new QuickCaptureDraft("標題", "內文"), settings);
-            page.GetContent();
-            commands = page.Commands;
-        }
-        else
-        {
-            var page = new NotePreviewPage(repository, note, settings);
-            commands = page.Commands;
-        }
+        var commands = CommandsOf(page);
 
         var chords = commands
             .OfType<CommandContextItem>()
@@ -116,7 +104,12 @@ public class PageCommandOrderTests
         // **這一頁的 Enter 特別危險:卡片上壓著使用者還沒儲存的修改。**
         // 焦點在單行的標題欄時按 Enter 是很自然的「送出」手勢，而這裡曾經只掛一個
         // 「在預設編輯器開啟」—— 於是 Enter 就是它:跳去外部編輯器、面板被 Dismiss 收掉，
-        // 打過的字全部消失(實機驗過)。
+        // 打過的字全部消失。
+        //
+        // **2026-09-03 量過了**:位置鍵在**單行**輸入框裡打得到底部工具列(Tab 到標題欄
+        // 按 Ctrl+Enter → 外部編輯器真的開了、面板收掉)，在**多行**框裡打不到。
+        // 這一頁兩種欄位都有，所以守衛是必要的;隨手草稿只有多行框，因此刻意不加。
+        // 量測表見 docs/design-notes.md〈位置鍵打不打得到工具列〉。
         //
         // 釘住的是「Commands[0] 是無害的那一顆」。誰都可以在後面加東西，
         // 但第一個位置一動，Enter 的意思就變了，而那不會有任何編譯或執行期訊號。
@@ -134,8 +127,52 @@ public class PageCommandOrderTests
         Assert.Equal(CommandResultKind.KeepOpen, result.Kind);
     }
 
+    [Fact]
+    public void ScratchpadPage_HasNothingButOpenExternal()
+    {
+        // 這一頁的卡片只有一個**多行**文字框，位置鍵進不來(2026-09-03 量測),
+        // 所以它不需要編輯頁那顆擋 Enter 的守衛 —— 加一顆只會是按不到又不做事的按鈕。
+        // 「捨棄變更」也移除了:Esc 就是不存離開，再按一次收面板，完全等價。
+        var page = Scratchpad();
+
+        var only = Assert.IsType<CommandContextItem>(Assert.Single(page.Commands));
+
+        Assert.Equal(Resources.CommandOpenInEditor, only.Title);
+        Assert.Equal(Describe(Shortcuts.OpenExternal), Describe(only.RequestedShortcut));
+    }
+
     private static (FakeNoteRepository Repository, FakeSettings Settings) Fixture() =>
         (new FakeNoteRepository(), new FakeSettings());
+
+    /// <summary>建構子與 FilePath 都不碰磁碟，所以資料夾給什麼都行。</summary>
+    private static ScratchpadPage Scratchpad() =>
+        new(new ScratchpadStore(new InklingOptions { NotesDirectory = Path.GetTempPath() }));
+
+    private static IContextItem[] CommandsOf(string page)
+    {
+        var (repository, settings) = Fixture();
+        var note = repository.Add("標題", "內文");
+
+        switch (page)
+        {
+            case "preview":
+                return new NotePreviewPage(repository, note, settings).Commands;
+
+            case "captured":
+                var captured = new CapturedNotePage(repository, new QuickCaptureDraft("標題", "內文"), settings);
+                captured.GetContent();
+                return captured.Commands;
+
+            case "edit":
+                return new NoteEditPage(repository, note).Commands;
+
+            case "scratchpad":
+                return Scratchpad().Commands;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(page), page, "沒有這一頁");
+        }
+    }
 
     private static string? TitleOf(IContextItem item) =>
         item is CommandContextItem command ? command.Title : null;

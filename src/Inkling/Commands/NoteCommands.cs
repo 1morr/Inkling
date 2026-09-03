@@ -87,6 +87,11 @@ internal static class NoteCommands
     /// 看到的才是編輯器存下的那一版。
     ///
     /// 筆記那三頁不傳(維持 <c>KeepOpen</c>):它們顯示的是唯讀的預覽，沒有這個問題。
+    ///
+    /// <b>不要在這裡掛「跳出去會丟掉未存的字」的警告副標。</b>2026-09-03 試過，
+    /// 而且是眼見為憑地否掉的:<c>CommandContextItem.Subtitle</c> 在 CmdPal
+    /// 0.11.11762.0 的 <c>Ctrl+K</c> 選單裡**根本不會渲染**，那裡只有圖示、標題與鍵位。
+    /// 見 docs/design-notes.md〈`CommandContextItem.Subtitle` 畫不出來〉。
     /// </param>
     public static CommandContextItem OpenInEditor(string filePath, bool dismiss = false) =>
         new(new OpenNoteFileCommand(filePath, dismiss))

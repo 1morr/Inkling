@@ -316,6 +316,43 @@ CmdPal 的 `ShowEmptyContent` 只看篩完的項目數是不是零，**不看搜
 
 ## 清單與詳細窗格
 
+<a id="context-item-subtitle-dead"></a>
+
+### `CommandContextItem.Subtitle` 畫不出來
+
+`Ctrl+K` 選單的每一項是一個 `CommandContextItem`，它有 `Title`、`Subtitle`、`Icon`、
+`RequestedShortcut`。**`Subtitle` 在 CmdPal 0.11.11762.0 上不會渲染** —— 選單裡只有
+圖示、標題與鍵位。
+
+2026-09-03 眼見為憑地確認過。清單頁某一列按 `Ctrl+K`，畫面上八項全部是「圖示 + 標題 + 鍵位」:
+
+```
+預覽                      複製內文        Ctrl+Shift+C
+編輯              Ctrl+E  在預設編輯器開啟  Ctrl+O
+顯示渲染後的預覽   Ctrl+U  開啟檔案位置     Ctrl+L
+                          新增筆記         Ctrl+N
+                          刪除            Ctrl+D
+```
+
+而「複製內文」與「開啟檔案位置」在程式碼裡**都設了 `Subtitle`**。
+
+UIA 樹的對照更乾淨:清單項讀得到副標(頂層那五列的 `Text: '開表單寫比較長的內容'` 就在樹上),
+選單項的 `Group:` 底下只有兩個 `Text` —— 標題與鍵位。**兩種節點形狀不同，不是 UIA 沒吐出來。**
+(`Ctrl+K` 的 popup 是獨立視窗，`tools\cmdpal-ui.ps1` 的 `shot` 走 PrintWindow 拍不到它，
+`orca computer` 又看不到 CmdPal 的視窗 —— 要截圖得抓整個螢幕。)
+
+**所以不要為了「把代價講給使用者聽」往選單項加副標。** 這條路 2026-09-03 走過一次:
+隨手草稿的「在預設編輯器開啟」跟編輯頁那顆有一模一樣的危險(卡片上有未儲存的副本，
+跳出去會丟掉)，想補一句警告，接上去之後才發現畫面上什麼都沒有，當輪撤掉。
+
+**現有的死宣告清單**(留著不動，因為它們描述的東西仍然是真的，哪天上游開始畫副標就會自己
+亮起來 —— 但**不要以為使用者看得到**):`NoteCommands` 的 `CopyBody` 與 `OpenFileLocation`、
+`NoteEditPage` 的兩顆、`NoteListPage` 與 `DeleteNotesPage` 各兩處、`SourceModeToggle`。
+**`ListItem.Subtitle` 完全不受影響** —— 清單那一列的副標畫得出來，那是另一個型別。
+
+**什麼變了才該重新考慮**:上游的 `ContextItemTemplateSelector` 開始畫第二行。
+要確認就重跑上面那個截圖。
+
 <a id="section-not-grouping"></a>
 
 ### 分節標頭:`Section` 不是分組鍵
@@ -658,7 +695,13 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
 `ContentPage` 的底部工具列主命令就是 `Commands[0]`(位置鍵，見〈兩個位置鍵〉)。
 編輯頁一度只掛一項「在預設編輯器開啟」，於是 **`Enter` 就是它**:焦點在**單行**的標題欄時
 按 Enter 是很自然的「送出」手勢，結果卻是跳去外部編輯器、面板被 `Dismiss` 收掉，
-卡片上打過而還沒儲存的字全部消失。實機重現過。
+卡片上打過而還沒儲存的字全部消失。
+
+**那次的原始觀察是 2026-08-21 的 `c499ee0`** —— `tools\cmdpal-ui.ps1` 送 `key:Enter` 到編輯頁，
+**VS Code 被開了四次**、面板被收掉，而且逼出了那支腳本的一個修正(預期會收面板的序列要帶
+`-Retries 1`)。那不是推論，是撞到的副作用。**但它沒有記錄焦點在哪一格**，序列也沒留下來，
+而「焦點在單行標題欄」這個限定條件是 49 分鐘後才寫上去的敘述句 —— 之後三份文檔互相引用固化，
+`known-issues` 的 K-6 甚至反過來引用它當證據。條件本身直到 2026-09-03 才真的量掉，見下一節。
 
 當時的結論寫著「Enter 本身收不回來」,**那句話是錯的**，而且同一個 repo 裡就有三個反例:
 `ScratchpadPage` 刻意把無害的「捨棄變更」放在 `Commands[0]`、把跳外部推到 `Commands[1]`;
@@ -670,6 +713,53 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
 放上去只會是一顆假按鈕。真正的儲存只有卡片裡那顆 `Action.Submit` 一條路。
 `tests/Inkling.Tests/PageCommandOrderTests.cs` 有一條斷言把 `Commands[0]` 釘住 ——
 這個位置一動，`Enter` 的意思就變了，而那不會有任何編譯或執行期訊號。
+
+<a id="position-keys-reachability"></a>
+
+#### 位置鍵打不打得到工具列:2026-09-03 的量測
+
+底部工具列那兩顆按鈕是**位置鍵**(`Enter` = `Commands[0]`、`Ctrl+Enter` = `Commands[1]`)。
+在表單頁上它們**不一定按得到** —— 這件事以前只有敘述、沒有量測，而且兩份文檔互相矛盾:
+上一節說「焦點在單行標題欄按 `Enter` 會跳出去」,`manual-test-checklist.md` 的隨手草稿那節
+說「工具列雖然標著 `⏎`，但直接按 `Enter` 按不到它」。兩邊都沒有量。
+
+實機量了(CmdPal 0.11.11762.0、`tools\cmdpal-ui.ps1`):
+
+| 頁面 | 焦點 | 按鍵 | 種類 | 結果 |
+|---|---|---|---|---|
+| 隨手草稿 | 多行框(初始焦點) | `Enter` | 位置鍵 | **打不到** —— toast 沒出現、面板還在前景 |
+| 隨手草稿 | 多行框 | `Ctrl+Enter` | 位置鍵 | **打不到** |
+| 編輯筆記 | 多行內文(初始焦點) | `Ctrl+Enter` | 位置鍵 | **打不到** —— UIA 樹還讀得到編輯頁 |
+| 編輯筆記 | `Tab` 一次到**單行標題欄** | `Ctrl+Enter` | 位置鍵 | **打得到** —— VS Code 開了那個 `.md`、面板收掉 |
+| 隨手草稿 | 多行框 | `Ctrl+O` | `RequestedShortcut` | **打得到** —— VS Code 開了 `scratchpad.md`、面板收掉 |
+
+**兩條結論:**
+
+1. **`RequestedShortcut` 一律打得到。** CmdPal 在 `ShellPage_OnPreviewKeyDown` 的 tunneling
+   階段就把鍵送去比對，比輸入框早收到 —— 這條原本只在清單頁的搜尋框上驗過，現在確認在
+   `ContentPage` 的 Adaptive Cards 表單上同樣成立。
+2. **位置鍵要看焦點落在哪一種輸入框。** 多行(`isMultiline: true`)把 `Enter` 與 `Ctrl+Enter`
+   都吃掉;單行不吃，會冒泡到工具列。
+
+**所以「表單頁的工具列鍵盤按不到」只有半對** —— 它在整張卡片沒有單行欄位時才成立。
+編輯表單有標題欄(單行)，所以 `Commands[0]` 的守衛是必要的;隨手草稿只有一個多行框，
+那裡因此刻意**不**加守衛 —— 加了只會是一顆按不到又不做事的按鈕。
+(滑鼠仍然點得到工具列，兩頁都是。守衛擋的是誤按，不是誤點。)
+
+**什麼變了才該重新考慮**:`ScratchpadFormContent` 長出單行欄位的那一天 —— 那時守衛要補回去。
+反過來，CmdPal 哪天把位置鍵也搬到 tunneling 階段，編輯頁那顆守衛就會變成擋所有情況的必需品。
+
+**量法(可重跑)** —— `-Retries 1` **不能少**:預期結果是面板收起來時，預設的四次重試會把
+有副作用的步驟重做四遍(那正是 `c499ee0` 開了四次 VS Code 的原因)。
+
+```powershell
+# 打不到的那一種:面板還在，tree 讀得到
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Retries 1 -Steps "show|key:ctrl+a|type:隨手草稿|wait:1800|key:Enter|wait:2500|key:Ctrl+Enter|wait:3000|toast|tree:5"
+
+# 打得到的那一種:面板收掉、tree 讀不到，而且外部編輯器真的開了
+pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Retries 1 -Steps "show|key:ctrl+a|type:# |wait:1300|type:<某則筆記>|wait:1600|key:Ctrl+E|wait:2800|key:Tab|wait:800|key:Ctrl+Enter|wait:3000|toast"
+Get-Process Code | Where-Object MainWindowTitle | Select-Object -ExpandProperty MainWindowTitle
+```
 
 <a id="scratchpad-no-autosave"></a>
 
@@ -704,16 +794,19 @@ Adaptive Cards 沒有任何值變更的回呼，沒有失焦事件，也沒有 `
   再按一次儲存就把外部的修改整個蓋掉。收起來之後下次打開會重新 `GetContent()` 讀檔，
   看到的才是編輯器那一版。**這是這一頁唯一會靜靜吃掉使用者資料的路。**
 - **`Name` 要自己換掉。** 底部工具列那兩顆按鈕顯示的是命令的 `Name`(不是選單項的 `Title`),
-  而 `OpenUrlCommand` 帶的是 toolkit 自己資源檔的 `"Open"`。隨手草稿把它放在 `Commands[1]`,
-  那正是工具列的位置 —— 實機驗證時抓到按鈕上是一個英文的 Open。`ShowFileInFolderCommand`
-  早就為了同一件事這樣做。
+  而 `OpenUrlCommand` 帶的是 toolkit 自己資源檔的 `"Open"`。隨手草稿把它放在工具列上，
+  實機驗證時抓到按鈕上是一個英文的 Open。`ShowFileInFolderCommand` 早就為了同一件事這樣做。
 - **底部工具列放不了「儲存」，不管多想這麼做。** 那兩顆按鈕走的是 `ICommand.Invoke()`,
-  沒有參數 —— 跟上面同一條限制。放上去會是一顆存不了東西的假按鈕。`Commands[0]`(`Enter`)
-  因此是**「捨棄變更」**:存檔成功本來就會自己關掉面板，所以還會走到那一顆的只剩「不想存」
-  那一種情形，名字要照那個講。沒有沿用別頁的「完成」—— 那個字在這裡會被讀成「存檔並結束」,
-  而它一個字都不會存。講「變更」而不是「草稿」也是刻意的:丟掉的是**這一趟的編輯**,
-  不是檔案裡那份草稿。實務上很難誤按:焦點在文字框裡時 `Enter` 是換行，碰不到工具列，
-  而 `Tab` 的第一站是「儲存」。
+  沒有參數 —— 跟上面同一條限制。放上去會是一顆存不了東西的假按鈕。
+  **這一頁因此只掛一項**:「在預設編輯器開啟」。
+- **「捨棄變更」2026-09-03 移除了。** 它曾經坐在 `Commands[0]`，做的是「收面板、這一趟打的字
+  不存」—— 而 `Esc` 就是那件事(退出去再進來，上次**存下**的內容原封不動)，再按一次 `Esc`
+  就收面板。同一件事留兩個出口，而其中一個還坐在位置鍵上。順帶拿掉的還有 `Icons.Discard`
+  與 `ScratchpadDiscard` / `ScratchpadDiscarded` 兩條資源字串。
+  當時留著它的理由是「實務上很難誤按:焦點在文字框裡時 `Enter` 是換行，碰不到工具列」——
+  那句話**後來量過了，是對的**(見〈位置鍵打不打得到工具列〉)，但「按不到」從來不是
+  「該放」的理由。這一頁也因此**不需要**編輯頁那顆擋 `Enter` 的守衛:卡片上只有一個多行框，
+  位置鍵進不來，加一顆無害命令只會是按不到又不做事的按鈕。
 - **存檔成功時發 `CommandResult.ShowToast`，而不是狀態訊息。** 判準是〈記下之後要不要
   先看一眼〉那一條:**使用者接下來還要不要看著這個面板**。存完就收工，所以不必看 ——
   那正是 toast 唯一合適的時機(它是唯一能在面板消失之後還留在畫面上的通道;
@@ -848,6 +941,17 @@ InfoBar 綁在當下這一頁的 view model 上，`GoHome()` 導覽走的時候�
 | `GoHome()`(正常存檔那條) | **一個字都沒有** |
 
 `CommandResult.ShowToast` 是**獨立視窗**，導覽拆不掉它 —— 要跨頁活下來只有它。
+
+**為什麼是 `GoHome` 而不是收面板 —— 這是全 repo 唯一一條不收面板的存檔路。**
+另外五條(快速記下、新增筆記、編輯筆記、隨手草稿存檔、記下並預覽頁的「完成」)全部走
+`Feedback.Done`，判準是[〈通道的分工〉](#feedback-channels)那一句:**使用者接下來還要不要
+看著這個面板**。設定頁的答案跟那五條不一樣 —— 改完設定的下一步多半是**去用它**:
+看看新資料夾裡列出什麼、試一下剛換的分隔符。把面板收掉等於逼使用者再叫一次。
+存筆記則相反，存完那件事就結束了。
+
+2026-09-03 重新檢查過一次(那一輪剛把編輯表單從「留在原地」改成收面板)，結論是維持不動。
+**什麼變了才該重新考慮**:設定項多到「改一個就走人」變成常態，或是出現「改完不必立刻看結果」
+的設定 —— 那時這一條就跟其他五條沒有差別了。
 
 <a id="toast-does-not-steal-focus"></a>
 
@@ -2154,6 +2258,32 @@ Inkscape / rsvg，而 .NET 不會解 SVG。重點是它**以目標尺寸直接�
 這一節收的是**查過、量過，然後決定不做**的東西。它們不是待辦 —— 沒有寫下來的話，
 每隔一陣子就會有人(包括半年後的自己)重新想到同一個點子，再把同樣的路走一遍。
 每一條都寫了「什麼變了才該重新考慮」;前提沒變就不要動。
+
+<a id="no-merging-form-pages"></a>
+
+### 新增筆記頁與編輯筆記頁不合併
+
+兩頁都只是把同一個 `NoteFormContent` 包起來，看起來像重複。**但真正共用的東西早就抽出來了**
+—— 表單本身、欄位順序、驗證、存檔、收尾全在那一個類別裡。剩下的頁面層屬性**每一項都不同**:
+
+| | `NewNotePage` | `NoteEditPage` |
+|---|---|---|
+| `Id` | `CommandIds.NewNote`(**凍結的字串**) | 不設(它不是頂層命令) |
+| `Icon` | `Icons.Add` | `Icons.Edit` |
+| `Title` | 靜態字串 | `Strings.Format(EditPageTitle, note.Title)` |
+| `Name` | `CommandNew` | `CommandEdit` |
+| `Commands` | 不設 | 有(擋 `Enter` 的守衛 + 跳外部) |
+| `GetContent()` | 固定傳 `null` | 每次重查 `GetByPath` 再傳 |
+| 建構子 | 1 個參數 | 3 個 |
+
+合併之後會是一個帶六個 `note is null ? A : B` 的類別，而 `NewNotePage` 本身只有 26 行、
+其中沒有一行邏輯 —— 換不到可讀性。**而且風險是實的**:`CommandIds.NewNote` 是對外承諾
+(使用者的 alias / 快速鍵 / 釘選都以它為鍵，見[〈命令 Id 為什麼要寫死〉](#command-ids)),
+合併後只要讓編輯那條路也拿到這個 `Id`，兩個命令對 CmdPal 就變成同一把鑰匙，
+而 `CommandIdTests` **抓不到這種誤用** —— 它只掃 `CommandIds` 裡的常數值，不看誰在用。
+
+**什麼變了才該重新考慮**:兩頁的頁面層屬性開始趨同 —— 例如新增頁也需要 `Commands`
+(它的初始焦點就是單行的標題欄，見〈位置鍵打不打得到工具列〉)，或是編輯頁不再需要重查。
 
 <a id="no-isloading"></a>
 

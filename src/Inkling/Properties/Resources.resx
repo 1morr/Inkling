@@ -131,17 +131,9 @@
   <data name="ProviderScratchpadSubtitle" xml:space="preserve">
     <value>Pick up where you left off, no title needed</value>
   </data>
-  <data name="ScratchpadDiscard" xml:space="preserve">
-    <value>Discard changes</value>
-    <comment>草稿板底部工具列的第一顆(Enter)。刻意不叫 Done —— 這一頁存檔會自己關掉面板，所以按到這一顆的意思是「這次打的不存」。講「變更」而不是「草稿」:被丟掉的是這一次的編輯，不是已經存在檔案裡的草稿。</comment>
-  </data>
   <data name="ScratchpadSaved" xml:space="preserve">
     <value>Saved to scratchpad</value>
     <comment>存完就關面板，所以走的是會關面板的 toast(CommandResult.ShowToast)，不是 InfoBadge —— 後者畫在面板上，面板收了就看不見。</comment>
-  </data>
-  <data name="ScratchpadDiscarded" xml:space="preserve">
-    <value>Changes discarded</value>
-    <comment>toast 是一瞥的東西，一行就要讀完 —— 曾經在後面接「存著的草稿沒有動」，實機看過就知道太長。要保住的區分(丟掉的是這一次的編輯，不是檔案裡的草稿)由中文的「這次的」帶，英文 discarded 的受詞是 changes 已經隱含。同一個區別見 ScratchpadDiscard。</comment>
   </data>
   <data name="ProviderDeleteSubtitle" xml:space="preserve">
     <value>Delete a few, or clear them all</value>
@@ -437,9 +429,10 @@ Deleted files go to the Recycle Bin. On network drives, or devices without one, 
   <data name="EditOpenExternalTitle" xml:space="preserve">
     <value>Open in default editor instead</value>
   </data>
-  <!-- 這一頁的 Enter 就坐在這個命令上(底部工具列的主命令只看順序)，而卡片上
-       改到一半的內容不會跟著過去 —— 焦點在單行的標題欄時按 Enter 特別容易誤觸，
-       所以副標要把代價講出來。 -->
+  <!-- ⚠ 這一句畫不出來:CommandContextItem.Subtitle 在 CmdPal 0.11 的 Ctrl+K 選單裡
+       不會渲染(2026-09-03 截圖確認)。留著是因為它描述的代價仍然是真的，哪天上游
+       開始畫副標就會自己亮起來 —— 但**不要**因此以為使用者看得到這句話。
+       見 docs/design-notes.md〈CommandContextItem.Subtitle 畫不出來〉。 -->
   <data name="EditOpenExternalSubtitle" xml:space="preserve">
     <value>Better than the form for long bodies; unsaved edits here are dropped</value>
   </data>
