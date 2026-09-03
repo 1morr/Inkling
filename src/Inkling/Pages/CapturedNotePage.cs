@@ -200,8 +200,14 @@ internal sealed partial class CapturedNotePage : ContentPage
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // 磁碟滿了、資料夾被移走、OneDrive 鎖住檔案。這一頁沒有 toast 可用，
-            // 錯誤就直接畫在頁面上 —— 絕對不能讓使用者以為想法記下來了。
+            // 磁碟滿了、資料夾被移走、OneDrive 鎖住檔案。**錯誤直接畫在頁面上**,
+            // 絕對不能讓使用者以為想法記下來了。
+            //
+            // 這裡**不是**「沒有 toast 可用」(那是 2026-08-23 之前那條假規則的說法,
+            // 見型別註解):`Feedback.Stay` 在這一頁完全可用。選擇畫在頁面上，是因為
+            // 底部那條 InfoBar 約 2.5 秒就收掉，而這一頁失敗時要留住的東西有兩樣 ——
+            // 失敗原因，以及使用者剛打的那段原文(下面 GetContent 會整段顯示出來讓他複製走)。
+            // 兩者都得在畫面上待到他自己離開為止。
             _error = ex.Message;
 
             // 放掉旗標，下一次進來才會真的再寫一次檔(理由見方法註解)。

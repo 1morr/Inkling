@@ -166,7 +166,7 @@ internal sealed partial class NoteFormContent : FormContent
                 // Enter 之後 400 / 900 / 1500 / 2500 ms 四次截圖都沒有徽章。
                 //
                 // 收工的五條路(這裡、下面的編輯、快速記下、記下並預覽頁的「完成」、
-                // 隨手草稿的存檔與捨棄)全部走 `Done`，不再有例外可以照抄錯。
+                // 隨手草稿的存檔)全部走 `Done`，不再有例外可以照抄錯。
                 return Feedback.Done(Strings.Format(Resources.NoteCreated, title));
             }
 

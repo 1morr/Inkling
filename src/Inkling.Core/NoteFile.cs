@@ -33,7 +33,6 @@ public sealed record ParsedNoteFile
 
     public string Body { get; init; } = string.Empty;
 
-    /// <summary>檔案裡到底有沒有 front matter 區塊。</summary>
     /// <summary>
     /// 這個檔案原本有沒有合法的 front matter。生產程式碼不讀它，**但它是單元測試
     /// 唯一看得到的觀察點** —— 「開頭是 `---` 但不是 front matter 就整檔當內文」

@@ -205,6 +205,38 @@ internal sealed partial class InklingSettingsForm : FormContent
     }
 
     /// <summary>
+    /// 設定檔壞掉被搬走時，卡片最上面那塊警告(沒發生就是空字串，含後面那個逗號)。
+    ///
+    /// <b>這是卡片頂上唯一允許出現的一塊。</b> <see cref="BuildTemplate"/> 上那段說明寫著
+    /// 「不要在卡片頂上再開一塊」,講的是**常駐**的說明文字 —— 那種東西會讓某個欄位
+    /// 變成唯一上下都有字的。
+    /// 這一塊不一樣:它不是說明而是錯誤，絕大多數時候根本不存在，而且非放最上面不可
+    /// —— 使用者會來這一頁，正是因為「筆記全部不見了」(資料夾被退回預設值),
+    /// 那句解釋要在他看到資料夾欄位**之前**就讀到。
+    ///
+    /// <c>attention</c> 是 Adaptive Cards 內建的警示色，不必自己碰顏色。
+    /// </summary>
+    private static string CorruptSettingsWarning(SettingsManager settings)
+    {
+        if (settings.QuarantinedFile is not { } quarantined)
+        {
+            return string.Empty;
+        }
+
+        var text = Strings.Format(Resources.SettingsCorruptWarning, Path.GetFileName(quarantined));
+
+        return $$"""
+            {
+                "type": "TextBlock",
+                "text": {{CardText.Json(text)}},
+                "wrap": true,
+                "color": "attention",
+                "weight": "bolder"
+            },
+            """;
+    }
+
+    /// <summary>
     /// 卡片的排版。
     ///
     /// 「瀏覽…」跟輸入框放在同一個 <c>ColumnSet</c> 裡，按鈕那一欄靠底對齊 ——
@@ -257,37 +289,6 @@ internal sealed partial class InklingSettingsForm : FormContent
     /// 見 docs/design-notes.md〈編輯表單〉)，使用者手上單行框按 Enter 不會送出，Tab 到「儲存」
     /// 是唯一的鍵盤路徑。只留一顆的安排兩個版本下都對，所以維持。
     /// </summary>
-    /// <summary>
-    /// 設定檔壞掉被搬走時，卡片最上面那塊警告(沒發生就是空字串，含後面那個逗號)。
-    ///
-    /// <b>這是卡片頂上唯一允許出現的一塊。</b> 上面那段說明寫著「不要在卡片頂上再開一塊」,
-    /// 講的是**常駐**的說明文字 —— 那種東西會讓某個欄位變成唯一上下都有字的。
-    /// 這一塊不一樣:它不是說明而是錯誤，絕大多數時候根本不存在，而且非放最上面不可
-    /// —— 使用者會來這一頁，正是因為「筆記全部不見了」(資料夾被退回預設值),
-    /// 那句解釋要在他看到資料夾欄位**之前**就讀到。
-    ///
-    /// <c>attention</c> 是 Adaptive Cards 內建的警示色，不必自己碰顏色。
-    /// </summary>
-    private static string CorruptSettingsWarning(SettingsManager settings)
-    {
-        if (settings.QuarantinedFile is not { } quarantined)
-        {
-            return string.Empty;
-        }
-
-        var text = Strings.Format(Resources.SettingsCorruptWarning, Path.GetFileName(quarantined));
-
-        return $$"""
-            {
-                "type": "TextBlock",
-                "text": {{CardText.Json(text)}},
-                "wrap": true,
-                "color": "attention",
-                "weight": "bolder"
-            },
-            """;
-    }
-
     private static string BuildTemplate(SettingsManager settings)
     {
         var directory = settings.NotesDirectorySetting;

@@ -28,9 +28,10 @@ namespace Inkling.Pages;
 /// **例外只有一個**:不是 Inkling 建立的檔案，兩條路都跳確認框。那是別的工具寫的、
 /// 或使用者自己丟進資料夾的，誤刪的代價跟自己記的筆記不一樣，不給它「跳過確認」這個選項。
 ///
-/// 刪完的回饋不靠 toast，靠那一列當場從清單上消失 —— 理由見
-/// <see cref="DeleteNoteCommand"/>(簡單說:那一列消失已經把事情講完了，
-/// 再疊一則 toast 是重複。**不是因為 toast 會收面板** —— 那條舊理由是假的)。
+/// 刪完會講一句「已刪除:&lt;標題&gt;」並留在這一頁(<see cref="Feedback.Stay"/>)——
+/// 那一列當場從清單上消失固然直接，但它說不出**被刪掉的是哪一則**,而選取刪完會落到
+/// 下一則上，視覺錨點已經沒了。理由與「這條路曾經整整十天是靜默的」見
+/// <see cref="DeleteNoteCommand"/>。
 /// </summary>
 internal sealed partial class DeleteNotesPage : ListPage, IDisposable
 {

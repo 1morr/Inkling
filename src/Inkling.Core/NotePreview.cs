@@ -214,7 +214,17 @@ public static class NotePreview
         }
 
         // 外來檔案的標題推導有 120 字截斷，完整與截斷後兩種長度都要比。
-        var truncated = first.Length > NoteBody.MaxLineLength ? first[..NoteBody.MaxLineLength] : first;
+        //
+        // **一定要走 NoteBody.Truncate,不能自己 first[..MaxLineLength]。** 這裡曾經是後者，
+        // 而那個裸切跟推導標題那一頭算出來的東西在代理對上不一樣:Truncate 會退一格避免
+        // 把 emoji 或擴充區漢字切成兩半，裸切不會。於是第 120 個位置剛好落在代理對中間的
+        // 外來檔案，標題是 119 字、這裡比的是 120 字，永遠對不上 —— 預覽就在本來已經
+        // 以標題開頭的內文上面，又補了一個一模一樣的 H1。
+        //
+        // 這正是 NoteBody 這個型別存在的理由(同一個概念只留一份實作),而漂掉的是
+        // 最晚加進來的這個消費者。釘住的測試是
+        // DataIntegrityTests.Preview_DoesNotRepeatADerivedTitleThatWasTruncatedAtASurrogatePair。
+        var truncated = NoteBody.Truncate(first);
         return string.Equals(first, title, StringComparison.Ordinal)
             || string.Equals(truncated, title, StringComparison.Ordinal);
     }

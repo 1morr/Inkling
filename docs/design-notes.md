@@ -148,7 +148,7 @@ toast「已記下：標題」→ Command Palette 消失。
 而 toast 在面板收掉之後還留得住。判斷一條路怎麼收尾，問的不是
 「這裡會不會關面板」，而是**「使用者接下來還要不要看著這個面板」** —— 要，就一個都不能發;
 不要，那 toast 反而是唯一能在面板消失之後還留在畫面上的通道(InfoBadge 畫在面板上，
-面板收了就跟著沒了)。同一個判斷套在隨手草稿的存檔與「捨棄變更」上，結論一樣。
+面板收了就跟著沒了)。同一個判斷套在隨手草稿的存檔上，結論一樣。
 
 **但「本來就要關」不等於「可以發」還有一個例外:跳到外部程式的那幾條路。**
 那時剛拿到焦點的是使用者要用的編輯器或檔案總管，toast 比它晚出現，會把它壓下去 ——
@@ -685,8 +685,8 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   `QuickCaptureCommand` 舊註解寫著 `GoHome()` 是為了「離開快速記下頁，否則搜尋框
   還留著剛打的字」,**那句話把兩個機制講混了**:清空那個搜尋框的是
   `OnCaptured`(接到 `QuickCapturePage.ClearQuery`)，跟回傳值無關。
-  現在四條收工路徑(新增表單、快速記下、記下並預覽頁的「完成」、隨手草稿的存檔與
-  捨棄變更)一致回 `Dismiss()`，不再有例外可以照抄錯。
+  現在五條收工路徑(新增表單、編輯表單、快速記下、記下並預覽頁的「完成」、
+  隨手草稿的存檔)一致回 `Dismiss()`，不再有例外可以照抄錯。
 
 <a id="edit-form-enter"></a>
 
@@ -703,9 +703,13 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
 而「焦點在單行標題欄」這個限定條件是 49 分鐘後才寫上去的敘述句 —— 之後三份文檔互相引用固化，
 `known-issues` 的 K-6 甚至反過來引用它當證據。條件本身直到 2026-09-03 才真的量掉，見下一節。
 
-當時的結論寫著「Enter 本身收不回來」,**那句話是錯的**，而且同一個 repo 裡就有三個反例:
-`ScratchpadPage` 刻意把無害的「捨棄變更」放在 `Commands[0]`、把跳外部推到 `Commands[1]`;
-`NewNotePage` 與 `InklingSettingsPage` 根本不設 `Commands`。`Commands[0]` 一直都是可控的。
+當時的結論寫著「Enter 本身收不回來」,**那句話是錯的**，而且同一個 repo 裡就有反例:
+`NewNotePage` 與 `InklingSettingsPage` 根本不設 `Commands`,那兩頁的 `Enter` 什麼都不做。
+`Commands[0]` 一直都是可控的。
+
+(這裡原本還舉了第三個反例:「`ScratchpadPage` 刻意把無害的『捨棄變更』放在 `Commands[0]`、
+把跳外部推到 `Commands[1]`」。那一顆 2026-09-03 移除了 —— 見下面〈隨手草稿為什麼沒有
+自動儲存〉—— 所以那個反例現在不存在了。留一行紀錄，免得下一個人去 git 歷史裡找它。)
 
 現在第一顆是一顆 `AnonymousCommand(() => { })` 配 `CommandResult.KeepOpen()`，名字叫
 「繼續編輯」—— 誤按 Enter 的代價變成零。它**不能**是「儲存」:底部工具列走的是無參數的

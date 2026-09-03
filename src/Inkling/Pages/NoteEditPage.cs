@@ -35,14 +35,19 @@ internal sealed partial class NoteEditPage : ContentPage
         //
         // 這裡曾經只掛一個「在預設編輯器開啟」——於是 Enter 就是它:跳去外部編輯器、
         // 面板被 Dismiss 收掉，打過的字全部消失(實機驗過)。當時的結論寫著
-        // 「Enter 本身收不回來」,**那句話是錯的**:同一個 repo 裡 ScratchpadPage 就把無害的
-        // 「捨棄變更」放在 Commands[0]、把跳外部推到 Commands[1],NewNotePage 與
-        // InklingSettingsPage 更是根本不設 Commands。Commands[0] 一直都是可控的。
+        // 「Enter 本身收不回來」,**那句話是錯的**:NewNotePage 與 InklingSettingsPage
+        // 根本不設 Commands，Enter 因此什麼都不做。Commands[0] 一直都是可控的。
         //
         // 所以現在第一顆是一顆什麼都不做的「繼續編輯」:誤按 Enter 的代價變成零。
         // 它**不能**是「儲存」—— 底部工具列走的是無參數的 ICommand.Invoke(),
-        // 拿不到使用者剛打的字(同一件事 ScratchpadPage 已經記過)，放上去只會是假按鈕。
+        // 拿不到使用者剛打的字(同一件事 ScratchpadFormContent 已經記過)，放上去只會是假按鈕。
         // 真正的儲存只有卡片裡那顆 Action.Submit 一條路。
+        //
+        // **這顆守衛是量出來該留的，不是為了對稱。** 2026-09-03 量過:位置鍵
+        // (Enter / Ctrl+Enter)在**單行**輸入框裡打得到底部工具列，在**多行**框裡被吃掉。
+        // 這一頁兩種欄位都有，所以誤按真的到得了;隨手草稿只有一個多行框，因此刻意
+        // 不加同一顆(加了會是一顆按不到又不做事的按鈕)。量測表見
+        // docs/design-notes.md〈位置鍵打不打得到工具列〉。
         Commands = [
             new CommandContextItem(KeepEditing())
             {

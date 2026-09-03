@@ -64,10 +64,17 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     /// <summary>剪貼簿快取的存活時間，見 <see cref="GetCachedClipboardText"/>。</summary>
     private const int ClipboardCacheTtlMs = 500;
 
-    private string? _cachedClipboard;
-
-    /// <summary><see cref="Environment.TickCount64"/>,null 代表還沒讀過。</summary>
-    private long? _clipboardCachedAtMs;
+    /// <summary>
+    /// 剪貼簿的快照。null 代表還沒讀過。
+    ///
+    /// **值與時間戳包成同一個不可變物件整個換掉**，理由跟 <see cref="VersionedItemsCache{TKey}"/>
+    /// 那個 snapshot 一模一樣:<c>GetItems</c> 是 CmdPal 跨進程叫進來的，不保證每次都落在
+    /// 同一個執行緒上。分成兩個欄位各寫各的話，除了會讀到「新值配舊時間」,
+    /// <c>long?</c> 本身**寫入就不是原子的**(它是 bool + long 的結構)——
+    /// 撕裂之後拿到的 <c>ReadAtMs</c> 是垃圾值，這份快取要嘛每次都重讀(卡頓回來了),
+    /// 要嘛幾十天都不重讀(「內文取自剪貼簿」那一列卡住舊內容，會存錯東西)。
+    /// </summary>
+    private ClipboardSnapshot? _clipboard;
 
     private volatile bool _disposed;
 
@@ -332,15 +339,22 @@ internal sealed partial class QuickCapturePage : DynamicListPage, IDisposable
     private string? GetCachedClipboardText()
     {
         var now = Environment.TickCount64;
+        var cached = Volatile.Read(ref _clipboard);
 
-        if (_clipboardCachedAtMs is not { } cachedAt || now - cachedAt >= ClipboardCacheTtlMs)
+        if (cached is not null && now - cached.ReadAtMs < ClipboardCacheTtlMs)
         {
-            _cachedClipboard = TryGetClipboardText();
-            _clipboardCachedAtMs = now;
+            return cached.Text;
         }
 
-        return _cachedClipboard;
+        var fresh = new ClipboardSnapshot(TryGetClipboardText(), now);
+        Volatile.Write(ref _clipboard, fresh);
+
+        return fresh.Text;
     }
+
+    /// <param name="Text">上一次讀到的剪貼簿內容;null = 讀不到或不是文字。</param>
+    /// <param name="ReadAtMs">讀取當下的 <see cref="Environment.TickCount64"/>。</param>
+    private sealed record ClipboardSnapshot(string? Text, long ReadAtMs);
 
     /// <summary>
     /// 讀剪貼簿。讀不到就當作沒有 —— 剪貼簿隨時可能被別的程式佔住，

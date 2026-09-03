@@ -231,6 +231,31 @@ public class DataIntegrityTests
         Assert.False(char.IsSurrogate(title[^1]), "截斷處留下了落單的代理字元");
     }
 
+    /// <summary>
+    /// <b>同一個截斷的第三個消費者曾經自己裸切一次。</b>
+    ///
+    /// 推導標題走 <c>NoteBody.Truncate</c>(代理對會退一格),而預覽判斷「內文是不是
+    /// 已經以標題開頭」卻自己寫了 <c>first[..120]</c> —— 兩邊對同一行字算出不同的結果，
+    /// 於是外來檔案的預覽在內文上面又補了一個一模一樣的 H1。
+    ///
+    /// 這正是 <c>NoteBody</c> 這個型別存在的理由(三個消費者只留一份實作),
+    /// 而漂掉的是最晚加進來的那一個。
+    /// </summary>
+    [Fact]
+    public void Preview_DoesNotRepeatADerivedTitleThatWasTruncatedAtASurrogatePair()
+    {
+        using var temp = new TempDirectory();
+
+        // 跟上面兩條同一個形狀:第 120 個 UTF-16 字元剛好是「🙂」的前半。
+        temp.WriteFile("外來.md", new string('a', 119) + "🙂尾巴");
+
+        using var repository = CreateRepository(temp);
+        var note = Assert.Single(repository.GetAll());
+
+        // 標題就是內文的開頭(截斷過),所以預覽不該再補一行 H1。
+        Assert.DoesNotContain("# ", NotePreview.Render(note), StringComparison.Ordinal);
+    }
+
     private static Note NoteWithBody(string title, string body) => new()
     {
         Id = "20260822-120000-abcd",
