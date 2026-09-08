@@ -1,9 +1,8 @@
 # Gallery 投稿素材
 
 這個資料夾是投稿 [microsoft/CmdPal-Extensions](https://github.com/microsoft/CmdPal-Extensions)
-gallery 的材料。**[PR #165](https://github.com/microsoft/CmdPal-Extensions/pull/165)
-2026-09-04 已經 merge**,但條目還沒出現在 gallery 裡 —— 見〈投稿流程〉第 6 步。
-之後要改條目走同一條路，材料留在這裡。
+gallery 的材料。**條目 2026-09-04 已經上線** —— [PR #165](https://github.com/microsoft/CmdPal-Extensions/pull/165)
+merge,`extensions.json` 由上游的 #168 / #169 重產。之後要改條目走同一條路，材料留在這裡。
 
 gallery 的 `installSources` 只接受 msstore 或 WinGet 的 id，而且 CI 與人工審核都會去點那個
 listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 上架生效，
@@ -11,6 +10,16 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
 
 **文案不要在這裡改。** `extension.json` 的 `shortDescription` 與 `description` 從
 [`docs/copy.md`](../copy.md) 抄過來，那一份是所有對外文案的來源。
+
+⚠ **投稿時要把 `docs/gallery/extension.json` 整個檔案複製過去，不要在投稿 repo 那邊
+重打或改字。** 踩過:2026-09-03 建投稿分支時 `shortDescription` 被臨場改短成
+「Take notes without leaving Command Palette. They are plain Markdown files in a folder
+you choose.」,而那句**整個 repo 的歷史裡從來沒有出現過**(`git log --all -S` 掃得掉),
+所以本機看不出任何異狀 —— 直到條目上線、拿 feed 跟 `docs/copy.md` 逐欄位比對才發現。
+掉的那半正好是「做什麼」(打字、按 Enter),剩下的只講檔案放哪，而 `They` 也沒有先行詞。
+修正見下面〈後續修正〉。**上線之後想確認有沒有漂,拿
+`https://raw.githubusercontent.com/microsoft/CmdPal-Extensions/main/extensions.json`
+的條目跟 `docs/gallery/extension.json` 逐欄位 diff,不要只看畫面。**
 
 ⚠ **`title` 是 `Inkling Notes`，跟 Store 上的名字一致** —— `Inkling` 被商標擋下了
 (見[設計考證〈套件身分凍結在 Partner Center 指派的那一組〉](../design-notes.md#package-identity))。CmdPal 面板裡的命令標題仍然是
@@ -99,11 +108,26 @@ listing。Store 的 <https://apps.microsoft.com/detail/9NDGWN4JTXHH> 2026-08-25 
    同一次 merge 觸發的 **`Deploy extension gallery to GitHub Pages` 會失敗，那不是我們的問題**
    —— `build` 成功、`deploy` 拿到 404(`Ensure GitHub Pages has been enabled`),
    而且這個 workflow **從 2026-08-13 建立以來 11 次全失敗、零成功**。別被它嚇到。
-6. ⬜ **等維護者重產 `extensions.json`** —— **merge 之後不會馬上出現在 gallery 裡**。
-   根目錄那份 feed(2026-09-04 當下 80 個條目，還沒有 Inkling)要維護者另外開一個
-   `Update extensions.json` 的 PR 重產，那一份 merge 了才生效(上游
-   `docs/CONTRIBUTING.md` 第 9 步)。歷史上的 #161、#152、#150 都是這種 PR,
-   所以接下來盯的是下一個 `Update extensions.json`,不是 #165。
+6. ✅ **等維護者重產 `extensions.json`** —— **merge 之後不會馬上出現在 gallery 裡**。
+   根目錄那份 feed 要維護者另外開一個 `Update extensions.json` 的 PR 重產，那一份
+   merge 了才生效(上游 `docs/CONTRIBUTING.md` 第 9 步)。這次是 #168 / #169,
+   2026-09-04 當天就補上了(feed 從 80 個變成 82 個，條目帶 `addedAt: 2026-09-04`
+   與上游自動生成的 `iconUrl` / `screenshotUrls`)。
+
+   **gallery 的網站是死的,別拿它驗。** <https://microsoft.github.io/CmdPal-Extensions/>
+   回 404,repo 的 `has_pages` 就是 `false` —— 那正是第 5 步那個 deploy job 一直失敗的
+   原因。實際看得到條目的地方是 **CmdPal 應用內的擴展清單**,它直接讀 raw 的
+   `extensions.json`,不經過網站。
+
+<a id="後續修正"></a>
+## 後續修正
+
+| 改什麼 | 分支 | 狀態 |
+|---|---|---|
+| `shortDescription` 改回 `docs/copy.md` 的版本(見上面那則 ⚠) | `fix-inkling-shortdescription`,[compare 連結](https://github.com/microsoft/CmdPal-Extensions/compare/main...1morr:CmdPal-Extensions:fix-inkling-shortdescription) | ⬜ 分支已推,待開 PR |
+
+分支是 2026-09-04 從當時的 upstream `main`(`91a94c1`)開的，只動 `extension.json` 一行,
+`validate.py` 本機跑過零錯誤。開 PR 之後補上編號。
 
 **真正的關卡是 CI，不是人工審核。** 2026-09-03 翻過上游最近 30 個 PR:投稿類幾乎都是
 維護者直接 Approve、當天或隔天 merge，沒有人被要求改描述或截圖。兩件沒 merge 的都不是
