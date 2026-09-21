@@ -43,7 +43,7 @@ jobs:
       # 方案層級不能建:src/Inkling 是 MSIX 專案(Platforms 只有 x64;ARM64),
       # 方案檔沒有對應的組態對應，PublishSingleFile 與 MSIX 打包目標在方案層
       # 都會直接報錯(本機實測 NETSDK1097 / ProcessorArchitecture neutral)。
-      # 所以分專案建 —— 這也正是 CLAUDE.md 記載的本機指令組合。
+      # 所以分專案建 —— 這也正是 AGENTS.md 記載的本機指令組合。
       # 注意:方案層級絕對不能加 -p:Platform=x64,Inkling.slnx 沒有那個組態。
       - name: Build extension (Debug, x64)
         run: dotnet build src/Inkling/Inkling.csproj -p:Platform=x64

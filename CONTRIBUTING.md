@@ -30,9 +30,9 @@ Before you start:
    dispose. The screen itself is verified by hand
    ([docs/manual-test-checklist.md](docs/manual-test-checklist.md), driven by
    `tools\cmdpal-ui.ps1`).
-2. Read [CLAUDE.md](CLAUDE.md) (Traditional Chinese). Despite the name it is the
-   repository's rulebook — the architecture, the hard-won rules for dealing with Command
-   Palette, and the conventions — written for AI coding assistants and humans alike.
+2. Read [AGENTS.md](AGENTS.md) (Traditional Chinese) — the repository's rulebook:
+   the architecture, the hard-won rules for dealing with Command Palette, and the
+   conventions, written for AI coding assistants and humans alike.
 
 The rules that bite:
 
@@ -51,5 +51,5 @@ The rules that bite:
   period, ≤ 72 characters.
 
 The maintainer docs and the code comments are Traditional Chinese only; the two READMEs are
-the exception. [CLAUDE.md](CLAUDE.md#docs-language) says why. Contribute in English — the
+the exception. [CLAUDE.md](AGENTS.md#docs-language) says why. Contribute in English — the
 translation is handled on the way in.

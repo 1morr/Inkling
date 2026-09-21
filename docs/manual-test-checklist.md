@@ -12,7 +12,7 @@
 > 一個過期的基準比沒有基準更糟，它讓人以為對照過了。發版前跑一次全量，
 > **跑完才把這裡改成當時的 commit**。
 > 每次全量跑完就更新這一行。這份清單的預期結果高度依賴 CmdPal **安裝版**的行為
-> (`main` 有、安裝版沒有的前科見 CLAUDE.md〈已知落差〉),CmdPal 更新之後，
+> (`main` 有、安裝版沒有的前科見 AGENTS.md〈已知落差〉),CmdPal 更新之後，
 > 標著 ⚠版本敏感 的項目要全部重驗。
 
 ## 為什麼需要這份清單
@@ -1149,17 +1149,17 @@ Get-Content "$ls\diagnostic.log" -Encoding utf8 |
 留著等於在維護第二份 `known-issues.md`，而且是沒人會回來對的那一份(那份的
 「修掉一條就從那裡刪掉」是同一個理由)。結論各有各的永久的家:行為的取捨進
 [`design-notes.md`](design-notes.md)，跟 CmdPal 打交道的硬規則進
-[`CLAUDE.md`](../CLAUDE.md)，過程與逐條證據留在 git log 裡。
+[`AGENTS.md`](../AGENTS.md)，過程與逐條證據留在 git log 裡。
 
 | 日期 | 組態 | 範圍 | 結果 |
 |---|---|---|---|
 | 2026-08-23 | Release(`deploy.ps1 -Configuration Release -Reload`),CmdPal 0.11.11762.0,Windows 顯示語言 zh-TW,`d2e1702` | **v1.0.0 送審前的全量**:§1–§10 的 🤖 項全跑，§11 的程式化部分跑掉，**只有換 Windows 顯示語言那幾條沒跑** | **0 個程式缺陷**。清單本身修掉 2 條(§7d 的 id 格式、§10 的鎖檔預期);另記下 1 條 CmdPal 端的一次性競態與 1 條刪除頁的提示缺口 |
 
-四種確認框的焦點**又對了一次**，結論與 `CLAUDE.md`〈已知落差〉那張表逐格相符:
+四種確認框的焦點**又對了一次**，結論與 `AGENTS.md`〈已知落差〉那張表逐格相符:
 清單頁 `Ctrl+D`(旗標 false)與刪除頁的 Inkling 筆記(false)焦點在「刪除」,
 刪除頁的外來檔案、「刪除全部」、「只刪 Inkling 建立的」(都是 true)焦點在「取消」。
 `IsPrimaryCommandCritical` 在 0.11.11762.0 上是有作用的 —— 這條曾經被 byte-scan 誤判成
-「沒有效果」，方法論陷阱本身留在 `CLAUDE.md` 那裡。
+「沒有效果」，方法論陷阱本身留在 `AGENTS.md` 那裡。
 
 **兩件不是缺陷、但下一個人會撞到的事，記在這裡:**
 

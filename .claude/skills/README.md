@@ -6,7 +6,7 @@
 
 在真機上驅動 Command Palette 的畫面驗證 Inkling —— 讀 UI Automation 樹、截圖、
 打字與按快速鍵，補上 `docs/manual-test-checklist.md` 裡那些「只能靠眼睛」的項目。
-工具是 `tools/cmdpal-ui.ps1`,`CLAUDE.md` 與 `CONTRIBUTING.md` 都指到這份。
+工具是 `tools/cmdpal-ui.ps1`,`AGENTS.md` 與 `CONTRIBUTING.md` 都指到這份。
 
 重點結論(都是實測出來的，細節在那份 SKILL.md):
 
@@ -29,9 +29,9 @@ CmdPal「建立擴展」功能會在產生出來的專案裡附一份 `.github/`
 
 **刪掉的理由**:那六份合計約 1400 行，是搬過來的 Microsoft 文件，不是這個 repo 寫的東西 ——
 留著會讓一個從頭到尾原創的 repo 看起來像是拿模板長出來的。而且內容本身部分已經跟這個
-repo 的取捨衝突或過期:`add-dock-band/` 記的是 `CLAUDE.md`〈評估過但沒有做〉那節
+repo 的取捨衝突或過期:`add-dock-band/` 記的是 `AGENTS.md`〈評估過但沒有做〉那節
 (`docs/design-notes.md#no-dock-band`)講過從未實作的功能;`add-fallback-commands/`
-記的做法正是 `CLAUDE.md` 硬規則第 3 條明著說「不要把快速記下改回 fallback」的那條路。
+記的做法正是 `AGENTS.md` 硬規則第 3 條明著說「不要把快速記下改回 fallback」的那條路。
 
 真要重新查 CmdPal 官方怎麼寫這幾類功能，用 CmdPal 的「建立擴展」功能重新產生一份模板，
 `.github/skills/` 底下就是原文 —— 不必也不該把它再搬進這個 repo。

@@ -146,7 +146,7 @@ if (-not (Test-Path $manifest)) {
 $targetLocation = (Resolve-Path $layout).Path
 
 # 同一台機器上出現兩個同名套件是真的會發生的(重新註冊之後 CmdPal 沒有去重，
-# 見 CLAUDE.md 第 6 條)。`Get-AppxPackage` 回陣列時，底下每一個 `.InstallLocation`
+# 見 AGENTS.md 第 6 條)。`Get-AppxPackage` 回陣列時，底下每一個 `.InstallLocation`
 # 都會變成陣列 —— 比對永遠不相等，於是每次部署都先移除再註冊，而「移除的是哪一個」
 # 不確定。cmdpal-ui.ps1 早就有這道守門，兩支腳本問的是同一件事，答案不該不一樣。
 $installed = @(Get-AppxPackage -Name $packageNamePattern)

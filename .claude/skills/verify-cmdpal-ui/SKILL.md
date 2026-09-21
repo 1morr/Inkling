@@ -357,16 +357,16 @@ Window: 'Command Palette' [FOCUS]
   「placeholder 有沒有跟著分隔符設定更新」看的是 `Name`;
   「進了哪一頁」也看它 —— 主頁是「搜尋應用程式、檔案和命令...」,
   清單頁是「搜尋標題與內文…」。
-- **`[SELECTED]` 是唯一能看出焦點落在哪一列的東西。** CLAUDE.md〈已知落差〉提到
+- **`[SELECTED]` 是唯一能看出焦點落在哪一列的東西。** AGENTS.md〈已知落差〉提到
   安裝版沒有 sticky selection,「刪掉當前那一列之後焦點落在哪」沒有保證 ——
   要驗那個，就在刪除前後各 dump 一次比對。
 - **詳細面板是 `Pane: '<筆記標題>'`**，底下的 `Text` 就是渲染後的內文。
   `Ctrl+U` 切換原始文字前後各 dump 一次，比對那塊 `Text` 變了沒。
   注意 `ListItem.Details` **只能整個換掉**，就地改屬性跨不過 out-of-process 邊界
-  (CLAUDE.md 硬規則第 2 條)—— 症狀正是「值改了、樹卻不動」。
+  (AGENTS.md 硬規則第 2 條)—— 症狀正是「值改了、樹卻不動」。
 - **Adaptive Card 表單**(新增/編輯/設定頁)在樹裡是一串 `Edit` 與 `Button`。
   欄位**順序**看得到，**游標在欄位裡的位置看不到**(CmdPal 只做
-  `Focus(FocusState.Programmatic)`，那個做不到，見 CLAUDE.md 第 4 條)。
+  `Focus(FocusState.Programmatic)`，那個做不到，見 AGENTS.md 第 4 條)。
 
 ## toast:別從「有沒有 toast」推論面板去留
 
@@ -530,7 +530,7 @@ orca computer list-windows --app pid:$pid --json
   註解掉的 TODO)——但別把這句話讀成「`ConfirmationArgs` 沒有旗標」，它有，見下面。
   ([設計考證〈確認框的按鈕沒有顏色，也沒有「危險」樣式〉](../../../docs/design-notes.md#confirm-dialog-colors))
 - **圖示的外觀。** 樹裡只有 `Image: ''`。
-- **游標在輸入框裡的位置。** 做不到，見 CLAUDE.md 第 4 條。
+- **游標在輸入框裡的位置。** 做不到，見 AGENTS.md 第 4 條。
 
 **⚠ 這一節以前多列了一條「確認框的預設按鈕」，說「安裝版掃不到 `set_DefaultButton`,
 那個旗標沒有效果」。那是錯的，而且錯得很貴** —— 它讓好幾輪驗證主動跳過一個
@@ -542,7 +542,7 @@ orca computer list-windows --app pid:$pid --json
 pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "show|type:# |wait:1200|key:Ctrl+D|wait:1800|tree:8"
 ```
 
-誤判的成因是 byte-scan 對 NativeAOT 影像**只能證實、不能證否**(見 CLAUDE.md
+誤判的成因是 byte-scan 對 NativeAOT 影像**只能證實、不能證否**(見 AGENTS.md
 〈查證 CmdPal 的行為〉)。**「掃不到」永遠不能直接寫成「驗不到」** ——
 先想想有沒有辦法用實機行為判。
 

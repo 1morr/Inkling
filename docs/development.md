@@ -130,7 +130,7 @@ pwsh -NoProfile -File tools\cmdpal-ui.ps1 -Steps "notes"     # 目前設定的�
 不是我們的 —— 「Results」、底部那排 `Open` / `Pin to home` / `More`、搜尋框的 placeholder
 全是 CmdPal 自己的，**跟著系統顯示語言走，擴展碰不到**(把附屬組件從佈署佈局裡拿掉只能讓
 *我們的*字串回退成英文，那半邊不會動)。而**兩份 README 共用同一組圖**，所以圖是英文的 ——
-對外預設是英文，見 [CLAUDE.md 〈文檔語言分層〉](../CLAUDE.md#docs-language)。
+對外預設是英文，見 [AGENTS.md 〈文檔語言分層〉](../AGENTS.md#docs-language)。
 換語言要重新登入才生效，不是改完就好。
 
 1. **先把筆記資料夾指到 demo 資料夾**，別把真的筆記放進公開 repo。備份
@@ -452,13 +452,13 @@ dotnet run --project tools\ApiDump -- FallbackCommandItem CommandResult
 
 從 PowerToys 的 `main` 分支讀原始碼得到的結論**一律要跟使用者裝的版本對照過**再寫進文檔 ——
 已經有好幾條「`main` 有、安裝版沒有」的落差被當成事實寫進過 README。對照的手法(byte-scan,
-UTF-8 與 UTF-16 都要掃)與已知落差清單見 [CLAUDE.md](../CLAUDE.md) 的〈查證 CmdPal 的行為〉。
+UTF-8 與 UTF-16 都要掃)與已知落差清單見 [AGENTS.md](../AGENTS.md) 的〈查證 CmdPal 的行為〉。
 
 ## 延伸閱讀
 
 | | |
 |---|---|
-| [CLAUDE.md](../CLAUDE.md) | 架構、跟 CmdPal 打交道的硬規則、慣例。**動手改程式前先讀這份** |
+| [AGENTS.md](../AGENTS.md) | 架構、跟 CmdPal 打交道的硬規則、慣例。**動手改程式前先讀這份** |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 對外的貢獻入口(英文)，只指路，規則不在那裡 |
 | [README.md](../README.md) / [README.zh-Hant.md](../README.zh-Hant.md) | 使用者文檔的兩個語言版本，改一份就改另一份 |
 | [design-notes.md](design-notes.md) | 「為什麼是這樣」的完整考證 |

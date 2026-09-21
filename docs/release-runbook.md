@@ -82,7 +82,7 @@ manifest 還原回舊的 CN,`makeappx pack` 與 CI **都不會報錯**,Partner C
   字串、上面那四個 manifest 字串)。兩組都被設計成「不要動」，所以 major 幾乎不會遞增。
 - **minor** —— 新命令、新設定鍵、鍵位變動、使用者感覺得到的行為變更。
 - **patch** —— 只修 bug、文案、翻譯、圖示;沒有新命令、沒有新設定鍵、鍵位沒動。
-- **不發版** —— 只改 `docs/*`、`CLAUDE.md`、CI、測試。這些東西不會進使用者的機器。
+- **不發版** —— 只改 `docs/*`、`AGENTS.md`、CI、測試。這些東西不會進使用者的機器。
 
 ### 5. `[人工]` MSIX 的版本格式，這裡有一個會擋下發版的硬限制
 
@@ -131,7 +131,7 @@ manifest 還原回舊的 CN,`makeappx pack` 與 CI **都不會報錯**,Partner C
 
 ### 8. `[人工]` 同輪更新使用者看得到的文檔
 
-[CLAUDE.md](../CLAUDE.md)〈慣例〉那條規則在發版這一輪一樣成立:改了指令、設定項、
+[AGENTS.md](../AGENTS.md)〈慣例〉那條規則在發版這一輪一樣成立:改了指令、設定項、
 資料格式或對外行為，就要同時更新**兩份 README**、
 [`manual-test-checklist.md`](manual-test-checklist.md) 與 [`CHANGELOG.md`](../CHANGELOG.md)。
 章節、表格的列、截圖都要對得上。

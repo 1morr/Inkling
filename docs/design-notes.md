@@ -13,7 +13,7 @@
 PowerToys **main** 的原始碼。從 main 讀到的每一條結論都對安裝版做過 byte-scan 確認才寫進來
 —— 兩邊有落差的地方(main 有、安裝版沒有)文中都明著標。掃法與已知的掃法陷阱
 (方法名在 UTF-8 的 #Strings heap,**字串常量在 UTF-16 的 #US heap**，只掃一種會得到
-假陰性)見 [CLAUDE.md](../CLAUDE.md)〈查證 CmdPal 的行為〉。
+假陰性)見 [AGENTS.md](../AGENTS.md)〈查證 CmdPal 的行為〉。
 
 ## 捕捉與預覽
 
@@ -624,7 +624,7 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   只有底部的 InfoBar「已儲存：<標題>」會出現。同一個 `SubmitForm`、同一個回傳路徑，
   差別只在回傳哪一種 `CommandResult` —— 所以不是我們的程式沒走到那一行，是 `GoBack`
   本身沒有被處理。這跟 `CommandResult.GoToPage` 是同一類的空殼
-  (見 [CLAUDE.md](../CLAUDE.md) 硬規則 8)。**能用的只有 `GoHome` / `Dismiss` /
+  (見 [AGENTS.md](../AGENTS.md) 硬規則 8)。**能用的只有 `GoHome` / `Dismiss` /
   `KeepOpen` / `Confirm` / `ShowToast`。**
   `main` 的 `ShellViewModel.UnsafeHandleCommandResult` 裡是有 `case CommandResultKind.GoBack`
   的，但那是 `main`;byte-scan 對這個 NativeAOT 影像證否不了
@@ -663,7 +663,7 @@ new ListItem(new NoOpCommand()) { Title = title, Section = title, Command = null
   也就是說**訊息發得出去，是導覽把它吃掉的**。
 
   **處置:新增改回 `CommandResult.ShowToast`，編輯維持 `ToastStatusMessage`。**
-  判準就是 [CLAUDE.md](../CLAUDE.md) 硬規則 8 的那一句 ——
+  判準就是 [AGENTS.md](../AGENTS.md) 硬規則 8 的那一句 ——
   **「使用者接下來還要不要看著這個面板」**:填完整張表單按儲存就是收工，不需要，
   而 toast 是唯一能在面板消失之後還留在畫面上的通道;編輯反過來，卡片上還壓著使用者
   剛打的字，而收工那條路的 `Dismiss()` 會把它們連同面板一起收掉。
@@ -1133,7 +1133,7 @@ if (!ViewModel?.OnlyControlOnPage ?? true) return;   // 不是唯一控件就不
 這塊空白在使用者實際跑的版本上八成從來沒起過作用。
 
 **這是第二次踩到同一個坑**:照 `main` 的原始碼寫進文檔，而安裝版根本沒有那段程式
-(第一次是 fallback 排序，見 [CLAUDE.md](../CLAUDE.md)〈查證 CmdPal 的行為〉)。
+(第一次是 fallback 排序，見 [AGENTS.md](../AGENTS.md)〈查證 CmdPal 的行為〉)。
 從原始碼得到的結論一定要 byte-scan 對照安裝版再寫。
 
 會觸發的情境本身也沒了。當初每按一次 `Ctrl+D`(那時面板寬度可調)就重讀一次表單，人卻在
@@ -1326,7 +1326,7 @@ CmdPal 就把那一列重新渲染出來 —— 而「內容變了」最常見�
 `UpdateSearchText` 維持預設參數。快速記下頁整頁都是這種情況(第一列是「記下這句話」,
 那才是使用者要按的)，所以那一頁一行都沒改。
 
-**方法論:這一節推翻了一條寫在 CLAUDE.md〈已知落差〉裡的結論。** 那裡曾經斷定
+**方法論:這一節推翻了一條寫在 AGENTS.md〈已知落差〉裡的結論。** 那裡曾經斷定
 「安裝版沒有 sticky selection」，依據是 byte-scan 掃不到 `_stickySelectedItem` /
 `firstUsefulIndex` / `ensureSelectionVisible`。**那三個全是欄位名、區域變數名與參數名** ——
 NativeAOT 保留方法名(給 stack trace 用)但一律裁掉這些，所以掃不到是必然的，
@@ -1558,10 +1558,10 @@ if (vm.IsPrimaryCommandCritical)
 **為什麼 byte-scan 會誤判，這件事比結論本身重要。** `Microsoft.CmdPal.UI.exe` 是
 **NativeAOT** 影像(`PEHeaders.CorHeader` 是 null、整包沒有 `hostfxr` / `hostpolicy` /
 `coreclr`)，裡面的識別名來自被裁過的 AOT metadata。所以
-[CLAUDE.md](../CLAUDE.md)〈查證 CmdPal 的行為〉那套 `#Strings` / `#US` 模型在這個 exe 上
+[AGENTS.md](../AGENTS.md)〈查證 CmdPal 的行為〉那套 `#Strings` / `#US` 模型在這個 exe 上
 只有一半成立:**命中是硬證據，沒命中不是。** `set_PrimaryButtonText` 掃得到而
 `set_DefaultButton` 掃不到，只代表前者被保留、後者被裁掉，不代表那段程式碼不存在。
-CLAUDE.md 的〈已知落差〉刻意把這一條留著當反例。
+AGENTS.md 的〈已知落差〉刻意把這一條留著當反例。
 
 旗標照語意設的規則不變:
 
@@ -1912,7 +1912,7 @@ toolkit 的 `JsonSettingsManager` 兩頭都吞例外:
 `[Inkling] settings.json was not valid JSON; it was moved aside and defaults are in use`,
 本機那份同一筆後面接著 ` — <完整路徑>`。
 
-**訊息一律英文。** 這是 log(見 CLAUDE.md〈慣例〉)，而共用那一份會被 PowerToys 的維護者
+**訊息一律英文。** 這是 log(見 AGENTS.md〈慣例〉)，而共用那一份會被 PowerToys 的維護者
 拿去 triage 別人的 bug —— `[Inkling]` 前綴認得出是誰寫的，訊息本身除了我們沒人讀得懂
 就白寫了。十四條 `Failure` 加上其餘的 `Write` 這一輪全部改成英文。
 
@@ -1990,7 +1990,7 @@ Partner Center 指派的 `CN=<GUID>` —— 中間那個值沒發出去過，見
 (`#` / `!` / `@`)、一個**早就指向舊 Notelet 套件、本來就是死的**釘選，以及擴展的啟用狀態
 (重新註冊後預設就是啟用)。快速鍵一個都沒設。也就是說整筆代價是「重設三個 alias」。
 
-對面那一邊則是**每一個之後讀到這個 repo 的人**都要在 `CommandIds.cs`、`CLAUDE.md`、
+對面那一邊則是**每一個之後讀到這個 repo 的人**都要在 `CommandIds.cs`、`AGENTS.md`、
 這一節、發版清單與 `cmdpal-ui.ps1` 的過濾式裡各被解釋一次，而且那個過濾式**已經
 因為前綴對不上而靜靜壞過一次**(見 `CHANGELOG.md` 那條 `Inkling*` 的修正)。
 一個只保護一個人、卻讓五個檔案長期說謊的承諾，在**唯一還能反悔的時刻**應該反悔。
@@ -2056,7 +2056,7 @@ CmdPal 端的 `ProviderSettings` 與 `PinnedCommands` 用
 `Get-AppxPackage '*Inkling*' | Remove-AppxPackage -PreserveApplicationData`。
 `deploy.ps1` 自己的移除分支**只在 `InstallLocation` 不同時才觸發**，而換身分時佈局路徑沒變,
 那個分支會被跳過。⚠ 換完之後**主搜尋框可能變成十列，兩組五列** —— 那是 CmdPal 在套件
-安裝事件上沒有去重(CLAUDE.md 第 6 條的第一種)，不是真的裝了兩個;停掉
+安裝事件上沒有去重(AGENTS.md 第 6 條的第一種)，不是真的裝了兩個;停掉
 `Microsoft.CmdPal.UI` 讓它重啟就好。
 
 #### 憑證:走 Store 代簽，repo 裡不會有任何憑證
