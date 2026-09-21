@@ -95,10 +95,10 @@ you choose.」，而那句**整個 repo 的歷史裡從來沒有出現過**（`g
 
 | 改什麼 | 分支 | 狀態 |
 |---|---|---|
-| `shortDescription` 改回 `docs/copy.md` 的版本（見上面那則 ⚠） | `fix-inkling-shortdescription`，[compare 連結](https://github.com/microsoft/CmdPal-Extensions/compare/main...1morr:CmdPal-Extensions:fix-inkling-shortdescription) | ⬜ 分支已推，待開 PR |
+| `shortDescription` 改回 `docs/copy.md` 的版本（見上面那則 ⚠） | `fix-inkling-shortdescription` | ✅ [PR #183](https://github.com/microsoft/CmdPal-Extensions/pull/183)（2026-09-21 開） |
 
-分支是 2026-09-04 從當時的 upstream `main`（`91a94c1`）開的，只動 `extension.json` 一行，
-`validate.py` 本機跑過零錯誤。開 PR 之後補上編號。
+原先的修正分支隨 fork 被刪而消失；2026-09-21 重建 fork、從 upstream `main` 重開同名分支，
+一樣只動 `extension.json` 一行，`validate.py` 本機跑過。
 
 **真正的關卡是 CI，不是人工審核。** 2026-09-03 翻過上游最近 30 個 PR：投稿類幾乎都是
 維護者直接 Approve、當天或隔天 merge，沒有人被要求改描述或截圖。兩件沒 merge 的都不是
