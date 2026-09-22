@@ -19,8 +19,10 @@ access, and heavier editing come from the cloud drive and editor you already use
 ## Install
 
 **[Microsoft Store — Inkling Notes](https://apps.microsoft.com/detail/9NDGWN4JTXHH)**,
-or `winget install --source msstore --id 9NDGWN4JTXHH`. Inside Command Palette
-the commands are just "Inkling".
+or `winget install --source msstore --id 9NDGWN4JTXHH`. Inkling is also listed in
+Command Palette's built-in **Extension Gallery**, so you can find and install it
+without leaving the palette. Inside Command Palette the commands are just
+"Inkling".
 
 | Requires | |
 |---|---|

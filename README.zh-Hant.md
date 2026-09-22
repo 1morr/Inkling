@@ -17,8 +17,9 @@ Inkling 把記筆記這件事加進 Command Palette:幾秒鐘記下一個想法�
 ## 安裝
 
 **[Microsoft Store — Inkling Notes](https://apps.microsoft.com/detail/9NDGWN4JTXHH)**，
-或用 `winget install --source msstore --id 9NDGWN4JTXHH` 安裝。在 Command Palette 裡，
-命令就叫「Inkling」。
+或用 `winget install --source msstore --id 9NDGWN4JTXHH` 安裝。Inkling 也收錄在
+Command Palette 內建的 **Extension Gallery** 裡，不離開面板就能找到並安裝。在 Command
+Palette 裡，命令就叫「Inkling」。
 
 | 需求 | |
 |---|---|
