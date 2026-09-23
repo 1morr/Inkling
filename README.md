@@ -11,8 +11,11 @@
 <p align="center"><b>English</b> · <a href="README.zh-Hant.md">繁體中文</a></p>
 
 Inkling adds note taking to Command Palette: capture a thought in seconds, then
-browse, search, and edit your notes without opening another app. Sync, phone
-access, and heavier editing come from the cloud drive and editor you already use.
+browse, search, and edit your notes without opening another app. Notes are
+plain Markdown files in a folder you choose, not records inside an app: any
+editor opens them, your cloud drive syncs them, and nothing is lost if Inkling
+goes away. Sync, phone access, and heavier editing therefore come from the
+cloud drive and editor you already use.
 
 ![Top-level commands](docs/images/top-level-commands.png)
 
